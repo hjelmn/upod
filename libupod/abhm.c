@@ -1,6 +1,6 @@
 /**
  *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.1 abhm.c
+ *   v0.2.0 abhm.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -19,13 +19,12 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdbi.h"
-
-
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <errno.h>
+
+#include "itunesdbi.h"
 
 #define ABHM_HEADER_SIZE 0x94
 

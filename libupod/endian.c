@@ -1,8 +1,8 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 endian.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v1.0 endian.c
  *
- *   upod endianness functions
+ *   upod endianness function
  *
  *   (7-9-2002) Added breaks to the cases.
  *

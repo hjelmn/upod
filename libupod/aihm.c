@@ -16,11 +16,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "itunesdbi.h"
 
 #define AIHM_HEADER_SIZE   0x28
 

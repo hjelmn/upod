@@ -72,7 +72,7 @@ int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
   /* remove the entry */
   db_detach (parent, entry_num, &entry);
   db_free_tree (entry);
- 
+
   /* remove from all playlists */
   db_playlist_remove_all (itunesdb, tihm_num);
 
@@ -300,8 +300,10 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
 void db_song_list_free (GList **head) {
   GList *tmp;
 
-  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp))
+  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp)) {
     tihm_free ((tihm_t *)(tmp->data));
+    free (tmp->data);
+  }
 
   g_list_free (*head);
 

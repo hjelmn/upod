@@ -161,8 +161,12 @@ void db_playlist_list_free (GList **head) {
   if (head == NULL)
     return;
 
-  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp))
+  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp)) {
+    struct pyhm *pyhm = (struct pyhm *)tmp->data;
+
+    free (pyhm->name);
     free (tmp->data);
+  }
 
   g_list_free (*head);
 
@@ -353,6 +357,7 @@ int db_playlist_rename (ipoddb_t *itunesdb, int playlist, char *name, int name_l
   /* no need to worry about modifying the dohm count since it won't change */
   db_detach (pyhm_header, i, &dohm_header);
   db_free_tree (dohm_header);
+
   db_attach_at (pyhm_header, dohm_header, i);
 
   free (dohm.data);
@@ -485,7 +490,7 @@ int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int tihm_num) {
     
     db_free_tree (pihm_header);
     db_free_tree (dohm_header);
-    
+
     pyhm_data->num_pihm -= 1;
   }
 

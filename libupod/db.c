@@ -64,10 +64,8 @@ void db_free_tree (tree_node_t *ptr) {
     return;
 
   if (ptr->children != NULL) {
-    while (--ptr->num_children > -1) {
+    while (--ptr->num_children > -1)
       db_free_tree(ptr->children[ptr->num_children]);
-      free (ptr->children[ptr->num_children]);
-    }
 
     free(ptr->children);
     ptr->children = NULL;
@@ -75,6 +73,7 @@ void db_free_tree (tree_node_t *ptr) {
 
   free(ptr->data);
   ptr->data = NULL;
+  free (ptr);
 }
 
 /**
@@ -94,8 +93,9 @@ void db_free (ipoddb_t *itunesdb) {
 
   db_free_tree(itunesdb->tree_root);
 
-  free (itunesdb->tree_root);
   itunesdb->tree_root = NULL;
+  free (itunesdb->path);
+  itunesdb->path = NULL;
 }
 
 static int dohm_contains_string (struct db_dohm *dohm_data) {

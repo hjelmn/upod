@@ -16,20 +16,19 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <string.h>
 #include <errno.h>
 
-#define DOHM_HEADER_SIZE   0x18
+#include "itunesdbi.h"
 
-#define DOHM_EQ_SIZE       0x3a
+#define DOHM_HEADER_SIZE   0x018
 
-#define STRING_HEADER_SIZE 0x10
+#define DOHM_EQ_SIZE       0x03a
+#define DOHM_PIHM_SIZE     0x02c
+#define DOHM_ITUNES_SIZE   0x288
 
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
 		      int dohm_type) {
@@ -154,7 +153,7 @@ int db_dohm_itunes_create (tree_node_t **entry) {
   if (entry == NULL)
     return -EINVAL;
 
-  db_dohm_create_generic (entry, 0x288, 0x64);
+  db_dohm_create_generic (entry, DOHM_ITUNES_SIZE, 0x64);
 
   wierd_dohm_data = (struct db_wierd_dohm *)(*entry)->data;
 
@@ -221,7 +220,7 @@ int db_dohm_itunes_hide (tree_node_t *entry, int column_id) {
 int db_dohm_create_pihm (tree_node_t **entry, int order) {
   int *iptr;
 
-  db_dohm_create_generic (entry, 0x2c, 0x64);
+  db_dohm_create_generic (entry, DOHM_PIHM_SIZE, 0x64);
   
   iptr = (int *)&((*entry)->data[0x18]);
   iptr[0] = order;
@@ -342,20 +341,16 @@ void dohm_free (dohm_t *dohm, int num_dohms) {
 int db_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm) {
   tree_node_t *tihm_header, *dohm_header;
 
-  int entry_num;
+  int entry_num, ret;
 
-  if (itunesdb == NULL) return -1;
-  if (dohm == NULL) return -2;
-
-  if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0)
-    return -1;
+  if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0)
+    return ret;
 
   if ((entry_num = db_dohm_retrieve (tihm_header, &dohm_header, dohm->type)) == 0) {
     /* the tree is never deep, so this ends up costing theta(1) extra */
     db_detach (tihm_header, entry_num, &dohm_header);
     
-    free (dohm_header->data);
-    free (dohm_header);
+    db_free_tree (dohm_header);
   }
 
   db_dohm_create (&dohm_header, *dohm, 16);

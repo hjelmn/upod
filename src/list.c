@@ -96,6 +96,7 @@ int main (int argc, char *argv[]) {
     fprintf (stdout, "The database checks out.\n");
 
   /* get song lists */
+  songs = NULL;
   db_song_list (&itunesdb, &songs);
 
   if (songs == NULL) {
@@ -171,6 +172,7 @@ int main (int argc, char *argv[]) {
   db_song_list_free (&songs);
   
   /* get playlists */
+  playlists = NULL;
   db_playlist_list (&itunesdb, &playlists);
 
   if (playlists == NULL) {
@@ -196,6 +198,7 @@ int main (int argc, char *argv[]) {
   }
   
   db_playlist_list_free (&playlists);
+
   db_free(&itunesdb);
 
   return 0;
