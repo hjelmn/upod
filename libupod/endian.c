@@ -4,6 +4,8 @@
  *
  *   upod endianness functions
  *
+ *   (7-9-2002) Added breaks to the cases.
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -19,11 +21,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,12 +36,15 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
       {
 	short *r = (short *)ptr;
 	/* may be needed for unicode strings */
+
 	r[i] = bswap_16 (r[i]);
+	break;
       }
     case 4:
       {
 	long *r = (long *)ptr;
 	r[i] = bswap_32 (r[i]);
+	break;
       }
     }
 #endif

@@ -1,4 +1,4 @@
-#include "upod.h"
+#include "itunesdb.h"
 
 #include <stdlib.h>
 #include <fcntl.h>
@@ -34,11 +34,12 @@ char *path_unix_mac_root (char *path) {
   return mac_path;
 }
 
-int dir_add (ipod_t *ipod, char *dir) {
+int dir_add (itunesdb_t *ipod, char *dir) {
   static int added = 0;
   struct stat statinfo;
   char path_temp[255];
   struct dirent *entry;
+  char *tmp;
 
   DIR *dir_fd;
 
@@ -60,7 +61,7 @@ int dir_add (ipod_t *ipod, char *dir) {
     else if (S_ISREG (statinfo.st_mode) && entry->d_name[0] != '.') {
       added++;
       fprintf (stderr, "Adding %s.\n", path_temp);
-      db_add (ipod, path_temp, path_unix_mac_root(path_temp));
+      db_add (ipod, path_temp, tmp = path_unix_mac_root(path_temp), strlen(tmp), rand()%6);
     }
   }
 
@@ -70,27 +71,51 @@ int dir_add (ipod_t *ipod, char *dir) {
 }
 
 int main(int argc, char *argv[]) {
-  ipod_t ipod;
+  itunesdb_t itunesdb;
+  int c = 0;
   int ret;
 
-  if (argc != 3)
+  if (argc != 3 && argc != 4)
     usage();
 
-  if ((ret = db_load (&ipod, argv[1])) < 0) {
-    printf("Could not load database.\n");
-    exit(2);
+  memset (&itunesdb, 0, sizeof (itunesdb_t));
+
+  if (strcmp (argv[1], "-create") == 0) {
+    if (argc != 4) usage();
+    printf ("Creating a database... ");
+    if ((ret = db_create(&itunesdb, "iPod", 4)) < 0) {
+      printf("Could not create database.\n");
+      exit(2);
+    }
+    printf ("done.\n");
+    c = 1;
+  } else {
+    if (argc != 3) usage();
+    printf ("Loading a database.\n");
+    if ((ret = db_load (&itunesdb, argv[1])) < 0) {
+      printf("Could not open database.\n");
+      exit(2);
+    }
+
+    printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
   }
 
-  printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
+  dir_add (&itunesdb, argv[2]);
 
-  dir_add (&ipod, argv[2]);
-
-  if ((ret = db_write (ipod, argv[1])) < 0) {
-    printf("Database could not be written to file.\n");
-    exit(2);
+  if (c == 0) {
+    if ((ret = db_write (itunesdb, argv[1])) < 0) {
+      printf("Database could not be written to file.\n");
+      exit(2);
+    }
+  } else {
+    if ((ret = db_write (itunesdb, argv[3])) < 0) {
+      printf("Database could not be written to file.\n");
+      exit(2);
+    }
   }
 
-  db_free(&ipod);
+
+  db_free(&itunesdb);
   printf("%i B written to iTunesDB %s.\n", ret, argv[2]);
 
   return 0;

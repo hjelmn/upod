@@ -1,6 +1,6 @@
 /**
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.1a playlist.c
+ *   v0.1.2a playlist.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -19,57 +19,83 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <errno.h>
 
-#define PYHM             0x7079686d
-#define PYHM_HEADER_SIZE 0x6c
+/*
+  db_playlist_retrieve_header:
 
-int db_playlist_retrieve_header (struct tree iTunesDB, struct tree_node **entry,
-				 struct tree_node **dshm) {
-  struct tree_node **master, *root;
+  Internal function that saves a pointer to the database's plhm and playlist
+  dshm to the pointers that are passed in.
 
-  if (entry == NULL) return -1;
+  Arguments:
+   itunesdb_t *itunesdb    - opened itunesdb
+   tree_node  *plhm_header - pointer to location of desired pointer
+   tree_node  *dshm_heade  - pointer to location of desired parent pointer.
 
-  root = iTunesDB.tree_root;
+  Returns:
+   < 0 on error
+     0 on success
+*/
+int db_playlist_retrieve_header (itunesdb_t *itunesdb, tree_node_t **plhm_header,
+				 tree_node_t **dshm_header) {
+  tree_node_t *temp;
+  
+  if (db_dshm_retrieve (itunesdb, &temp, 0x2) < 0)
+    return -1;
 
-  if (root == NULL) return -1;
+  *plhm_header = temp->children[0];
 
-
-  for (master = &(root->children[root->num_children-1]) ;
-       !strstr((*master)->data, "dshm") ; master--);
-
-  *entry = (*master)->children[0];
-
-  if (dshm != NULL) *dshm = *master;
+  if (dshm_header) *dshm_header = temp;
 
   return 0;
 }
 
-int db_return_num_playlists (ipod_t *ipod) {
-  struct tree_node *entry;
-  struct db_plhm *plhm;
+/**
+  db_playlist_number:
 
-  if (ipod == NULL) return -1;
+  Returns the number of playlists in the itunesdb.
 
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &entry, NULL) < 0)
+  Arguments:
+   itunesdb_t *itunesdb - open itunesdb
+
+  Returns:
+   < 1 on error
+   number of playlists on success
+**/
+int db_playlist_number (itunesdb_t *itunesdb) {
+  tree_node_t *plhm_header;
+  struct db_plhm *plhm_data;
+
+  if (itunesdb == NULL) return -1;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, NULL) < 0)
     return -1;
 
-  plhm = (struct db_plhm *) entry->data;
+  plhm_data = (struct db_plhm *) plhm_header->data;
 
-  return plhm->num_pyhm;
+  return plhm_data->num_pyhm;
 }
 
-GList *db_return_playlist_list (ipod_t *ipod) {
-  struct tree_node *plhm_header, *dshm_header, *pyhm_header, *dohm_header;
+/**
+  db_playlists_list:
+
+  Returns a linked list containing the numbers and names of the playlists in
+  the itunesdb.
+
+  Arguments:
+   itunesdb_t *itunesdb - opened itunesdb
+
+  Returns:
+   NULL on error
+   pointer to head of linked list on success
+**/
+GList *db_playlist_list (itunesdb_t *itunesdb) {
+  tree_node_t *plhm_header, *dshm_header, *pyhm_header, *dohm_header;
   struct pyhm *pyhm;
   struct db_plhm *plhm_data;
   struct db_dohm *dohm_data;
@@ -78,7 +104,7 @@ GList *db_return_playlist_list (ipod_t *ipod) {
 
   int i;
 
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return NULL;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
@@ -109,6 +135,17 @@ GList *db_return_playlist_list (ipod_t *ipod) {
   return head;
 }
 
+/**
+  db_playlist_list_free:
+
+  Frees the memory used by a GList containing playlist information.
+
+  Arguments:
+   GList *head - head of allocated playlist list
+
+  Returns:
+   nothing, void function
+**/
 void db_playlist_list_free (GList *head) {
   struct pyhm *pyhm;
 
@@ -129,8 +166,22 @@ void db_playlist_list_free (GList *head) {
   }
 }
 
-int db_playlist_list_songs (ipod_t *ipod, int playlist, int **list) {
-  struct tree_node *plhm_header, *dshm_header, *pyhm_header;
+/**
+  db_playlist_list_songs:
+
+  Stores an integer list of all the references contained in a playlist.
+
+  Argument:
+   itunesdb_t *itunesdb - opened itunesdb
+   int         playlist - playlist index (0 is master)
+   int       **list     - pointer to where the list should go
+
+  Returns:
+   < 0 on error
+     0 on success
+*/
+int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
+  tree_node_t *plhm_header, *dshm_header, *pyhm_header;
 
   struct db_plhm *plhm_data;
   struct db_pyhm *pyhm_data;
@@ -138,10 +189,9 @@ int db_playlist_list_songs (ipod_t *ipod, int playlist, int **list) {
 
   int i;
 
+  if (itunesdb == NULL || list == NULL) return -1;
 
-  if (ipod == NULL || list == NULL) return -1;
-
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
@@ -161,39 +211,44 @@ int db_playlist_list_songs (ipod_t *ipod, int playlist, int **list) {
   return pyhm_data->num_pihm;
 }
 
-static int db_pyhm_create (struct tree_node *entry) {
-  struct db_pyhm *pyhm_data;
-  if (entry == NULL) return -1;
+/**
+  db_playlist_create:
 
-  memset (entry, 0, sizeof(struct tree_node));
+   Creates a new playlist on the ipod with name.
 
-  entry->size = PYHM_HEADER_SIZE;
-  entry->data = malloc (PYHM_HEADER_SIZE);
-  if (entry->data == NULL) {
-    perror ("db_pyhm_create|malloc");
-    return -1;
-  }
-  memset (entry->data, 0, PYHM_HEADER_SIZE);
-  pyhm_data = (struct db_pyhm *)entry->data;
-  pyhm_data->pyhm        = PYHM;
-  pyhm_data->header_size = PYHM_HEADER_SIZE;
-  pyhm_data->record_size = PYHM_HEADER_SIZE;
-}
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   char       *name     - Name of new playlist
+   int         name_len - length of buffer name
 
-int db_create_new_playlist (ipod_t *ipod, char *name) {
-  struct tree_node *plhm_header, *new_pyhm, *new_dohm, *dshm_header;
+  Returns:
+   < 0 on error
+     0 on success
+**/
+int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
+  tree_node_t *plhm_header, *new_pyhm, *new_dohm, *dshm_header;
   struct db_plhm *plhm;
   struct db_dohm *dohm;
 
-  if (name == NULL) return -1;
-  if (ipod == NULL) return -1;
+  struct db_wierd_dohm *wierd_dohm_data;
 
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  struct db_pyhm *pyhm;
+  int unicode_len;
+  char *unicode_data;
+
+  int i;
+
+  if (name == NULL) return -1;
+  if (itunesdb == NULL) return -1;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
+
+  unicode_check_and_copy (&unicode_data, &unicode_len, name, name_len);
 
   plhm = (struct db_plhm *) plhm_header->data;
 
-  new_pyhm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  new_pyhm = (tree_node_t *) malloc (sizeof (tree_node_t));
   if (new_pyhm == NULL) {
     perror ("db_create_new_playlist|malloc");
     return errno;
@@ -202,53 +257,85 @@ int db_create_new_playlist (ipod_t *ipod, char *name) {
   if (db_pyhm_create (new_pyhm) < 0)
     return -1;
 
+  pyhm = (struct db_pyhm *) new_pyhm->data;
+
+  if (plhm->num_pyhm == 0) {
+    pyhm->is_visible = 1;
+    pyhm->unk0       = 0xb94613e8;
+  }
+
   /* I dont know what this dohm entry does */
-  new_dohm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  new_dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
   if (new_dohm == NULL) {
     perror ("db_create_new_playlist|malloc");
     return errno;
   }
-  if (db_dohm_create_generic (new_dohm, 0x288, 0x000) < 0)
+  if (db_dohm_create_generic (new_dohm, 0x288, 0x64) < 0)
     return -1;
 
-  dohm       = (struct db_dohm *)new_dohm->data;
-  dohm->type = 0x64;
+  wierd_dohm_data = (struct db_wierd_dohm *)new_dohm->data;
+
+  /* i dont know what these two are about, but they need to be set like this */
+  wierd_dohm_data->unk6 = 0x00010000;
+  wierd_dohm_data->unk7 = 0x00000004;
+
+  /* but, now I know what this is (cheer!) */
+  wierd_dohm_data->shows[0].unk10[0] = 6;
+
+  /* show playing column */
+  wierd_dohm_data->shows[0].show = SHOW_PLAYING | 0x00120000;
+
+  /* show a few more colums */
+  for (i = 1; i < 6 ; i++)
+    /* im just showing some usefull info (artist, bitrate, etc) */
+    wierd_dohm_data->shows[i].show = (i + 0x1) | 0x007d0000; /* 7d pixel(?) width */
 
   db_attach (new_pyhm, new_dohm);
 
   /* create the title entry for the new playlist */
-  new_dohm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  new_dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
   if (new_dohm == NULL) {
     perror ("db_create_new_playlist|malloc");
     return errno;
   }
-  if (db_dohm_create_generic (new_dohm, 0x18 + 0x16 + 2 * strlen (name), 0) < 0)
+  if (db_dohm_create_generic (new_dohm, 0x28 + unicode_len, IPOD_TITLE) < 0)
     return -1;
 
   dohm       = (struct db_dohm *)new_dohm->data;
-  dohm->type = IPOD_TITLE;
   dohm->unk2 = 1;
-  dohm->len  = 2 * strlen (name);
+  dohm->len  = unicode_len;
 
-  char_to_unicode (&new_dohm->data[0x28], name, strlen(name));
+  memcpy (&new_dohm->data[0x28], unicode_data, unicode_len);
 
   db_attach (new_pyhm, new_dohm);
 
   /* this MUST be done last to avoid adding the sizes it's children twice */
   db_attach (dshm_header, new_pyhm);
 
-  printf ("Playlist added.\n");
-
+  free (unicode_data);
   return plhm->num_pyhm++;
 }
 
-int db_remove_playlist (ipod_t *ipod, int playlist) {
-  struct tree_node *plhm_header, *dshm_header, *pyhm_header;
+/**
+  db_playlist_delete:
+    
+    Delete a playlist from the itunesdb.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is master)
+
+  Returns:
+   < 0 on error or when attempting to remove the master playlist
+     0 on success
+**/
+int db_playlist_delete (itunesdb_t *itunesdb, int playlist) {
+  tree_node_t *plhm_header, *dshm_header, *pyhm_header;
   struct db_plhm *plhm_data;
 
-  if (ipod == NULL) return -1;
+  if (itunesdb == NULL) return -1;
 
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm_data = (struct db_plhm *)plhm_header->data;
@@ -261,19 +348,33 @@ int db_remove_playlist (ipod_t *ipod, int playlist) {
   db_free_tree (pyhm_header);
 }
 
-int db_add_to_playlist (ipod_t *ipod, int playlist, int tihm_num) {
-  struct tree_node *plhm_header, *pyhm_header, *dshm_header;
-  struct tree_node *pihm, *dohm;
+/**
+  db_playlist_tihm_add:
+
+    Adds a reference to song tihm_num to playlist.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is the master playlist)
+   int         tihm_num - Song reference to remove
+
+  Returns:
+   < 0 on error
+     0 on success
+**/
+int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
+  tree_node_t *plhm_header, *pyhm_header, *dshm_header;
+  tree_node_t *pihm, *dohm;
 
   struct db_plhm *plhm_data;
   struct db_pyhm *pyhm_data;
 
-  if (ipod == NULL) return -1;
+  if (itunesdb == NULL) return -1;
   
-  if (db_tihm_retrieve (ipod->iTunesDB, NULL, NULL, tihm_num) < 0)
+  if (db_tihm_retrieve (itunesdb, NULL, NULL, tihm_num) < 0)
     return -1;
     
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
@@ -285,20 +386,20 @@ int db_add_to_playlist (ipod_t *ipod, int playlist, int tihm_num) {
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
   /* allocate memory */
-  pihm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  pihm = (tree_node_t *) malloc (sizeof (tree_node_t));
   if (pihm == NULL) {
     perror ("db_add_to_playlist|malloc");
     return -1;
   }
 
-  dohm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
   if (dohm == NULL) {
     perror ("db_add_to_playlist|malloc");
     return -1;
   }
 
   db_pihm_create (pihm, tihm_num, tihm_num);
-  db_dohm_create_generic (dohm, 0x2c, tihm_num);
+  db_dohm_create_generic (dohm, 0x2c, 0x64);
 
   db_attach (pyhm_header, pihm);
   db_attach (pyhm_header, dohm);
@@ -308,18 +409,33 @@ int db_add_to_playlist (ipod_t *ipod, int playlist, int tihm_num) {
   return 0;
 }
 
-int db_remove_from_playlist (ipod_t *ipod, int playlist, int tihm_num) {
-  struct tree_node *plhm_header, *pyhm_header, *dshm_header;
-  struct tree_node *pihm, *dohm;
+/**
+  db_playlist_tihm_remove:
+
+    Removes the reference to song tihm_num from playlist.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is the master playlist)
+   int         tihm_num - Song reference to remove
+
+  Returns:
+   < 0 on error
+     0 on success
+**/
+int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist,
+			     int tihm_num) {
+  tree_node_t *plhm_header, *pyhm_header, *dshm_header;
+  tree_node_t *pihm, *dohm;
 
   struct db_plhm *plhm_data;
   struct db_pyhm *pyhm_data;
 
   int entry_num;
 
-  if (ipod == NULL) return -1;
+  if (itunesdb == NULL) return -1;
   
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
@@ -344,18 +460,31 @@ int db_remove_from_playlist (ipod_t *ipod, int playlist, int tihm_num) {
   return 0;
 }
 
-int db_playlist_clear (ipod_t *ipod, int playlist) {
-  struct tree_node *plhm_header, *pyhm_header, *dshm_header;
-  struct tree_node *pihm, *dohm;
+/*
+  db_playlist_clear:
+
+    Clears all references from playlist.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is the master playlist)
+
+  Returns:
+   < 0 on error
+     0 on success
+*/
+int db_playlist_clear (itunesdb_t *itunesdb, int playlist) {
+  tree_node_t *plhm_header, *pyhm_header, *dshm_header;
+  tree_node_t *pihm, *dohm;
 
   struct db_plhm *plhm_data;
   struct db_pyhm *pyhm_data;
 
   int entry_num;
 
-  if (ipod == NULL) return -1;
+  if (itunesdb == NULL) return -1;
   
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
@@ -377,25 +506,163 @@ int db_playlist_clear (ipod_t *ipod, int playlist) {
   pyhm_data->num_pihm = 0;
 }
 
-int db_playlist_fill (ipod_t *ipod, int playlist) {
-  struct tree_node *first_dshm, *tlhm_header, *tihm_header;
+/*
+  db_playlist_fill:
+
+    Fills a playlist with references to every song.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is the master playlist)
+
+  Returns:
+   < 0 on error
+     0 on success
+*/
+int db_playlist_fill (itunesdb_t *itunesdb, int playlist) {
+  tree_node_t *first_dshm, *tlhm_header, *tihm_header;
 
   struct db_tlhm *tlhm_data;
   struct db_tihm *tihm_data;
 
   int i;
 
-  if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return -1;
+  if (itunesdb == NULL || itunesdb->tree_root == NULL) return -1;
 
-  db_playlist_clear (ipod, playlist);
+  db_playlist_clear (itunesdb, playlist);
 
-  first_dshm = ipod->iTunesDB.tree_root->children[0];
+  first_dshm = itunesdb->tree_root->children[0];
   tlhm_header= first_dshm->children[0];
   tlhm_data  = (struct db_tlhm *)tlhm_header->data;
 
   for (i = 0 ; i < tlhm_data->num_tihm ; i++) {
     tihm_data = (struct db_tihm *)first_dshm->children[i + 1]->data;
-    db_add_to_playlist (ipod, playlist, tihm_data->identifier);
+    db_playlist_tihm_add (itunesdb, playlist, tihm_data->identifier);
+  }
+
+  return 0;
+}
+
+int db_playlist_remove_all (itunesdb_t *itunesdb, int tihm_num) {
+  int i, total;
+
+  total = db_playlist_number (itunesdb);
+  
+  for (i = 0 ; i < total ; i++)
+    db_playlist_tihm_remove (itunesdb, i, tihm_num);
+
+  return 0;
+}
+
+int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column, u_int16_t width) {
+  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
+
+  int num_shown;
+
+  struct db_wierd_dohm *wierd_dohm_data;
+  struct db_plhm *plhm_data;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0) {
+    return -1;
+  }
+
+  plhm_data = (struct db_plhm *) plhm_header->data;
+
+  if (playlist >= plhm_data->num_pyhm)
+    return -1;
+
+  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  if (num_shown > 36)
+    return -1;
+
+  wierd_dohm_data->shows[num_shown].show = column | width << 16;
+  wierd_dohm_data->shows[0].unk10[0] = num_shown + 1;
+
+  return 0;
+}
+
+int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column) {
+  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
+  int i, j;
+
+  int num_shown;
+
+  struct db_wierd_dohm *wierd_dohm_data;
+  struct db_plhm *plhm_data;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0) {
+    return -1;
+  }
+
+  plhm_data = (struct db_plhm *) plhm_header->data;
+
+  if (playlist >= plhm_data->num_pyhm)
+    return -1;
+
+  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  if (num_shown == 0)
+    return -1;
+
+  for (i = 0 ; i < num_shown ; i++) {
+    if (wierd_dohm_data->shows[i].show & 0xff == column)
+      break;
+  }
+
+  if (i == num_shown)
+    return -4;
+
+  for (j = i + 1 ; j < num_shown ; j++)
+    wierd_dohm_data->shows[j-1] = wierd_dohm_data->shows[j];
+
+  wierd_dohm_data->shows[0].unk10[0] = num_shown - 1;;
+
+  return 0;
+}
+
+/*
+  first position is position 0
+*/
+int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola, int pos) {
+  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
+  int j;
+  int finish;
+
+  int num_shown;
+
+  struct db_wierd_dohm *wierd_dohm_data;
+  struct db_plhm *plhm_data;
+
+  if (cola < 0 || pos < 0 || cola == pos) return -1;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0) {
+    return -1;
+  }
+
+  plhm_data = (struct db_plhm *) plhm_header->data;
+
+  if (playlist >= plhm_data->num_pyhm)
+    return -1;
+
+  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  if (num_shown < 2 || num_shown <= cola || num_shown <= pos)
+    return -1;
+
+  finish = (cola > pos) ? pos : cola;
+
+  for (j = (cola > pos) ? cola : pos ; j > finish ; j--) {
+    struct __shows__ tmp = wierd_dohm_data->shows[j];
+    
+    wierd_dohm_data->shows[j] = wierd_dohm_data->shows[j-1];
+    wierd_dohm_data->shows[j-1] = tmp;
   }
 
   return 0;

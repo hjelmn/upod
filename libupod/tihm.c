@@ -21,21 +21,14 @@
 #include "config.h"
 #endif
 
-#include "upodi.h"
-#include "hexdump.c"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
-#define TIHM               0x7469686d
 #define TIHM_HEADER_SIZE   0x9c
 
-#define DOHM               0x646f686d
-#define DOHM_HEADER_SIZE   0x18
-
-#define STRING_HEADER_SIZE 0x10
-
-int db_tihm_search (struct tree_node *entry, u_int32_t tihm_num) {
+int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
   int i;
 
   for ( i = 1 ; i < entry->num_children ; i++ )
@@ -45,151 +38,105 @@ int db_tihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   return -1;
 }
 
-int db_tihm_retrieve (struct tree iTunesDB, struct tree_node **entry,
-		      struct tree_node **parent, int tihm_num) {
-  struct tree_node **master, *root;
-  int entry_num;
+int db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
+		      tree_node_t **parent, int tihm_num) {
+  tree_node_t *root, *dshm_header;
+  struct db_dshm *dshm_data;
+  int i, entry_num;
 
-  if (iTunesDB.tree_root == NULL) return -1;
-  root = iTunesDB.tree_root;
+  if (itunesdb->tree_root == NULL) return -1;
+  root = itunesdb->tree_root;
 
-  /* the song list resides in the first dshm entry of the iTunesDB */
-  for (master = &(root->children[0]) ;
-       !strstr((*master)->data, "dshm") ; master++);
+  /* find the song list */
+  for (i = 0 ; i < root->num_children ; i++) {
+    dshm_header = (tree_node_t *)root->children[i];
+    dshm_data = (struct db_dshm *) dshm_header->data;
+    
+    if (dshm_data->dshm == DSHM && dshm_data->type == 0x1)
+      break;
+  }
 
-  entry_num = db_tihm_search (*master, tihm_num);
+  entry_num = db_tihm_search (dshm_header, tihm_num);
 
   if (entry_num < 0) return entry_num;
 
-  if (entry) *entry = (*master)->children[entry_num];
-  if (parent)*parent= (*master);
+  if (entry) *entry = dshm_header->children[entry_num];
+  if (parent)*parent= dshm_header;
 
   return entry_num;
 }
 
-tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num) {
-  dohm_t *dohm;
-
-  if (strstr(filename, ".mp3") ||
-      strstr(filename, ".MP3") )
-      mp3_fill_tihm (filename, tihm);
-
-  dohm       = dohm_create(tihm);
-  dohm->type = IPOD_PATH;
-  dohm->size = 2 * strlen (path);
-  dohm->data = calloc (1, dohm->size);
-  char_to_unicode (dohm->data, path, strlen(path));
-
-  return tihm;
-}
-
-void tihm_destroy (tihm_t *tihm) {
-  if (tihm == NULL) return;
-
-  while (tihm->num_dohm--)
-    free(tihm->dohms[tihm->num_dohm].data);
-
-  free(tihm->dohms);
-}
-
-static int db_dohm_create (struct tree_node *entry, dohm_t dohm) {
-  int *iptr;
-
-  entry->parent = NULL;
-  entry->size   = DOHM_HEADER_SIZE + STRING_HEADER_SIZE + dohm.size;
-
-  entry->children = NULL;
-  entry->num_children = 0;
-
-  entry->data   = calloc (1, entry->size);
-
-  iptr = (int *)entry->data;
-
-  iptr[0]                      = DOHM;
-  iptr[1]                      = DOHM_HEADER_SIZE;
-  iptr[2]                      = entry->size;
-  iptr[3]                      = dohm.type;
-  iptr[DOHM_HEADER_SIZE/4]     = 1;
-  iptr[DOHM_HEADER_SIZE/4 + 1] = dohm.size;
-
-  memcpy(&entry->data[DOHM_HEADER_SIZE + STRING_HEADER_SIZE], dohm.data, dohm.size);
-  
-  return entry->size;
-}
-
-int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
-  struct tree_node *dohm;
-  tihm_t tihm;
-  int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
+/* fills a tree_node with the data from a tihm_t structure */
+int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   struct db_tihm *tihm_data;
 
-  int size;
+  if (tihm_header->data)
+    free (tihm_header->data);
 
-  int i;
-
-  tihm_create(&tihm, filename, path, tihm_num);
-
-  memset (entry, 0, sizeof (struct tree_node *));
-
-  entry->parent = NULL;
-
-  entry->size = TIHM_HEADER_SIZE;
-  entry->data = calloc (1, TIHM_HEADER_SIZE);
-  memset (entry->data, 0, TIHM_HEADER_SIZE);
+  tihm_header->size = TIHM_HEADER_SIZE;
+  tihm_header->data = calloc (1, TIHM_HEADER_SIZE);
+  memset (tihm_header->data, 0, TIHM_HEADER_SIZE);
   
-  tihm_data = (struct db_tihm *)entry->data;
+  tihm_data = (struct db_tihm *)tihm_header->data;
   tihm_data->tihm        = TIHM;
   tihm_data->header_size = TIHM_HEADER_SIZE;
   tihm_data->record_size = TIHM_HEADER_SIZE;
-  tihm_data->num_dohm    = tihm.num_dohm;
-  tihm_data->identifier  = tihm_num;
-  tihm_data->type        = long_big_host(0x001);
-  tihm_data->unk1        = long_big_host(0x100);
-  tihm_data->date        = time(NULL); // mod_date (not really)
-  tihm_data->file_size   = tihm.size;
-  tihm_data->duration    = tihm.time;
-  tihm_data->order       = tihm.track;
-  tihm_data->sample_rate = tihm.samplerate << 16;
+  tihm_data->num_dohm    = tihm->num_dohm;
+  tihm_data->identifier  = tihm->num;
+  tihm_data->type        = 0x001;
 
-  /* XXX -- i don't know if these mean anything */
-  tihm_data->unk[0]      = long_big_host(0x000);
-  tihm_data->unk[1]      = long_big_host(0x000);
+  tihm_data->flags      |= 0x100;
+  tihm_data->flags      |= ((tihm->stars % 6) * 0x14) << 24;
+
+  tihm_data->creation_date = tihm->creation_date;
+  tihm_data->modification_date = tihm->mod_date;
+  tihm_data->last_played_date = time(NULL);
+
+  tihm_data->num_played[0] = 0;
+  tihm_data->num_played[1] = 0;
+
+  tihm_data->file_size   = tihm->size;
+  tihm_data->duration    = tihm->time;
+  tihm_data->order       = tihm->track;
+  tihm_data->sample_rate = tihm->samplerate << 16;
+  tihm_data->bit_rate    = tihm->bitrate;
+
+  tihm_data->volume_adjustment = tihm->volume_adjustment;
+  tihm_data->start_time  = tihm->start_time;
+  tihm_data->stop_time   = tihm->stop_time;
 
   /* there may be other values wich should be set but i dont know
      which */
+}
 
-  entry->num_children = 0;
-  entry->children     = NULL;
+int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
+  tree_node_t *dohm;
+  int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
+  int i;
 
-  size = TIHM_HEADER_SIZE;
+  memset (entry, 0, sizeof (tree_node_t));
+  tihm->num = tihm_num;
 
-  for (i = 0 ; i < tihm.num_dohm ; i++) {
-    dohm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  tihm_db_fill (entry, tihm);
+
+  for (i = 0 ; i < tihm->num_dohm ; i++) {
+    dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
 
     if (dohm == NULL) {
       perror ("db_create_tihm|malloc");
       return -1;
     }
 
-    db_dohm_create (dohm, tihm.dohms[i]);
+    if (db_dohm_create (dohm, tihm->dohms[i]) < 0)
+      return -1;
+
     db_attach (entry, dohm);
   }
-
-  for (i = 0 ; i < tihm.num_dohm ; i++)
-    if (tihm.dohms[i].type == 1) {
-      struct tree_node *tmp;
-
-      tmp = entry->children[i];
-      entry->children[i] = entry->children[0];
-      entry->children[0] = tmp;
-    }
-
-  tihm_destroy (&tihm);
 
   return tihm_num;
 }
 
-tihm_t *db_tihm_fill (struct tree_node *entry) {
+tihm_t *db_tihm_fill (tree_node_t *entry) {
   int *iptr = (int *)entry->data;
   struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
   tihm_t *tihm;
@@ -199,17 +146,52 @@ tihm_t *db_tihm_fill (struct tree_node *entry) {
   
   tihm->num_dohm  = dbtihm->num_dohm;
   tihm->num       = dbtihm->identifier;
-
   tihm->size      = dbtihm->file_size;
   tihm->time      = dbtihm->duration;
   tihm->samplerate= dbtihm->sample_rate >> 16;
-  tihm->encoding  = dbtihm->encoding;
+  tihm->bitrate   = dbtihm->bit_rate;
+  tihm->times_played = dbtihm->num_played[0];
+
+  tihm->stars     = (dbtihm->flags >> 24) / 0x14;
   tihm->type      = dbtihm->type;
   tihm->track     = dbtihm->order;
+  tihm->volume_adjustment = dbtihm->volume_adjustment;
+  tihm->start_time= dbtihm->start_time;
+  tihm->stop_time = dbtihm->stop_time;
+
+  tihm->mod_date  = dbtihm->modification_date;
+  tihm->played_date = dbtihm->last_played_date;
+  tihm->creation_date = dbtihm->creation_date;
 
   tihm->dohms     = db_dohm_fill (entry);
-
   return tihm;
+}
+
+/**
+   db_song_modify:
+
+    Modifies the data of a song entry. Be sure that all the values you
+   want to change are correct before calling this function; It will screw
+   up that entry if you don't.
+
+   Arguments:
+    itunesdb_t *itunesdb - opened itunesdb
+    int         tihm_num - tihm reference
+    tihm_t     *tihm     - data to change
+
+   Returns:
+    -1 on error
+     0 on success
+**/
+int db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm) {
+  tree_node_t *tihm_header;
+
+  if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0)
+    return -1;
+
+  tihm_db_fill (tihm_header, tihm);
+
+  return 0;
 }
 
 void tihm_free (tihm_t *tihm) {

@@ -1,6 +1,6 @@
 /**
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a-10 db.c
+ *   v0.1.2a-20 db.c
  *
  *   Routines for reading/writing the iPod's iTunesDB.
  *
@@ -9,6 +9,8 @@
  *    with my language, so keep that in mind while reading my code.
  *
  *   Changes:
+ *    (7-8-2002)
+ *     - modified to fit with ipod-on-linux project
  *    (sometime after):
  *     - added function to return song list
  *     - added functions for cleaning up memory
@@ -36,11 +38,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -60,7 +58,7 @@ int ipod_debug = 1;
     Internal utility function for acumulating the total size of
   the database below an entry.
 */
-static int db_size_tree (struct tree_node *ptr) {
+static int db_size_tree (tree_node_t *ptr) {
   int i, size = ptr->size;
 
   for (i = 0 ; i < ptr->num_children ; i++)
@@ -74,10 +72,10 @@ static int db_size_tree (struct tree_node *ptr) {
 
   Function to recursively free a tree.
 */
-void db_free_tree (struct tree_node *ptr) {
+void db_free_tree (tree_node_t *ptr) {
   if (ptr == NULL) return;
 
-  if (!strstr(ptr->data, "dohm") && ptr->num_children) {
+  if (ptr->num_children) {
     while (--ptr->num_children > -1)
       db_free_tree(ptr->children[ptr->num_children]);
 
@@ -88,18 +86,21 @@ void db_free_tree (struct tree_node *ptr) {
   free(ptr);
 }
 
-/*
+/**
   db_free:
 
-  Frees the memory that is allocated to the iTunesDB within ipod.
+  Frees the memory that is allocated to an itunesdb
+
+  Arguments:
+   itunesdb_t *itunesdb - opened itunesdb
 
   Returns:
-   nothing
-*/
-void db_free (ipod_t *ipod) {
-  if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return;
+   nothing, void function
+**/
+void db_free (itunesdb_t *itunesdb) {
+  if (itunesdb == NULL) return;
 
-  db_free_tree(ipod->iTunesDB.tree_root);
+  db_free_tree(itunesdb->tree_root);
 }
 
 /*
@@ -109,42 +110,48 @@ void db_free (ipod_t *ipod) {
 
   Purpose is to build up the iTunesDB tree from a buffer.
 */
-static struct tree_node *db_build_tree (size_t *bytes_read,
-					struct tree_node *parent,
+static tree_node_t *db_build_tree (size_t *bytes_read,
+					tree_node_t *parent,
 					char **buffer) {
-  struct tree_node *tnode_0;
+  tree_node_t *tnode_0;
   int *iptr = (int *)*buffer;
   int i;
 
   int current_bytes_read = *bytes_read;
   int entry_size, cell_size, copy_size;
 
-  tnode_0 = malloc (sizeof(struct tree_node));
+  struct db_dohm *dohm_data;
+
+  tnode_0 = malloc (sizeof(tree_node_t));
 
   if (tnode_0 == NULL) {
     perror("db_build_tree|malloc");
     exit(1);
   }
 
-  memset (tnode_0, 0, sizeof(struct tree_node));
+  memset (tnode_0, 0, sizeof(tree_node_t));
 
   tnode_0->parent = parent;
 
   bswap_block(*buffer, sizeof(u_int32_t), 3);
+
   entry_size = iptr[2];
   cell_size  = iptr[1];
 
-  if (strstr(*buffer, "dohm")) {
-    /* swap only the header and not the data for this entry */
+  if (iptr[0] == DOHM) {
+    dohm_data = (struct db_dohm *)*buffer;
+    
+    /* swap the header then the data (if needed) */
     bswap_block(&((*buffer)[0xc]), 4, 7);
+    bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);
 
     copy_size = entry_size;
   } else {
     bswap_block(&(*buffer)[0xc], sizeof(u_int32_t), cell_size/4 - 3);
-
+    
     copy_size = cell_size;
   }
-
+  
   tnode_0->num_children = 0;
   tnode_0->size = copy_size;
   tnode_0->data = malloc (copy_size);
@@ -153,15 +160,18 @@ static struct tree_node *db_build_tree (size_t *bytes_read,
   *buffer     += copy_size;
   *bytes_read += copy_size;
 
+  iptr = (int *)tnode_0->data;
+
   /* becuase the tlhm structures second field is not a total size,
      do not do anything more with it */
   if (cell_size == entry_size ||
-      strstr(tnode_0->data, "tlhm") ||
-      strstr(tnode_0->data, "dohm") )
+      iptr[0] == TLHM ||
+      iptr[0] == DOHM ||
+      iptr[0] == PLHM )
     goto dbbt_done;
 
-  tnode_0->children = malloc(sizeof(struct tree_node *));
-
+  tnode_0->children = malloc(sizeof(tree_node_t *));
+  
   if (tnode_0->children == NULL) {
     perror("db_build_tree|malloc");
     exit(1);
@@ -170,7 +180,7 @@ static struct tree_node *db_build_tree (size_t *bytes_read,
   while (*bytes_read - current_bytes_read < entry_size) {
     tnode_0->children = realloc(tnode_0->children, 
 				++(tnode_0->num_children) *
-				sizeof(struct tree_node *));
+				sizeof(tree_node_t *));
     
     if (tnode_0->children == NULL) {
       perror("db_build_tree|realloc");
@@ -188,19 +198,21 @@ static struct tree_node *db_build_tree (size_t *bytes_read,
   return tnode_0;
 }
 
-/*
+/**
   db_load:
 
   Function that loads an itunesdb from a file.
 
-   In the future this may also handle loading the database from
-  a file through the hfsplus utilities.
+  Arguments:
+   itunesdb_t *itunesdb - pointer to where the itunesdb should go.
+   HFSPlus    *volume   - the HFSPlus volume to load from
+   char       *path     - the path (including partition name) to where the database is
 
   Returns:
-   < 0 for error
+   < 0 on error
      0 on success
-*/
-int db_load (ipod_t *ipod, char *path) {
+**/
+int db_load (itunesdb_t *itunesdb, char *path) {
   int iTunesDB;
   char *buffer;
   int ibuffer[3];
@@ -216,14 +228,25 @@ int db_load (ipod_t *ipod, char *path) {
   read(iTunesDB, ibuffer, 12);
   bswap_block((char *)ibuffer, 4, 3);
 
+  if (ibuffer[0] != DBHM) {
+    fprintf (stderr, "Not a valid iTunesDB!\n");
+    close (iTunesDB);
+
+    return -1;
+  }
+
   buffer = (char *)malloc(ibuffer[2]);
   if (buffer == NULL) UPOD_ERROR(errno, "Could not allocate memory\n");
 
   /* keep track of where buffer starts */
   tmp = (int *)buffer;
 
-  if ((ret = read(iTunesDB, buffer + 12, ibuffer[2] - 12)) < (ibuffer[2] - 12)) {
-    UPOD_ERROR(errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2], ret);
+  if ((ret = read(iTunesDB, buffer + 12, ibuffer[2] - 12)) <
+      (ibuffer[2] - 12)) {
+
+    UPOD_ERROR(errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2],
+	       ret);
+
     close(iTunesDB);
     free(buffer);
     return -1;
@@ -233,75 +256,70 @@ int db_load (ipod_t *ipod, char *path) {
   memcpy (buffer, ibuffer, 12);
   close(iTunesDB);
 
-  ipod->iTunesDB.tree_root = db_build_tree(&bytes_read, NULL, &buffer);
+  itunesdb->tree_root = db_build_tree(&bytes_read, NULL, &buffer);
 
   free(tmp);
 
   return bytes_read;
 }
 
-/*
-  db_write_tree:
-
-  Internal function.
-
-  Recursivly parse the database tree and write it to a file.
-*/
-static int db_write_tree (int fd, struct tree_node *entry) {
+static int db_write_tree (int fd, tree_node_t *entry) {
   static int ret;
-  int i, swap;
+  int i, swap, length;
+  struct db_dohm *dohm_data;
 
 #if BYTE_ORDER == BIG_ENDIAN
-  if (strstr(entry->data, "dohm"))
-    swap = 10;
-  else
+  dohm_data = (struct db_dohm *) entry->data;
+
+  if (dohm_data->dohm == DOHM) {
+    if (entry->size == 0x288) {
+      /* wierd mhod header */
+      swap = 0x288 / 4;
+      length = 0;
+    } else {
+      swap = 10;
+      length = dohm_data->len/2;
+      bswap_block (&entry->data[0x28], 2, length);
+    }
+  } else
     swap = ((int *)entry->data)[1]/4;
 
   bswap_block(entry->data, 4, swap);
 #endif
 
-  ret += write(fd, entry->data, entry->size);
+  ret += write (fd, entry->data, entry->size);
 
-#if BYTE_ORDER == BIG_ENDIAN
+  if (dohm_data->dohm == DOHM)
+    bswap_block (&entry->data[0x28], 2, length);
+
   bswap_block(entry->data, 4, swap);
-#endif
 
   for (i = 0 ; i < entry->num_children ; i++)
-    db_write_tree(fd, entry->children[i]);
+    db_write_tree (fd, entry->children[i]);
 
   return ret;
 }
 
-/*
-  db_write:
+int db_write (itunesdb_t itunesdb, char *path) {
+  int fd;
 
-    Writes the database the the file specified by path.
+  int ret;
+  int perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
-  Returns:
-   < 0 on error
-     0 on success
-*/
-int db_write (ipod_t ipod, char *path) {
-  int fd, ret;
-  int perms;
+  if (itunesdb.tree_root == NULL) return -1;
 
-  perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-
-  if (ipod.iTunesDB.tree_root == NULL) return -1;
-
-  fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, perms);
-
-  if (fd < 0) {
+  if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, perms)) < 0) {
     perror("db_write");
     return errno;
   }
 
-  ret = db_write_tree (fd, ipod.iTunesDB.tree_root);
-
+  ret = db_write_tree (fd, itunesdb.tree_root);
+  
   close (fd);
   
   return ret;
 }
+
 
 /*
   db_hide:
@@ -312,8 +330,8 @@ int db_write (ipod_t ipod, char *path) {
     < 0 on error
       0 on success
 */
-int db_hide (ipod_t *ipod, u_int32_t tihm_num) {
-  return db_remove_from_playlist (ipod, 0, tihm_num);
+int db_hide (itunesdb_t *itunesdb, u_int32_t tihm_num) {
+  return db_playlist_tihm_remove (itunesdb, 0, tihm_num);
 }
 
 /*
@@ -325,31 +343,32 @@ int db_hide (ipod_t *ipod, u_int32_t tihm_num) {
    < 0 on error
      0 on success
 */
-int db_unhide (ipod_t *ipod, u_int32_t tihm_num) {
-  return db_add_to_playlist (ipod, 0, tihm_num);
+int db_unhide (itunesdb_t *itunesdb, u_int32_t tihm_num) {
+  return db_playlist_tihm_add (itunesdb, 0, tihm_num);
 }
 
-/*
+/**
   db_remove:
 
    Deletes an entry from the song list, then deletes the referance (if any)
-  from the master playlist.
+  from all existing playlists.
 
-  XXX -- TODO -- We may want to parse all playlists and remove the references
-  from them as well.
+  Arguments:
+   itunesdb_t *itunesdb - opened itunesdb
+   u_int32_t   tihm_num - song reference which to remove
 
   Returns:
-   < 0 if any error occured.
-     0 if successfull.
-*/
-int db_remove (ipod_t *ipod, u_int32_t tihm_num) {
-  struct tree_node *parent, *entry;
+   < 0 on error
+     0 on success
+**/
+int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
+  tree_node_t *parent, *entry;
   struct db_tlhm *tlhm;
   int size, entry_num;
 
-  if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return -1;
+  if (itunesdb == NULL || itunesdb->tree_root == NULL) return -1;
 
-  entry_num = db_tihm_retrieve (ipod->iTunesDB, &entry, &parent, tihm_num);
+  entry_num = db_tihm_retrieve (itunesdb, &entry, &parent, tihm_num);
 
   if (entry_num < 0) {
     if (ipod_debug)
@@ -365,67 +384,82 @@ int db_remove (ipod_t *ipod, u_int32_t tihm_num) {
   db_detach (parent, entry_num, &entry);
   db_free_tree (entry);
  
-  /* remove from master playlist */
-  db_hide (ipod, tihm_num);
+  /* remove from all playlists */
+  db_playlist_remove_all (itunesdb, tihm_num);
 
   return 0;
 }
 
-/*
+/**
   db_add:
 
    Adds a song to the song list, then adds a reference to that song to the
   master playlist.
 
+  Arguments:
+   itunesdb_t *itunesdb - Opened iTunesDB
+   tihm_t     *tihm     - An tihm_t structure populated with artist, album, path, etc.
+
   Returns:
    < 0 on error
      0 on success
 */
-int db_add (ipod_t *ipod, char *filename, char *path) {
-  struct tree_node **master, *entry, *root;
-  struct db_tlhm *tlhm;
-  int tihm_num, prev_tihm_num, size;
+int db_add (itunesdb_t *itunesdb, char *filename, char *path, int path_len, int stars) {
+  tree_node_t *dshm_header, *new_tihm_header, *root;
+  tihm_t tihm;
+  dohm_t *dohm;
+  struct db_tlhm *tlhm_data;
+  int tihm_num;
 
-  if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return -1;
+  if (!strstr(filename, ".mp3") && !strstr (filename, ".MP3")) return -1;
 
-  root = ipod->iTunesDB.tree_root;
+  /* find the song list */
+  if (db_dshm_retrieve (itunesdb, &dshm_header, 1) < 0)
+    return -1;
 
-  /* The song list resides in the first dshm entry of the iTunesDB */
-  for (master = &(root->children[0]) ;
-       !strstr((*master)->data, "dshm") ; master++);
+  memset (&tihm, 0, sizeof (tihm_t));
+  mp3_fill_tihm (filename, &tihm);
 
-  tlhm = (struct db_tlhm *)(*master)->children[0]->data;
-  tlhm->num_tihm += 1;
+  tihm.stars = stars;
+  dohm = dohm_create (&tihm);
+  dohm->type = IPOD_PATH;
+  unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), path, path_len);
 
-  entry = (struct tree_node *)malloc(sizeof(struct tree_node));
-  entry->parent = *master;
+  /* allocate memory for the new tree node */
+  new_tihm_header = (tree_node_t *)malloc(sizeof(tree_node_t));
+  new_tihm_header->parent = dshm_header;
   
-  tihm_num = db_tihm_create (entry, filename, path);
-  db_attach (*master, entry);
-  
-  db_unhide(ipod, tihm_num);
+  tihm_num = db_tihm_create (new_tihm_header, &tihm);
+  db_attach (dshm_header, new_tihm_header);
+
+  db_unhide(itunesdb, tihm_num);
+
+  /* everything was successfull, increase the tihm count in the tlhm header */
+  tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
+  tlhm_data->num_tihm += 1;
 
   return 0;
 }
 
-/*
+/**
   db_modify_eq:
 
-  Modifies (or adds) an equilizer setting of(to) a song entry.
+   Modifies (or adds) an equilizer setting of(to) a song entry.
+
+  Arguments:
+   itunesdb_t *itunesdb - opened itunesdb
+   u_int32_t  *tihm_num - song entry to modify
+   int         eq       - reference number of the eq setting
 
   Returns:
-   < 0 if an error occured
-     0 if successful
-*/
-int db_modify_eq (ipod_t *ipod, u_int32_t tihm_num, int eq) {
-  struct tree_node *entry, *dohm;
-  struct db_tihm *tihm;
+   < 0 on error
+     0 on success
+**/
+int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
+  tree_node_t *tihm_header, *dohm_header;
+  struct db_tihm *tihm_data;
 
-  int size;
-
-  if (ipod == NULL) return -1;
-
-  if (db_tihm_retrieve (ipod->iTunesDB, &entry, NULL, tihm_num) < 0) {
+  if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0) {
     if (ipod_debug)
       fprintf(stderr, "db_song_modify_eq %i: no song found\n", tihm_num);
 
@@ -433,156 +467,64 @@ int db_modify_eq (ipod_t *ipod, u_int32_t tihm_num, int eq) {
   }
 
   /* see if an equilizer entry already exists */
-  dohm = db_dohm_search (entry, 0x7);
+  if (db_dohm_retrieve (tihm_header, &dohm_header, 0x7) < 0) {
+    dohm_header = malloc (sizeof(tree_node_t));
 
-  if (dohm == NULL) {
-    dohm = malloc (sizeof(struct tree_node));
-
-    if (dohm == NULL) {
-      perror ("db_song_modify_eq");
-
+    if (dohm_header == NULL) {
+      perror ("db_song_modify_eq|malloc");
       return -1;
     }
 
-    memset (dohm, 0, sizeof(struct tree_node));
+    memset (dohm_header, 0, sizeof(tree_node_t));
 
-    db_attach (entry, dohm);
+    db_attach (tihm_header, dohm_header);
 
-    tihm = (struct db_tihm *)entry->data;
-    tihm->num_dohm ++;
+    tihm_data = (struct db_tihm *) tihm_header->data;
+    tihm_data->num_dohm ++;
   }
 
-  if (db_dohm_create_eq (dohm, eq) < 0)
+  if (db_dohm_create_eq (dohm_header, eq) < 0)
     return -1;
 
   return 0;
 }
 
-/*
-  db_modify_volume_adjustment:
-
-    Mofifies the volume adjustment of a song entry. Acceptible values
-  are between -100 and +100
-
-  Returns:
-   < 0 on error
-     0 on success
-*/
-int db_modify_volume_adjustment (ipod_t *ipod, u_int32_t tihm_num,
-				 int volume_adjustment) {
-  struct tree_node *entry;
-  struct db_tihm *tihm;
-
-  if (ipod == NULL) return -1;
-
-  /* make sure the volume adjustment value is valid */
-  if (volume_adjustment > 100 || volume_adjustment < -100) return -2;
-
-  db_tihm_retrieve (ipod->iTunesDB, &entry, NULL, tihm_num);
-
-  if (entry == NULL) {
-    if (ipod_debug)
-      fprintf(stderr, "db_song_modify_volume_adjustment %i: no song found\n",
-	      tihm_num);
-
-    return -2;
-  }
-
-  tihm = (struct db_tihm *)entry->data;
-
-  tihm->volume_adjustment = volume_adjustment;
-
-  return 0;
-}
-
-/*
-  db_modify_start_stop_time:
-
-    Modifies the start and stop time of a song entry. Arguments are in secs even
-  though they are stored in microsecs in the iTunesDB.
-
-  Returns:
-   < 0 if an error occured
-     0 if successful
-*/
-int db_modify_start_stop_time (ipod_t *ipod, u_int32_t tihm_num, int start_time,
-			       int stop_time) {
-  struct tree_node *entry;
-  struct db_tihm *tihm;
-
-  if (ipod == NULL) return -1;
-
-  db_tihm_retrieve (ipod->iTunesDB, &entry, NULL, tihm_num);
-
-  if (entry == NULL) {
-    if (ipod_debug)
-      fprintf(stderr, "db_song_modify_volume_adjustment %i: no song found\n",
-	      tihm_num);
-
-    return -2;
-  }
-
-  tihm = (struct db_tihm *)entry->data;
-
-  stop_time *= 1000;
-  start_time *= 1000;
-
-  if (start_time > stop_time) return -3;
-
-  /* make sure that the requested values are within the duration of the song */
-  if (stop_time > tihm->duration || start_time > tihm->duration)
-    return -4;
-
-  tihm->start_time = start_time;
-  tihm->stop_time  = stop_time;
-
-  return 0;
-}
-
-/*
+/**
   db_song_list:
 
-  Returns a linked list of the songs that are currently in the song list
+   Returns a linked list of the songs that are currently in the song list
   of the iTunesDB.
 
+  Arguments:
+   itunesdb_t *itunesdb - opened itunesdb
+
   Returns:
-   NULL if any error occured.
-   ptr  if successfull.
-*/
-GList *db_song_list (ipod_t ipod) {
+   NULL on error
+   ptr  on success
+**/
+GList *db_song_list (itunesdb_t *itunesdb) {
   GList **ptr, *head;
-  struct tree_node **master, *root, *entry;
-  int i;
-  
-  root = ipod.iTunesDB.tree_root;
+  tree_node_t *dshm_header, *tihm_header;
+  int i, *iptr;
 
-  head = (GList *) malloc (sizeof(GList));
-  memset(head, 0, sizeof(GList));
-  ptr  = &(head->next);
-  
-  master = root->children;
+  struct db_tihm *tihm_data;
 
-  for ( i = 0 ; i < root->num_children ; i++)
-    if (strstr(master[i]->data, "dshm"))
-      break;
-
-  if (i == root->num_children) {
-    free(head);
+  /* get song list */
+  if (db_dshm_retrieve (itunesdb, &dshm_header, 0x1) < 0)
     return NULL;
-  }
 
-  master = &master[i];
-
-  for (i = 0 ; i < (*master)->num_children ; i++) {
-    entry = (*master)->children[i];
+  ptr  = &(head);
+  for (i = 1 ; i < dshm_header->num_children ; i++) {
+    tihm_header = dshm_header->children[i];
+    iptr = (int *)tihm_header->data;
 
     /* only add tihm entries to the song list */
-    if (!strstr(entry->data, "tihm"))
+    if (iptr[0] != TIHM)
       continue;
 
     *ptr  = (GList *) malloc (sizeof(GList));
 
-    (*ptr)->data = (void *) db_tihm_fill (entry);
+    (*ptr)->data = (void *) db_tihm_fill (tihm_header);
     (*ptr)->next = NULL;
 
     ptr = &((*ptr)->next);
@@ -591,15 +533,18 @@ GList *db_song_list (ipod_t ipod) {
   return head;
 }
 
-/*
+/**
   db_song_list_free:
 
-  Frees the memory that has been allocated to a song list. I strongly
+   Frees the memory that has been allocated to a song list. I strongly
   recomend you call this to clean up at the end of execution.
+
+  Arguments:
+   GList *head - pointer to allocated song list
 
   Returns:
    nothing, void function
-*/
+**/
 void db_song_list_free (GList *head) {
   GList *tmp;
   while (head) {
@@ -612,18 +557,18 @@ void db_song_list_free (GList *head) {
   }
 }
 
-int db_attach (struct tree_node *parent, struct tree_node *new_child) {
+int db_attach (tree_node_t *parent, tree_node_t *new_child) {
   int size;
-  struct tree_node *tmp;
+  tree_node_t *tmp;
 
   if (parent == NULL || new_child == NULL) return -1;
 
   /* allocate memory */
   if (parent->num_children++ == 0)
-    parent->children = malloc (sizeof (struct tree_node *));
+    parent->children = malloc (sizeof (tree_node_t *));
   else
     parent->children = realloc (parent->children, parent->num_children * 
-				sizeof (struct tree_node *));
+				sizeof (tree_node_t *));
 
   /* adjust pointers */
   new_child->parent = parent;
@@ -648,9 +593,9 @@ int db_attach (struct tree_node *parent, struct tree_node *new_child) {
    < 0 on error
      0 on success
 */
-int db_detach (struct tree_node *parent, int child_num, struct tree_node **entry) {
+int db_detach (tree_node_t *parent, int child_num, tree_node_t **entry) {
   int size;
-  struct tree_node *tmp;
+  tree_node_t *tmp;
 
   if (entry == NULL) return -1;
   if (child_num >= parent->num_children) return -1;
@@ -664,7 +609,7 @@ int db_detach (struct tree_node *parent, int child_num, struct tree_node **entry
 	    parent->num_children - child_num);
 
   parent->children = realloc (parent->children, parent->num_children *
-			      sizeof(struct tree_node *));
+			      sizeof(tree_node_t *));
 
   size = db_size_tree (*entry);
 

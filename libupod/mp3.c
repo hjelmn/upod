@@ -21,7 +21,7 @@
 #include "config.h"
 #endif
 
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -191,13 +191,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	if (length < 1)
 	  goto id3_error;
 	
-	dohm->size = 2 * length;
-	dohm->data = calloc (1, dohm->size);
-
-	if (dohm->data != NULL)
-	  char_to_unicode (dohm->data, tag_temp, length);
-	else
-	  goto id3_error;
+	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tag_temp, length - 1);
       } else if (field == ID3_TRACK) {
 	char *slash;
 
@@ -218,14 +212,9 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	}
 	
 	genre_temp[i] = 0;
-	
-	dohm->size = 2 * strlen(genre_table[atoi(genre_temp)]);
-	dohm->data = calloc (1, dohm->size);
-	
-	if (dohm->data != NULL)
-	  char_to_unicode (dohm->data, genre_table[atoi(genre_temp)], dohm->size/2);
-	else
-	  goto id3_error;
+
+	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), genre_table[atoi(genre_temp)],
+				 strlen (genre_table[atoi(genre_temp)]));
       }   
     } else {
       goto id3_not_found;
@@ -258,8 +247,10 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       goto id3_not_found;
     }
 
+    if (copy_from[0] == 0xff) goto id3_not_found;
+
     if (field != ID3_GENRE)
-      for (tmp = copy_from + i ; *tmp == ' ' && i >= 0; tmp--, i--)
+      for (tmp = copy_from + i ; (*tmp == ' ' || *tmp == 0xff) && i >= 0; tmp--, i--)
 	*tmp = 0;
     else
       i = strlen(copy_from) - 1;
@@ -268,10 +259,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       goto id3_not_found;
     
     i++;
-
-    dohm->size = 2 * i;
-    dohm->data = calloc(1, dohm->size);
-    char_to_unicode (dohm->data, copy_from, i);
+    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), copy_from, i);
   }
 
   return;
@@ -317,9 +305,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     dohm = dohm_create(tihm);
 
     dohm->type = IPOD_TITLE;
-    dohm->size = 2 * i;
-    dohm->data = calloc(1, dohm->size);
-    char_to_unicode (dohm->data, tmp, dohm->size/2);
+    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmp, i);
   }
   
   if (0)//tag_data)
@@ -407,9 +393,7 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
   dohm = dohm_create(tihm);
 
   dohm->type = IPOD_TYPE;
-  dohm->size = 2 * strlen (type_string);
-  dohm->data = calloc(1, dohm->size);
-  char_to_unicode (dohm->data, type_string, strlen(type_string));
+  unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), type_string, strlen (type_string));
 
   return 0;
 }

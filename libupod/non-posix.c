@@ -1,4 +1,8 @@
-#include "upodi.h"
+#include "itunesdbi.h"
+
+#ifndef PATH_MAX
+#define PATH_MAX 255
+#endif
 
 #include <stdlib.h>
 #include <string.h>

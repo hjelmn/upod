@@ -17,16 +17,13 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #define PIHM               0x7069686d
+
 #define PIHM_HEADER_SIZE   0x4c
 #define PIHM_TOTAL_SIZE    0x4c
 
@@ -40,7 +37,8 @@ int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   return -1;
 }
 
-int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk) {
+int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num,
+		    u_int32_t junk) {
   int *iptr;
   
   entry->size = PIHM_HEADER_SIZE;
@@ -56,7 +54,6 @@ int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk)
   iptr[3] = 1;
   iptr[5] = junk + 1;
   iptr[6] = tihm_num;
-  //  iptr[7] = 0xb864adba;
 
   return 0;
 }
