@@ -28,8 +28,9 @@
 
 #define DOHM               0x646f686d
 #define DOHM_HEADER_SIZE   0x18
+#define DOHM_EQ_SIZE       0x3a
 
-/* creates a new dohm and appends it to the dohm list in the tihm
+/* creates a new tree leaf and appends it to the dohm list in the tihm
    structure */
 dohm_t *dohm_create (tihm_t *tihm) {
   dohm_t *dohm;
@@ -83,6 +84,51 @@ int db_dohm_create_generic (struct tree_node *entry, size_t size, int junk) {
   iptr[6] = junk + 1;
 
   return 0;
+}
+
+/*
+  db_dohm_create_eq:
+
+  Creates a generic eq dohm for use with a song entry.
+
+  Returns:
+   < 0 if an error occured
+     0 if successful
+*/
+int db_dohm_create_eq (struct tree_node *entry, int eq) {
+  int *iptr;
+
+  if (entry->data != NULL) free(entry->data);
+
+  db_dohm_create_generic(entry, DOHM_EQ_SIZE, -1);
+  iptr = (int *)entry->data;
+    
+  iptr[3] = IPOD_EQ;
+  iptr[6] = long_big_host (0x01);
+  iptr[7] = long_big_host (0x12);
+  memcpy (&entry->data[0x28],
+	  "\23x\00x\21x\00x\23x\00x\31x\00x\30x\00x\00x\00x\23x\00x\21x\00x\23x\00",
+	  0x12);
+
+  entry->data[0x28 + 0xb] = eq;
+
+  return 0;
+}
+
+struct tree_node *db_dohm_search(struct tree_node *tihm_entry, int dohm_num) {
+  struct tree_node *dohm;
+  struct db_dohm   *dohm_data;
+  int i;
+
+  for (i = 0 ; i < tihm_entry->num_children ; i++) {
+    dohm = tihm_entry->children[i];
+    dohm_data = (struct db_dohm *)dohm->data;
+
+    if (dohm_data->type == dohm_num)
+      return dohm;
+  }
+
+  return NULL;
 }
 
 dohm_t *db_dohm_fill (struct tree_node *entry) {

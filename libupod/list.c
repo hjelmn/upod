@@ -63,6 +63,7 @@ int main (int argc, char *argv[]) {
     printf(" encoding: %08x\n", tihm->encoding);
     printf(" type    : %d\n", tihm->type);
     printf(" num dohm: %d\n", tihm->num_dohm);
+    printf(" samplert: %d\n", tihm->samplerate);
 
     for (i = 0 ; i < tihm->num_dohm ; i++) {
       memset(buffer, 0, 1024);

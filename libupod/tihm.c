@@ -94,7 +94,7 @@ static int db_dohm_create (struct tree_node *parent, struct tree_node *entry, do
 int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
   tihm_t tihm;
   int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 2;
-  int *iptr;
+  struct db_tihm *tihm_data;
 
   int size;
 
@@ -106,19 +106,22 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
   entry->data = calloc (1, TIHM_HEADER_SIZE);
   memset (entry->data, 0, TIHM_HEADER_SIZE);
   
-  iptr = (int *)entry->data;
-  iptr[0] = TIHM;
-  iptr[1] = TIHM_HEADER_SIZE;
-  iptr[3] = tihm.num_dohm;
-  iptr[4] = tihm_num;
-  iptr[5] = 0x1;
-  iptr[7] = 0x100;
-  iptr[8] = time(NULL);//tihm.mod_date;
-  iptr[9] = tihm.size;
-  iptr[10]= tihm.time;
-  iptr[11]= 0x1;
-  iptr[14]= 0x80;
-  iptr[15]= tihm.samplerate << 16;
+  tihm_data = (struct db_tihm *)entry->data;
+  tihm_data->tihm        = TIHM;
+  tihm_data->header_size = TIHM_HEADER_SIZE;
+  tihm_data->num_dohm    = tihm.num_dohm;
+  tihm_data->identifier  = tihm_num;
+  tihm_data->type        = long_big_host(0x001);
+  tihm_data->unk1        = long_big_host(0x100);
+  tihm_data->date        = time(NULL); // mod_date (not really)
+  tihm_data->file_size   = tihm.size;
+  tihm_data->duration    = tihm.time;
+  tihm_data->order       = 0; /* XXX -- FIXME -- Might actually want track number */
+  tihm_data->sample_rate = tihm.samplerate << 16;
+  /* XXX -- i don't know if these mean anything */
+  tihm_data->unk[0]      = long_big_host(0x080);
+  tihm_data->unk[1]      = long_big_host(0x100);
+
   /* there may be other values wich should be set but i dont know
      which */
 
@@ -145,15 +148,15 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
     }
     
 
-  iptr[2] = size;
-  tihm_destroy (&tihm);
+  tihm_data->record_size = size;
 
+  tihm_destroy (&tihm);
   return tihm_num;
 }
 
 tihm_t *db_tihm_fill (struct tree_node *entry) {
   int *iptr = (int *)entry->data;
-  struct db_tihm *dbtihm = (struct dbtihm *)entry->data;
+  struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
   tihm_t *tihm;
 
   tihm = (tihm_t *) malloc (sizeof(tihm_t));

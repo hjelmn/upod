@@ -480,7 +480,7 @@ int db_add (ipod_t *ipod, char *filename, char *path) {
   for (master = &(root->children[0]) ;
        !strstr((*master)->data, "dshm") ; master++);
 
-  tlhm = (*master)->children[0]->data;
+  tlhm = (struct db_tlhm *)(*master)->children[0]->data;
   tlhm->num_tihm += 1;
 
   entry = (struct tree_node *)malloc(sizeof(struct tree_node));
@@ -501,6 +501,69 @@ int db_add (ipod_t *ipod, char *filename, char *path) {
     ((int *)entry->data)[2] += size;
 
   db_unhide(ipod, tihm_num);
+
+  return 0;
+}
+
+/*
+  db_modify_eq:
+
+  Modifies (or adds) an equilizer setting of(to) a song entry.
+
+  Returns:
+   < 0 if an error occured
+     0 if successful
+*/
+int db_modify_eq (ipod_t *ipod, u_int32_t tihm_num, int eq) {
+  struct tree_node **master, *entry, *root, *dohm;
+  struct db_tihm *tihm;
+  int size, entry_num;
+
+  if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return -1;
+
+  root = ipod->iTunesDB.tree_root;
+
+  /* the song list resides in the first dshm entry of the iTunesDB */
+  for (master = &(root->children[0]) ;
+       !strstr((*master)->data, "dshm") ; master++);
+
+  entry_num = db_tihm_search (*master, tihm_num);
+
+  if (entry_num < 0) {
+    if (ipod_debug)
+      fprintf(stderr, "db_song_modify_eq %i: no song found\n", tihm_num);
+
+    return -2;
+  }
+
+  entry = (*master)->children[entry_num];
+
+  /* see if an equilizer entry already exists */
+  dohm = db_dohm_search (entry, 0x7);
+
+  if (dohm == NULL) {
+    dohm = malloc (sizeof(struct tree_node));
+
+    if (dohm == NULL) {
+      perror ("db_song_modify_eq");
+
+      return -1;
+    }
+
+    memset (dohm, 0, sizeof(struct tree_node));
+
+    entry->num_children++;
+    entry->children = realloc (entry->children,
+			       entry->num_children * sizeof(struct tree_node));
+    entry->children[entry->num_children - 1] = entry->children[entry->num_children -2];
+    entry->children[entry->num_children - 2] = dohm;
+
+    tihm = (struct db_tihm *)entry->data;
+    tihm->num_dohm ++;
+  }
+
+  if (db_dohm_create_eq (dohm, eq) < 0)
+    return -1;
 
   return 0;
 }
