@@ -35,6 +35,23 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include "hexdump.c"
+
+u_int16_t big16_2_arch16 (u_int16_t x) {
+  int z = x;
+  char *tmp = (char *)&z;
+  char *tmpi = (char *)&x;
+
+#if BYTE_ORDER==LITTLE_ENDIAN
+  tmp[0] = tmpi[3];
+  tmp[1] = tmpi[2];
+  tmp[2] = tmpi[1];
+  tmp[3] = tmpi[0];
+#endif
+
+  return z;
+}
+
 struct qt_atom {
   long size;
   long type;
@@ -46,12 +63,10 @@ struct qt_meta {
   u_int8_t  flag;
   u_int8_t  identifier[3];
 
-  u_int16_t unk0;
-  u_int16_t length;
+  u_int32_t unk0;
+  u_int32_t datastr; /* "data" */
 
-  u_int32_t data;
-  u_int32_t unk2;
-  u_int32_t unk3;
+  u_int16_t data[4];
 };
 
 int type_int (char type[4]) {
@@ -106,6 +121,8 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     seeked += meta.offset;
 
     size = meta.offset - sizeof(struct qt_meta);
+
+    memset (buffer, 0, buffer_size);
     
     if (size > buffer_size || strncmp(meta.identifier, "ree",3) == 0)
       /* it is unlikely that any data we want will be larger than the buffer */
@@ -129,16 +146,29 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     else if (strncmp (meta.identifier, "alb", 3) == 0)
       data_type = IPOD_ALBUM;
     else if (strncmp (meta.identifier, "nre", 3) == 0) {
+      int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
-      dohm_add(tihm, genre_table[*(short *)buffer - 1],
-	       strlen(genre_table[*(short *)buffer - 1]), data_type);
+      dohm_add(tihm, genre_table[genre_num],
+	       strlen(genre_table[genre_num]), data_type);
 
-      break;
+      pretty_print_block(buffer, meta.offset - sizeof(struct qt_meta));
+
+      continue;
     } else if (strncmp (meta.identifier, "cmt", 3) == 0) 
       data_type = IPOD_COMMENT;
     else if (strncmp (meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
-    else
+    else if (strncmp (meta.identifier, "rkn", 3) == 0) {
+      tihm->track = big16_2_arch16( ((short *)buffer)[1] );
+      tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
+      continue;
+    } else if (strncmp (meta.identifier, "day", 3) == 0) {
+      tihm->year = strtol (buffer, NULL, 10);
+      continue;
+    }else if (strncmp (meta.identifier, "mpo", 3) == 0) {
+      tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
+      continue;
+    } else
       continue;
 
     dohm_add(tihm, buffer, meta.offset - sizeof(struct qt_meta), data_type);
