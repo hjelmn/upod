@@ -613,8 +613,8 @@ int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
   new_child->parent = parent;
 
   if (index < (parent->num_children - 1))
-    memcpy (&parent->children[index], &parent->children[index+1],
-	    sizeof(tree_node_t *) * parent->num_children - 1 - index);
+    memcpy (&parent->children[index + 1], &parent->children[index],
+	    sizeof(tree_node_t *) * parent->num_children - 2 - index);
 
   parent->children[index] = new_child;
 
