@@ -204,7 +204,7 @@ int db_playlist_song_list (itunesdb_t *itunesdb, int playlist, GList **head) {
   if (pyhm_data->num_pihm > 0) {
     num_entries = (pyhm_header->num_children - 2)/2;
     
-    for (i = 0 ; i < num_entries ; i++) {
+    for (i = num_entries-1 ; i >= 0 ; i--) {
       pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
 
       (*head) = g_list_prepend (*head, (void *)pihm_data->reference);
