@@ -107,9 +107,11 @@ typedef struct tree_node tree_node_t;
 typedef struct _ipod {
   ipoddb_t itunesdb;
   ipoddb_t artworkdb;
+  ipoddb_t photodb;
 
-  char *dir;
-  char *itunesdb_path;
+  char *path;
+
+  int supports_artwork;
 
   /* Sysinfo */
   char *board;

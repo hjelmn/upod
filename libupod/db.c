@@ -143,28 +143,31 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   if ( (iptr[0] == DOHM) && (cell_size != entry_size) ) {
     struct db_dohm *dohm_data = (struct db_dohm *)*buffer;
 
-    bswap_block (&((*buffer)[0x18]), 4, 1);
-
-    if (dohm_contains_string(dohm_data) == 0) {
+    if (!((iptr[6] & 0x6d680000) == 0x6d680000)) {
       copy_size = entry_size;
-      bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
-    } else if (iptr[6] == 1) {
-      bswap_block (&((*buffer)[0x1c]), 4, 3);
-      bswap_block (&((*buffer)[0x28]), 2, iptr[7]/2);
 
-      tnode_0->string_header_size = 16;
+      if (dohm_contains_string(dohm_data) == 0) {
+	copy_size = entry_size;
+	bswap_block (&((*buffer)[0x18]), 4, entry_size/4 - 6);
+      } else {
+	if (iptr[9] == 0)
+	  tnode_0->string_header_size = 16;
+	else
+	  tnode_0->string_header_size = 12;
 
-      copy_size = entry_size;
-    } else if ((iptr[6] % 2) == 0) {
-      bswap_block (&((*buffer)[0x1c]), 4, 2);
-      bswap_block (&((*buffer)[0x24]), 2, iptr[6]/2);
+	bswap_block (&((*buffer)[0x18]), 4, tnode_0->string_header_size/4);
 
-      tnode_0->string_header_size = 12;
-
-      copy_size = entry_size;
-    } else
-      bswap_block (&((*buffer)[0x18]), 4, 1);
-
+	if (tnode_0->string_header_size == 16) {
+	  struct string_header_16 *string_header = (struct string_header_16 *)&((*buffer)[0x18]);
+	  if (string_header->format != 1)
+	    bswap_block (&((*buffer)[0x28]), 2, iptr[7]/2);
+	} else {
+	  struct string_header_12 *string_header = (struct string_header_12 *)&((*buffer)[0x18]);
+	  if (string_header->format != 1)
+	    bswap_block (&((*buffer)[0x24]), 2, iptr[7]/2);
+	}
+      }
+    }
   } else if (iptr[0] == TIHM) {
     struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
     

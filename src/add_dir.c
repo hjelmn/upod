@@ -170,6 +170,7 @@ int main(int argc, char *argv[]) {
 
   db_free (&itunesdb);
   db_free (&artworkdb);
+
   printf ( "%i B written to the iTunes database: %s.\n", ret, argv[db]);
 
   return 0;

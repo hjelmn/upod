@@ -1,8 +1,8 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.3 ipod.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0alpha ipod.c
  *
- *   Routines for working with the ipod the iPod's.
+ *   Top-level routines for working with iPods.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -28,6 +28,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <errno.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -35,13 +37,12 @@
 
 #include "itunesdbi.h"
 
-#define ITUNESDB_PATH "iPod_control/iTunes/iTunesDB"
-
-static int ipod_init_files (ipod_t *ipod, char *dir) {
+static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   int test_fd;
   /* 0755 */
   int fold_perms = S_IXUSR | S_IRUSR | S_IWUSR | S_IRGRP | S_IXGRP | S_IXOTH | S_IROTH;
   char testpath[512];
+  char *dir = ipod->path;
 
   /* try iPod_control/ */
   sprintf (testpath, "%s/iPod_control", dir);
@@ -52,6 +53,9 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
       perror("mkdir");
   } else
     close (test_fd);
+
+  sprintf (testpath, "%s/iPod_control/Device/SysInfo", dir);
+  sysinfo_read (ipod, testpath);
 
   /* try iPod_control/iTunes/ */
   sprintf (testpath, "%s/iPod_control/iTunes", dir);
@@ -64,77 +68,97 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
     close (test_fd);
 
   /* try iPod_control/iTunes/iTunesDB */
-  sprintf (testpath, "%s/%s", dir, ITUNESDB_PATH);
+  memset (&(ipod->itunesdb), 0, sizeof (ipoddb_t));
+  db_set_debug (&(ipod->itunesdb), debug_level, debug_out);
+  sprintf (testpath, "%s/%s", dir, ITUNESDB);
   if (db_load (&(ipod->itunesdb), testpath, 0x1) < 0) {
     fprintf(stderr, "iTunesDB not found, creating one\n");
     db_create (&(ipod->itunesdb), "iPod", 4, 0x1);
+    ipod->itunesdb.path = strdup (testpath);
   }
 
+  memset (&(ipod->artworkdb), 0, sizeof (ipoddb_t));
+  db_set_debug (&(ipod->artworkdb), debug_level, debug_out);
+
+  memset (&(ipod->photodb), 0, sizeof (ipoddb_t));
+  db_set_debug (&(ipod->photodb), debug_level, debug_out);
+
+  if (ipod->supports_artwork == 1) {
+    sprintf (testpath, "%s/iPod_control/Artwork", dir);
+    if ((test_fd = open (testpath, O_RDONLY)) < 0) {
+      fprintf(stderr, "Creating dir %s\n", testpath);
+      if (mkdir (testpath, fold_perms) < 0)
+	perror("mkdir");
+    } else
+      close (test_fd);
+
+    sprintf (testpath, "%s/%s", dir, ARTWORKDB);
+    if (db_load (&(ipod->artworkdb), testpath, 0)) {
+      fprintf(stderr, "ArtworkDB not found, creating one\n");
+      db_photo_create (&(ipod->artworkdb));
+      ipod->photodb.path = strdup (testpath);
+    }
+
+    sprintf (testpath, "%s/Photos", dir);
+    if ((test_fd = open (testpath, O_RDONLY)) < 0) {
+      fprintf(stderr, "Creating dir %s\n", testpath);
+      if (mkdir (testpath, fold_perms) < 0)
+	perror("mkdir");
+    } else
+      close (test_fd);
+
+    sprintf (testpath, "%s/%s", dir, PHOTODB);
+    if (db_load (&(ipod->photodb), testpath, 0)) {
+      fprintf(stderr, "Photo Database not found, creating one\n");
+      db_photo_create (&(ipod->photodb));
+      ipod->photodb.path = strdup (testpath);
+
+      db_album_create (&ipod->photodb, "iPod photos", 11);
+    }
+  }
   /* try iPod/iPodPrefs */
 
   return 0;
 }
 
-static int ipod_mount (char *dev, char *fstype, char *dir) {
-  /* -- XXX -- check if the ipod is already mounted */
-  /*
-  if (mount (dev, dir, fstype, 0xC0ED0000, NULL) < 0) {
-    perror ("ipod_mount");
-    return -1;
-  }
-  */
-  /* -- XXX -- There may be other mount-time stuff that needs
-     to be done here */
-
-  return 0;
-}
-
-int ipod_open (ipod_t *ipod, char *dir, char *dev, char *fstype) {
+int ipod_open (ipod_t *ipod, char *dir, int debug_level, FILE *debug_out) {
   if (ipod == NULL || dir == NULL)
-    return -1;
+    return -EINVAL;
 
-  /*
-  if (dev != NULL && fstype != NULL)
-    if (ipod_mount(dev, fstype, dir) < 0)
-      return -1;
-  */
   /* copy path argument into ipod structure */
-  if (ipod->dir)
-    free (ipod->dir);
-
-  ipod->dir = calloc (strlen (dir) + 1, 1);
-  memcpy (ipod->dir, dir, strlen (dir));
-
-  /* copy itunedb location into ipod structure */
-  if (ipod->itunesdb_path)
-    free (ipod->itunesdb_path);
-
-  ipod->itunesdb_path = calloc (strlen (dir) + strlen (ITUNESDB_PATH) + 2, 1);
-  sprintf (ipod->itunesdb_path, "%s/%s", dir, ITUNESDB_PATH);
-  printf ("DB: %s\n", ipod->itunesdb_path);
-  /* memset (itunedb, 0); */
-
+  ipod->path = strdup (dir);
   /* open the itunesdb or possibly create it */
-  ipod_init_files (ipod, dir);
+  ipod_init (ipod, debug_level, debug_out);
 
   return 0;
 }
 
 int ipod_close (ipod_t *ipod) {
-  /* if (mounted by upod) */
-  /* umount (ipod->dir); */
+  int ret = 0;
 
-  if (db_write (ipod->itunesdb, ipod->itunesdb_path) < 0)
-    printf ("DB: Not written\n");
-  else
-    printf ("DB: Written to file %s\n", ipod->itunesdb_path);
+  ret = db_write (ipod->itunesdb, ipod->itunesdb.path);
+  db_free (&ipod->itunesdb);
 
+  if (ipod->supports_artwork) {
+    ret = db_write (ipod->artworkdb, ipod->artworkdb.path);
+    db_free (&ipod->artworkdb);
 
-  /* -- XXX -- free all allocated memory */
-  free (ipod->dir);
-  free (ipod->itunesdb_path);
+    ret = db_write (ipod->photodb, ipod->photodb.path);
+    db_free (&ipod->photodb);
+  }
+
+  if (ipod->board)
+    free (ipod->board);
+  if (ipod->model_number)
+    free (ipod->model_number);
+  if (ipod->serial_number)
+    free (ipod->serial_number);
+  if (ipod->sw_version)
+    free (ipod->sw_version);
+
+  free (ipod->path);
   
-  return -1;
+  return 0;
 }
 
 int ipod_copy_from (ipod_t *ipod, char *topath, char *frompath) {
@@ -148,5 +172,3 @@ int ipod_copy_to (ipod_t *ipod, char *topath, char *frompath) {
 int ipod_rename (ipod_t *ipod, char *name, int name_len) {
   return db_playlist_rename (&(ipod->itunesdb), 0, name, name_len);
 }
-
-/*** NTH_87Xz10102 ***/

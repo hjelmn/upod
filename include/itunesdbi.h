@@ -544,4 +544,5 @@ int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
 /* fihm.c */
 int db_fihm_create (tree_node_t **entry, unsigned int file_id);
 int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id);
+
 #endif /* __ITUNESDBI_H */
