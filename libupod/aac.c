@@ -89,9 +89,11 @@ int is_media_header (int type) {
   return 0;
 }
 
+/* Parse user data's (udat) meta data (meta) section */
 int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
   
+  /* skip 46 bytes of meta section (bytes before start of data -- I think) */
   fseek (fd, 46, SEEK_CUR);
 	  
   while (1) {
@@ -114,6 +116,9 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
       buffer[meta.offset - sizeof(struct qt_meta)] = '\0';
     }
 
+    /* some of the tag markers are 4 characters... i dont know how to correctly
+     parse the meta data to check which (3 or 4 chars) we are encontering so
+     handle all tag markers like they are only 3 chars (last 3 chars of 4 ones) */
     if (strncmp (meta.identifier, "ree", 3) == 0)
       /* catch the free atom to exit */
       break;
@@ -174,6 +179,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     return -errno;
 
   fread (&atom, sizeof(atom), 1, fd);
+  /* XXX -- I dont know if iTunes supports it but it may be a good idea to look
+   for id3 tags if this conditional is true */
   if (atom.type != type_int ("ftyp")) {
     fprintf (stderr, "File does not begin with ftyp Quicktime atom\n");
 
