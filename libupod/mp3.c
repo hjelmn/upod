@@ -61,17 +61,20 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
     int head;
     char data[10];
     int id3v2len;
+    char *chead;
 
     read(fd, &head, 4);
     lseek(fd, 0, SEEK_CUR);
+    
+    chead = (char *)&head;
+    chead[3] = 0;
 
 #if BYTE_ORDER == LITTLE_ENDIAN
     head = bswap_32(head);
 #endif
 
-
     /* version 2 */
-    if ( (head & 0x49443300) == 0x49443300) {
+    if (head == 0x49443300) {
 	read(fd, data, 10);
 	
 	id3v2len  = (unsigned long) data[2] & 0x7f;
@@ -98,7 +101,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
     lseek(fd, 0, SEEK_SET);
 
     /* tag not at beginning? */
-    if ( (head & 0x54414700) != 0x54414700) {
+    if (head != 0x54414700) {
 	/* maybe end */
 	lseek(fd, -128, SEEK_END);
 	read(fd, &head, 4);
@@ -110,7 +113,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
     }
 
     /* version 1 */
-    if ( (head & 0x54414700) == 0x54414700) {
+    if (head == 0x54414700) {
 	*tag_datalen = 128;
 	*tag_data = malloc(128);
 
@@ -241,16 +244,24 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       break;
     case ID3_COMMENT:
       copy_from = &tag_data[93];
+      break;
     case ID3_GENRE:
+      if (tag_data[127] >= genre_count || tag_data[127] < 0)
+	goto id3_error;
+
       copy_from = genre_table[tag_data[127]];
       i = strlen (copy_from - 1);
+      break;
     default:
       goto id3_not_found;
     }
-    
-    for (tmp = copy_from + i ; *tmp == ' ' && i >= 0; tmp--, i--)
-      *tmp = 0;
-	
+
+    if (field != ID3_GENRE)
+      for (tmp = copy_from + i ; *tmp == ' ' && i >= 0; tmp--, i--)
+	*tmp = 0;
+    else
+      i = strlen(copy_from) - 1;
+
     if (i < 0)
       goto id3_not_found;
     
@@ -264,7 +275,8 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
   return;
  id3_not_found:
  id3_error:
-  dohm_destroy(tihm);
+  if (field != ID3_TRACK)
+    dohm_destroy(tihm);
 }
 
 static int get_id3_info (char *file_name, tihm_t *tihm) {
@@ -278,6 +290,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
   
   /* ** NEW ** built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(fd, &tag_data, &tag_datalen)) != 0) {
+    printf ("version = %d.\n", version);
     parse_id3(tag_data, tag_datalen, version, ID3_TITLE, tihm);
     
     /* Much of the time the title is in field TT2 not TT1 */
@@ -290,8 +303,6 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     parse_id3(tag_data, tag_datalen, version, ID3_COMMENT, tihm);
     parse_id3(tag_data, tag_datalen, version, ID3_GENRE  , tihm);
     parse_id3(tag_data, tag_datalen, version, ID3_TRACK  , tihm);
-
-    free(tag_data);
   }
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
@@ -304,11 +315,14 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     dohm = dohm_create(tihm);
 
     dohm->type = IPOD_TITLE;
-    dohm->size = 2 * (strlen(tmp) - (i - 1));
+    dohm->size = 2 * i;
     dohm->data = calloc(1, dohm->size);
     char_to_unicode (dohm->data, tmp, dohm->size/2);
   }
   
+  if (0)//tag_data)
+    free(tag_data);
+
   close(fd);
   
   return version;

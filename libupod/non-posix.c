@@ -6,12 +6,14 @@ char *basename(char *path) {
   char *tmp;
   int i;
 
+
   for (i = strlen(path)-1 ; i > 0 && path[i] != '/' ; i--);
-
-  tmp = malloc (strlen(path) - (i - 1));
-  memset(tmp, 0, strlen(path) - (i - 1));
-
-  strcpy(tmp, &path[i]);
+ 
+  i++;
+  tmp = malloc (strlen(&path[i]));
+  memset(tmp, 0,strlen(&path[i]));
+  
+  memcpy(tmp, &path[i], strlen(&path[i]));
 
   return tmp;
 }

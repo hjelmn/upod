@@ -45,6 +45,28 @@ int db_tihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   return -1;
 }
 
+int db_tihm_retrieve (struct tree iTunesDB, struct tree_node **entry,
+		      struct tree_node **parent, int tihm_num) {
+  struct tree_node **master, *root;
+  int entry_num;
+
+  if (iTunesDB.tree_root == NULL) return -1;
+  root = iTunesDB.tree_root;
+
+  /* the song list resides in the first dshm entry of the iTunesDB */
+  for (master = &(root->children[0]) ;
+       !strstr((*master)->data, "dshm") ; master++);
+
+  entry_num = db_tihm_search (*master, tihm_num);
+
+  if (entry_num < 0) return entry_num;
+
+  if (entry) *entry = (*master)->children[entry_num];
+  if (parent)*parent= (*master);
+
+  return entry_num;
+}
+
 tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num) {
   dohm_t *dohm;
 
@@ -70,11 +92,15 @@ void tihm_destroy (tihm_t *tihm) {
   free(tihm->dohms);
 }
 
-static int db_dohm_create (struct tree_node *parent, struct tree_node *entry, dohm_t dohm){
+static int db_dohm_create (struct tree_node *entry, dohm_t dohm) {
   int *iptr;
 
-  entry->parent = parent;
+  entry->parent = NULL;
   entry->size   = DOHM_HEADER_SIZE + STRING_HEADER_SIZE + dohm.size;
+
+  entry->children = NULL;
+  entry->num_children = 0;
+
   entry->data   = calloc (1, entry->size);
 
   iptr = (int *)entry->data;
@@ -92,8 +118,9 @@ static int db_dohm_create (struct tree_node *parent, struct tree_node *entry, do
 }
 
 int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
+  struct tree_node *dohm;
   tihm_t tihm;
-  int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 2;
+  int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
   struct db_tihm *tihm_data;
 
   int size;
@@ -102,6 +129,10 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
 
   tihm_create(&tihm, filename, path, tihm_num);
 
+  memset (entry, 0, sizeof (struct tree_node *));
+
+  entry->parent = NULL;
+
   entry->size = TIHM_HEADER_SIZE;
   entry->data = calloc (1, TIHM_HEADER_SIZE);
   memset (entry->data, 0, TIHM_HEADER_SIZE);
@@ -109,6 +140,7 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
   tihm_data = (struct db_tihm *)entry->data;
   tihm_data->tihm        = TIHM;
   tihm_data->header_size = TIHM_HEADER_SIZE;
+  tihm_data->record_size = TIHM_HEADER_SIZE;
   tihm_data->num_dohm    = tihm.num_dohm;
   tihm_data->identifier  = tihm_num;
   tihm_data->type        = long_big_host(0x001);
@@ -127,16 +159,20 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
      which */
 
   entry->num_children = 0;
-  entry->children = (struct tree_node **)malloc(sizeof(struct tree_node *));
+  entry->children     = NULL;
 
   size = TIHM_HEADER_SIZE;
 
   for (i = 0 ; i < tihm.num_dohm ; i++) {
-    entry->num_children++;
-    entry->children = realloc(entry->children,
-			      entry->num_children * sizeof(struct tree_node *));
-    entry->children[entry->num_children-1] = calloc(sizeof(struct tree_node), 1);
-    size += db_dohm_create (entry, entry->children[entry->num_children-1], tihm.dohms[i]);
+    dohm = (struct tree_node *) malloc (sizeof (struct tree_node));
+
+    if (dohm == NULL) {
+      perror ("db_create_tihm|malloc");
+      return -1;
+    }
+
+    db_dohm_create (dohm, tihm.dohms[i]);
+    db_attach (entry, dohm);
   }
 
   for (i = 0 ; i < tihm.num_dohm ; i++)
@@ -147,11 +183,9 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
       entry->children[i] = entry->children[0];
       entry->children[0] = tmp;
     }
-    
-
-  tihm_data->record_size = size;
 
   tihm_destroy (&tihm);
+
   return tihm_num;
 }
 
