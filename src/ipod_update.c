@@ -255,7 +255,7 @@ int write_awdatabase (ipoddb_t *artworkdb) {
     return -1;
   }
 
-  return db_write (*artworkdb, ITUNESDB);
+  return db_write (*artworkdb, ARTWORKDB);
 }
 
 /* remove files that no longer exist from the database */
