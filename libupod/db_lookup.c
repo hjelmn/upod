@@ -118,7 +118,7 @@ int db_lookup_tihm (ipoddb_t *itunesdb, char *data, int data_len) {
 }
 
 int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
-  tree_node_t *dshm_header, *plhm_header, *dohm_header = NULL;
+  tree_node_t *dshm_header, *dohm_header = NULL;
   int i, j, ret;
   size_t unicode_data_len;
   u_int16_t *unicode_data;
@@ -131,15 +131,13 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
 
   db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
 
-  if (db_playlist_retrieve (itunesdb, &plhm_header, &dshm_header, 0, NULL) != 0)
+  if (db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, NULL) != 0)
     return -1;
 
   to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
 
   if (itunesdb->log_level > 1)
     pretty_print_block ((unsigned char *)unicode_data, unicode_data_len);
-
-  plhm_data = (struct db_plhm *)plhm_header->data;
 
   db_log (itunesdb, 0, "num_pyhm == %i\n", plhm_data->num_pyhm);
 

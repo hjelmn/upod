@@ -27,24 +27,46 @@
 
 #include "itunesdbi.h"
 
-int db_album_retrieve_header (ipoddb_t *photodb, tree_node_t **alhm_header,
-			     tree_node_t **dshm_header) {
-  return db_playlist_retrieve (photodb, alhm_header, dshm_header, 0, NULL);
+int db_album_retrieve (ipoddb_t *photodb, struct db_alhm **alhm_data,
+		       tree_node_t **dshm_header, int album, tree_node_t **abhm_header) {
+  tree_node_t *temp, *alhm_header;
+  struct db_alhm *alhm_data_loc;
+  int ret;
+
+  if (photodb == NULL || photodb->type != 1 || (album < 0 && abhm_header == NULL))
+    return -EINVAL;
+
+  if ((ret = db_dshm_retrieve (photodb, &temp, 0x2)) < 0)
+    return ret;
+
+  alhm_header = temp->children[0];
+
+  alhm_data_loc = (struct db_alhm *)temp->children[0]->data;
+
+  /* Store the pointers if storage was passed in */
+  if (alhm_data != NULL)
+    *alhm_data = alhm_data_loc;
+
+  if (dshm_header != NULL)
+    *dshm_header = temp;
+
+  if (abhm_header != NULL) {
+    if (album > (alhm_data_loc->num_albums - 1))
+      return -EINVAL;
+
+    *abhm_header = temp->children[album + 1];
+  }
+
+  return 0;
 }
 
 int db_album_number (ipoddb_t *photodb) {
-  tree_node_t *alhm_header;
   struct db_alhm *alhm_data;
 
   int ret;
 
-  if (photodb == NULL)
-    return -EINVAL;
-
-  if ((ret = db_album_retrieve_header (photodb, &alhm_header, NULL)) < 0)
+  if ((ret = db_album_retrieve (photodb, &alhm_data, NULL, 0, NULL)) < 0)
     return ret;
-
-  alhm_data = (struct db_alhm *) alhm_header->data;
 
   return alhm_data->num_albums;
 }
@@ -56,27 +78,22 @@ struct abhm {
 };
 
 int db_album_list (ipoddb_t *photodb, GList **head) {
-  tree_node_t *alhm_header, *dshm_header, *abhm_header;
+  tree_node_t *dshm_header, *abhm_header;
   tree_node_t *dohm_header = NULL;
   struct abhm *abhm;
   struct db_alhm *alhm_data;
   int i, ret;
   struct string_header_12 *string_header;
 
-  if (head == NULL || photodb == NULL || photodb->tree_root == NULL)
+  if (head == NULL)
     return -EINVAL;
 
   db_log (photodb, 0, "db_album_list: entering...\n");
 
   *head = NULL;
 
-  if ((ret = db_album_retrieve_header (photodb, &alhm_header, &dshm_header)) < 0)
+  if ((ret = db_album_retrieve (photodb, &alhm_data, &dshm_header, 0, NULL)) < 0)
     return ret;
-
-  alhm_data = (struct db_alhm *) alhm_header->data;
-
-  if (alhm_data->alhm != ALHM)
-    return -EINVAL;
 
   for ( i = dshm_header->num_children-1 ; i > 0 ; i--) {
     abhm_header = dshm_header->children[i];
@@ -105,20 +122,18 @@ void db_album_list_free (GList **head) {
 }
 
 int db_album_create (ipoddb_t *photodb, char *name, int name_len) {
-  tree_node_t *alhm_header, *new_abhm, *new_dohm, *dshm_header;
+  tree_node_t *new_abhm, *new_dohm, *dshm_header;
   struct db_alhm *alhm_data;
   struct string_header_12 *string_header;
   int ret;
 
-  if (photodb == NULL || name == NULL || name_len == 0)
+  if (name == NULL || name_len == 0)
     return -EINVAL;
 
   db_log (photodb, 0, "db_album_create: entering...\n");
 
-  if ((ret = db_album_retrieve_header (photodb, &alhm_header, &dshm_header)) < 0)
+  if ((ret = db_album_retrieve (photodb, &alhm_data, &dshm_header, 0, NULL)) < 0)
     return ret;
-
-  alhm_data = (struct db_alhm *) alhm_header->data;
 
   if ((ret = db_abhm_create (&new_abhm)) < 0)
     return ret;
@@ -146,33 +161,20 @@ int db_album_create (ipoddb_t *photodb, char *name, int name_len) {
 }
 
 int db_album_image_add (ipoddb_t *photodb, int album, int image_id) {
-  tree_node_t *alhm_header, *abhm_header, *dshm_header;
-  tree_node_t *aihm_header;
+  tree_node_t *abhm_header, *dshm_header, *aihm_header;
 
   struct db_alhm *alhm_data;
 
-  int entry_num;
+  int entry_num, ret;
 
-  int ret;
-
-  if (photodb == NULL || album < 0)
-    return -EINVAL;
-  
   db_log (photodb, 0, "db_album_image_add: entering...\n");
 
   /* make sure the tihm exists in the database before continuing */
   if ((ret = db_iihm_retrieve (photodb, NULL, NULL, image_id)) < 0)
     return ret;
     
-  if ((ret = db_album_retrieve_header (photodb, &alhm_header, &dshm_header)) < 0)
+  if ((ret = db_album_retrieve (photodb, &alhm_data, &dshm_header, album, &abhm_header)) < 0)
     return ret;
-
-  alhm_data = (struct db_alhm *) alhm_header->data;
-
-  if (album >= alhm_data->num_albums)
-    return -EINVAL;
-
-  abhm_header = dshm_header->children[album + 1];
 
   /* check if the reference already exists in this playlist */
   entry_num = db_aihm_search (abhm_header, image_id);
@@ -187,41 +189,31 @@ int db_album_image_add (ipoddb_t *photodb, int album, int image_id) {
   return 0;
 }
 
-int db_album_image_remove (ipoddb_t *photodb, int album,
-			   int image_id) {
-  tree_node_t *alhm_header, *abhm_header, *dshm_header;
-  tree_node_t *aihm;
+int db_album_image_remove (ipoddb_t *photodb, int album, int image_id) {
+  tree_node_t *abhm_header, *dshm_header, *aihm_header;
 
   struct db_alhm *alhm_data;
   struct db_abhm *abhm_data;
 
-  int entry_num;
-
-  int ret;
+  int entry_num, ret;
 
   if (photodb == NULL || album < 0)
     return -EINVAL;
 
   db_log (photodb, 0, "db_playlist_tihm_remove: entering...\n");
 
-  if ((ret = db_album_retrieve_header (photodb, &alhm_header, &dshm_header)) < 0)
+  if ((ret = db_album_retrieve (photodb, &alhm_data, &dshm_header, album, &abhm_header)) < 0)
     return ret;
 
-  alhm_data = (struct db_alhm *) alhm_header->data;
-
-  if (album >= alhm_data->num_albums)
-    return -EINVAL;
-
-  abhm_header = dshm_header->children[album + 1];
   abhm_data   = (struct db_abhm *) abhm_header->data;
 
   /* search and destroy */
   entry_num = db_aihm_search (abhm_header, image_id);
 
   if (entry_num > -1) {
-    db_detach (abhm_header, entry_num, &aihm);
+    db_detach (abhm_header, entry_num, &aihm_header);
     
-    db_free_tree (aihm);
+    db_free_tree (aihm_header);
     
     abhm_data->num_aihm -= 1;
   }
