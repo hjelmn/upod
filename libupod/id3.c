@@ -56,6 +56,8 @@
 #define ID3_ENCODER           7
 #define ID3_COMMENT           8
 #define ID3_BPM               11
+#define ID3_YEARNEW           12
+#define ID3_DISKNUM           13
 
 static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_version);
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_majorversion, int field, tihm_t *tihm);
@@ -177,7 +179,8 @@ static void one_pass_parse_id3 (char *tag_data, int tag_datalen, int version,
 			  "TEN", "COM", "TLE", "TKE", NULL};
     /* field tags associated with id3v2 with major version > 2 */
     char *fourfields[] = {"TIT1", "TIT2", "TPE1", "TALB", "TRCK", "TYER", "TCON",
-			  "TENC", "COMM", "TLEN", "TIME", "TBPM", NULL};
+			  "TENC", "COMM", "TLEN", "TIME", "TBPM", "TDRC", "TPOS",
+			  NULL};
     
     char *tag_temp;
     char *sizeloc;
@@ -250,13 +253,34 @@ static void one_pass_parse_id3 (char *tag_data, int tag_datalen, int version,
 
 	if (slash) *slash = 0;
 
-	tihm->track = atol (tag_temp);
+	tihm->track = strtol (tag_temp, NULL, 10);
+
+	/* set total number of album tracks */
+	if (slash)
+	  tihm->album_tracks = strtol (slash+1, NULL, 10);
+
+	if (slash) *slash = '/';
+	break;
+      case ID3_DISKNUM:
+	/* some id3 tags have disk_num/total_disks in the TPOS field */
+	slash = strchr (tag_temp, '/');
+
+	if (slash) *slash = 0;
+
+	tihm->disk_num = strtol (tag_temp, NULL, 10);
+
+	/* set total number of album tracks */
+	if (slash)
+	  tihm->disk_total = strtol (slash+1, NULL, 10);
 
 	if (slash) *slash = '/';
 	break;
       case ID3_BPM:
 	tihm->bpm = strtol (tag_temp, NULL, 10);
 	break;
+      case ID3_YEARNEW:
+      case ID3_YEAR:
+	tihm->year = strtol (tag_temp, NULL, 10);
       case ID3_GENRE:
 	if (tag_temp[0] != '(') {
 	  dohm_add (tihm, tag_temp, length, IPOD_GENRE);

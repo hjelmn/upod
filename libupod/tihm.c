@@ -99,10 +99,18 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
   tihm_data->file_size   = tihm->size;
   tihm_data->duration    = tihm->time;
+
   tihm_data->order       = tihm->track;
+  tihm_data->album_tracks= tihm->album_tracks;
+
+  tihm_data->disk_num    = tihm->disk_num;
+  tihm_data->disk_total  = tihm->disk_total;
+
   tihm_data->sample_rate = tihm->samplerate << 16;
   tihm_data->bit_rate    = tihm->bitrate;
   tihm_data->unk11       = tihm->bpm << 16;
+
+  tihm_data->year        = tihm->year;
 
   tihm_data->volume_adjustment = tihm->volume_adjustment;
   tihm_data->start_time  = tihm->start_time;
@@ -181,11 +189,20 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
   tihm->times_played = dbtihm->num_played[0];
 
   tihm->stars     = (dbtihm->flags >> 24) / 0x14;
+
   tihm->type      = dbtihm->type;
+  tihm->album_tracks= dbtihm->album_tracks;
+
+  tihm->disk_num  = dbtihm->disk_num;
+  tihm->disk_total= dbtihm->disk_total;
+
   tihm->track     = dbtihm->order;
   tihm->volume_adjustment = dbtihm->volume_adjustment;
   tihm->start_time= dbtihm->start_time;
   tihm->stop_time = dbtihm->stop_time;
+  tihm->bpm       = dbtihm->unk11 >> 16;
+
+  tihm->year        = dbtihm->year;
 
   tihm->mod_date  = dbtihm->modification_date;
   tihm->played_date = dbtihm->last_played_date;

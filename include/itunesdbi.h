@@ -112,8 +112,8 @@ struct db_tihm {
   u_int32_t duration;
   u_int32_t order;
 
-  u_int32_t unk1;
-  u_int32_t unk2;
+  u_int32_t album_tracks; /* number of tracks on album */
+  u_int32_t year;
   u_int32_t bit_rate; /* i dont know since this is often 0 */
   u_int32_t sample_rate;
 
@@ -125,9 +125,9 @@ struct db_tihm {
 
   u_int32_t num_played[2]; /* no idea why there are two of these */
   u_int32_t last_played_date;
-  u_int32_t unk4;
+  u_int32_t disk_num;
 
-  u_int32_t unk5;
+  u_int32_t disk_total;
   u_int32_t unk6;
   u_int32_t modification_date;
   u_int32_t unk7;

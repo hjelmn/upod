@@ -95,7 +95,11 @@ int main (int argc, char *argv[]) {
     printf(" num dohm: %d\n", tihm->num_dohm);
     printf(" samplert: %d\n", tihm->samplerate);
     printf(" stars   : %d\n", tihm->stars);
+    printf(" year    : %d\n", tihm->year);
+    printf(" bpm     : %d\n", tihm->bpm);
     printf(" played  : %d\n", tihm->times_played);
+    printf(" track   : %d/%d\n", tihm->track, tihm->album_tracks);
+    printf(" disk    : %d/%d\n", tihm->disk_num, tihm->disk_total);
 
     for (i = 0 ; i < tihm->num_dohm ; i++) {
       memset(buffer, 0, 1024);
