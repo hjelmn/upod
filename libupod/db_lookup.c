@@ -23,13 +23,11 @@
 #include "config.h"
 #endif
 
-#define ipod_t itunesdb_t
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "itunesdbi.h"
 #include "hexdump.c"
-
-#include <stdlib.h>
-#include <stdio.h>
 
 /*
   db_lookup:
@@ -43,7 +41,7 @@
    >= 0 if found
 */
 
-int db_lookup (ipod_t ipod, int dohm_type, char *data, int data_len) {
+int db_lookup (itunesdb_t itunesdb, int dohm_type, char *data, int data_len) {
   struct tree_node **master, *root, *entry;
   int i, j, ret = -1, unicode_data_len;
   char *unicode_data;
@@ -53,7 +51,7 @@ int db_lookup (ipod_t ipod, int dohm_type, char *data, int data_len) {
   struct db_tihm *tihm;
   struct db_dohm *dohm;
 
-  root = ipod.tree_root;
+  root = itunesdb.tree_root;
   if (root == NULL) return -1;
 
   if (data[1] != 0){ /* Data is not in unicode format */

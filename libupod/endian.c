@@ -25,9 +25,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <endian.h>
-
-#include <endian.h>
 
 void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
   int i;
