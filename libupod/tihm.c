@@ -203,6 +203,10 @@ static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
   tihm->played_date = dbtihm->last_played_date;
   tihm->creation_date = dbtihm->creation_date;
 
+  tihm->has_artwork = (dbtihm->has_artwork != 0xffffffff) ? 1 : 0;
+  tihm->artwork_id1  = dbtihm->iihm_id1;
+  tihm->artwork_id2  = dbtihm->iihm_id2;
+  
   tihm->dohms     = db_dohm_fill (entry);
 
   return 0;
