@@ -29,7 +29,7 @@
 void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
   int i;
 
-#if __BYTE_ORDER != __LITTLE_ENDIAN
+#if BYTE_ORDER==BIG_ENDIAN
   for (i = 0 ; i < nmemb ; i++)
     switch (membsize) {
     case 2:

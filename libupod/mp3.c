@@ -235,7 +235,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       copy_from = &tag_data[93];
       break;
     case ID3_GENRE:
-      if (tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
+      if ((int)tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
 	return;
 
       copy_from = genre_table[tag_data[127]];

@@ -103,6 +103,14 @@ void db_free (itunesdb_t *itunesdb) {
   db_free_tree(itunesdb->tree_root);
 }
 
+static int dohm_contains_string (struct db_dohm *dohm_data) {
+  if (dohm_data->type != 0x64 &&
+      dohm_data->type != 0x33)
+    return 1;
+
+  return 0;
+}
+
 /*
   db_build_tree:
 
@@ -131,28 +139,27 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
 
   tnode_0->parent = parent;
 
-  bswap_block(*buffer, sizeof(u_int32_t), 3);
+  /* swap the entry label, cell size and entry size */
+  bswap_block(*buffer, 4, 3);
 
   entry_size = iptr[2];
   cell_size  = iptr[1];
 
   if (iptr[0] == DOHM) {
     dohm_data = (struct db_dohm *)*buffer;
-    
-    /* swap the header then the data (if needed) */
-    if (entry_size == 0x288) {
-      /* "Wierd" dohm entry */
-      bswap_block(&(*buffer)[0xc], 4, 0x288/4 - 3);
-    } else if ((*buffer)[12] == 0x33) {
-      bswap_block (&(*buffer)[0xc], 4, entry_size/ - 3);
-    } else {
-      bswap_block(&((*buffer)[0xc]), 4, 7);
+
+    bswap_block (&((*buffer)[0xc]), 4, 7);
+
+    if (dohm_contains_string(dohm_data))
       bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);
-    }
+    else
+      bswap_block(&((*buffer)[0x28]), 4, entry_size/4 - 10);
 
     copy_size = entry_size;
   } else {
-    bswap_block(&(*buffer)[0xc], sizeof(u_int32_t), cell_size/4 - 3); /* three ints are already swapped */
+    /* this line is correct if we assume that the rest of the cell
+       contains only 32-bit integers */
+    bswap_block(&((*buffer)[0xc]), sizeof(u_int32_t), cell_size/4 - 3);
     
     copy_size = cell_size;
   }
@@ -292,8 +299,6 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   
   close (iTunesDB_fd);
 
-  memset (itunesdb, 0, sizeof (itunesdb_t));
-
   /* do the work of building the itunesdb structure */
   itunesdb->tree_root = db_build_tree(&bytes_read, NULL, &buffer);
 
@@ -311,15 +316,14 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   dohm_data = (struct db_dohm *) entry->data;
 
   if (dohm_data->dohm == DOHM) {
-    if (entry->size == 0x288) {
-      /* "weird" dohm entry */
-      swap = 0x288/4;
-      length = 0;
-    } else {
+
+    if (dohm_contains_string (dohm_data)) {
       swap = 10;
       length = dohm_data->len/2;
       bswap_block (&entry->data[0x28], 2, length);
-    }
+    } else
+      swap = entry->size/4;
+
   } else
     swap = ((int *)entry->data)[1]/4;
 
@@ -329,7 +333,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   ret += write (fd, entry->data, entry->size);
 
 #if BYTE_ORDER == BIG_ENDIAN
-  if (dohm_data->dohm == DOHM)
+  if (dohm_data->dohm == DOHM && dohm_contains_string (dohm_data))
     bswap_block (&entry->data[0x28], 2, length);
 #endif
 

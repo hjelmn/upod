@@ -10,9 +10,9 @@ int db_set_debug (itunesdb_t *itunesdb, int level, FILE *out) {
   if (out == NULL)
     return -1;
   
-  if (slevel < 0)
+  if (level < 0)
     slevel = 0;
-  else if (slevel > 5)
+  else if (level > 5)
     slevel = 5;
   else
     slevel = level;
