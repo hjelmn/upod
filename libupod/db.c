@@ -592,11 +592,14 @@ void db_song_list_free (GList *head) {
   }
 }
 
-int db_attach (tree_node_t *parent, tree_node_t *new_child) {
+int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
   int size;
   tree_node_t *tmp;
 
   if (parent == NULL || new_child == NULL) return -1;
+
+  if (index >= (parent->num_children + 1))
+    return -1;
 
   /* allocate memory for the new child pointer */
   if (parent->num_children++ == 0)
@@ -608,7 +611,12 @@ int db_attach (tree_node_t *parent, tree_node_t *new_child) {
   /* add the new child node onto this node and set its parent
    pointer accordingly */
   new_child->parent = parent;
-  parent->children[parent->num_children - 1] = new_child;
+
+  if (index < (parent->num_children - 1))
+    memcpy (&parent->children[index], &parent->children[index+1],
+	    sizeof(tree_node_t *) * parent->num_children - 1 - index);
+
+  parent->children[index] = new_child;
 
   /* adjust tree sizes */
   size = db_size_tree (new_child);
@@ -617,6 +625,10 @@ int db_attach (tree_node_t *parent, tree_node_t *new_child) {
     ((int *)tmp->data)[2] += size;
 
   return 0;
+}
+
+int db_attach (tree_node_t *parent, tree_node_t *new_child) {
+  return db_attach_at (parent, new_child, parent->num_children);
 }
 
 /*

@@ -268,6 +268,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
     perror ("db_create_new_playlist|calloc");
     return errno;
   }
+
   if (db_dohm_create_generic (new_dohm, 0x288, 0x000) < 0)
     return -1;
 
@@ -279,7 +280,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   wierd_dohm_data->unk6 = 0x00010000;
   wierd_dohm_data->unk7 = 0x00000004;
 
-  /* but, now I know what this is (cheer!) */
+  /* but, I now know what this is */
   wierd_dohm_data->shows[0].unk10[0] = 6;
 
   /* show playing column */
@@ -329,9 +330,10 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
    int         name_len - Lenth of name
 **/
 int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name_len) {
-  tree_node_t *plhm_header, *name_dohm, *dshm_header, *entry;
+  tree_node_t *plhm_header, *name_dohm, *dshm_header, *entry, *pyhm_header;
   struct db_plhm *plhm;
   struct db_dohm *dohm;
+  struct db_pyhm *pyhm;
 
   int ds;
 
@@ -349,14 +351,15 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
     UPOD_DEBUG(0, "Invalid playlist number\n");
     return -1;
   }
+  
+  pyhm_header = dshm_header->children[playlist + 1];
+  pyhm = (struct db_pyhm *)pyhm_header->data;
 
-  db_detach (dshm_header->children[playlist + 1], 1, &name_dohm);
+  db_detach (pyhm_header, pyhm->name_index-1, &name_dohm);
 
   unicode_check_and_copy (&unicode_data, &unicode_len, name, name_len);
 
   /* adjust the memory size for this node and copy new unicode string in */
-
-  /* writing the tree out correctly will depend on this having the correct value */
   name_dohm->size = 0x28 + unicode_len;
   name_dohm->data = realloc (name_dohm->data, 0x28 + unicode_len);
   
@@ -366,14 +369,14 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
     return -1;
   }
 
-  dohm       = (struct db_dohm *)name_dohm->data;
+  dohm = (struct db_dohm *)name_dohm->data;
   ds = unicode_len - dohm->len;
   dohm->record_size += ds;
   dohm->len  = unicode_len;
 
   memcpy (&name_dohm->data[0x28], unicode_data, unicode_len);
 
-  db_attach (dshm_header->children[playlist + 1], name_dohm);
+  db_attach_at (pyhm_header, name_dohm, pyhm->name_index - 1);
 
   free (unicode_data);
   return 0;

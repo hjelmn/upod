@@ -243,6 +243,7 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 void    db_free_tree (tree_node_t *ptr);
 
 int     db_attach    (tree_node_t *parent, tree_node_t *new_child);
+int     db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);
 int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
 
 /* tihm.c */
@@ -285,6 +286,7 @@ void unicode_check_and_copy (char **dst, int *dst_len, char *src,
 			    int src_len);
 
 int mp3_fill_tihm (char *, tihm_t *);
+int aac_fill_tihm (char *, tihm_t *);
 
 /* playlist.c */
 int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
