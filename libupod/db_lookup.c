@@ -155,7 +155,7 @@ int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
       continue;
     
     if (memcmp (&dohm_header->data[0x28], unicode_data, unicode_data_len) == 0) {
-      ret = i;
+      ret = i-1;
       goto found_playlist;
     }
   }

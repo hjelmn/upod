@@ -50,7 +50,7 @@ static u_int8_t *path_unix_mac_root (char *path) {
 
   if (*path == '/') path++;
 
-  mac_path = calloc (1, strlen(path) + 2);
+  mac_path = calloc (strlen(path) + 2, 1);
   mac_path[0] = ':';
 
   for (i = 0 ; i < strlen (path) ; i++)
@@ -62,6 +62,26 @@ static u_int8_t *path_unix_mac_root (char *path) {
   mac_path[i+1] = '\0';
 
   return mac_path;
+}
+
+
+static u_int8_t *path_mac_unix (char *mac_path) {
+  char *path;
+  int i;
+
+  if (*mac_path == ':') mac_path++;
+
+  path = calloc (strlen(mac_path) + 1, 1);
+
+  for (i = 0 ; i < strlen (mac_path) ; i++)
+    if (mac_path[i] == ':')
+      path[i] = '/';
+    else
+      path[i] = mac_path[i];
+
+  path[i] = '\0';
+
+  return path;
 }
 
 int glist_cmp (gpointer data1, gpointer data2) {
@@ -217,6 +237,48 @@ int write_database (itunesdb_t *itunesdb) {
   return db_write (*itunesdb, ITUNESDB);
 }
 
+/* remove files that no longer exist from the database */
+int cleanup_database (itunesdb_t *itunesdb) {
+  GList *tmp, *song_list = NULL;
+  tihm_t *tihm;
+  char *unix_path;
+  int i;
+
+  struct stat statinfo;
+
+  u_int8_t *buffer;
+  size_t buffer_len;
+ 
+  db_song_list (itunesdb, &song_list);
+
+  if (song_list == NULL)
+    return -1;
+
+  for (tmp = g_list_first (song_list) ; tmp ; tmp = g_list_next (tmp)) {
+    tihm = (tihm_t *)tmp->data;
+
+    for (i = 0 ; i < tihm->num_dohm ; i++)
+      if (tihm->dohms[i].type == IPOD_PATH)
+	break;
+    if (i != tihm->num_dohm)
+      path_to_utf8 (&buffer, &buffer_len, tihm->dohms[i].data, tihm->dohms[i].size);
+
+    unix_path = path_mac_unix (buffer);
+
+    if (stat (unix_path, &statinfo) < 0) {
+      printf ("%s(%s): no longer exists. Removing from the iTunesDB\n", unix_path, buffer);
+      db_remove (itunesdb, tihm->num);
+    }
+
+    free (unix_path);
+    free (buffer);
+  }
+
+  db_song_list_free (&song_list);
+
+  return 0;
+}
+
 int main (int argc, char *argv[]) {
   itunesdb_t itunesdb;
   int option_index;
@@ -272,6 +334,8 @@ int main (int argc, char *argv[]) {
     if ((ret = db_create (&itunesdb, ipod_name, strlen(ipod_name), flags)) < 0)
       fprintf (stderr, "Error creating iTunesDB\n");
   }
+
+  cleanup_database (&itunesdb);
 
   parse_playlists ("Music", &itunesdb);
 

@@ -199,7 +199,8 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       if (id3v2_majorversion > 2) {
 	/* I can't find in the id3v2.3 spec where this is legal?
 	   iTunes seems to think it is */
-	if (strncmp (tag_data, "APIC", 4) == 0 || id3v2_majorversion == 4)
+	if (strncmp (tag_data, "APIC", 4) == 0 || id3v2_majorversion == 4 ||
+	    strncmp (tag_data, "PRIV", 4) == 0)
 	  length = *((int *)&tag_data[4]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
@@ -277,7 +278,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       
       for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
 
-      length--;
+      /*      length--; */
 
       if (length <= 0)
 	continue;
@@ -413,7 +414,7 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   unsigned char tag_data[128];
   int version;
   int id3v2_majorversion;
-  
+
   /* built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(2, fh, tag_data, &tag_datalen, &id3_len, &id3v2_majorversion)) != 0)
     one_pass_parse_id3(fh, tag_data, tag_datalen, version, id3v2_majorversion, tihm);

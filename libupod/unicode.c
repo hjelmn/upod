@@ -85,6 +85,25 @@ void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
   *dst_len = final_size;
 }
 
+void path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
+		      size_t src_len) {
+  int i, j;
+  u_int8_t *src8 = (u_int8_t *)src;
+
+  if (dst == NULL | dst_len == NULL | src == NULL | src_len < 1)
+    return;
+
+  *dst = calloc (src_len + 1, 1);
+
+  for (i = 0, j = 0 ; i < src_len ; i++) {
+    if (src8[i] != '\0')
+      (*dst)[j++] = src8[i];
+  }
+
+  *dst = realloc (*dst, j);
+  *dst_len = j-1;
+}
+
 void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		 size_t src_len, char *src_encoding) {
   int i, j;
@@ -129,7 +148,7 @@ void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
   inbuf   = (char *)src;
 
   outbytes= src_len * 2;
-  *dst = outbuf  = calloc (src_len * 2, 1);
+  *dst = (u_int16_t *)outbuf  = calloc (src_len * 2, 1);
 
   conv = iconv_open ("UTF-16BE", src_encoding);
   iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
