@@ -1,4 +1,4 @@
-char *genre_table[] =
+static char *genre_table[] =
 {
 	"Blues",
 	"Classic Rock",
@@ -260,4 +260,4 @@ char *genre_table[] =
 */
 };
 
-const int genre_count = ((int)(sizeof(genre_table)/sizeof(char*))-1);
+static const int genre_count = ((int)(sizeof(genre_table)/sizeof(char*))-1);
