@@ -96,7 +96,7 @@ static int db_plhm_create (tree_node_t *entry) {
    < 0 on error
      0 on success
 **/
-int db_create (itunesdb_t *itunesdb, char *db_name, int name_len) {
+int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
   tree_node_t *root, *entry, *entry2;
 
   if (itunesdb == NULL) return -1;
@@ -125,6 +125,8 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len) {
   entry2 = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_plhm_create (entry2);
   db_attach (entry, entry2);
+
+  itunesdb->flags = flags;
 
   return db_playlist_create (itunesdb, db_name, name_len);
 }

@@ -1,6 +1,6 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.1 id3.c 
+ *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.1.2 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -197,7 +197,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	return;
       
       if (id3v2_majorversion > 2) {
-	if (strncmp (tag_data, "APIC", 4) == 0)
+	if (strncmp (tag_data, "APIC", 4) == 0 || id3v2_majorversion == 4)
 	  length = *((int *)&tag_data[4]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
@@ -371,8 +371,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	data_type = IPOD_COMMENT;
 	break;
       case ID3_GENRE:
-	if ((int)tag_data[127] >= genre_count ||
-	    (signed char)tag_data[127] == -1)
+	if ((signed char)tag_data[127] == -1)
 	  continue;
 	
 	copy_from = genre_table[tag_data[127]];

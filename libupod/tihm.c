@@ -123,7 +123,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 }
 
 int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len,
-			 int stars, int tihm_num) {
+			 int stars, int tihm_num, int ipod_use_unicode_hack) {
   if (tihm == NULL)
     return -1;
 
@@ -149,7 +149,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
   tihm->num = tihm_num;
   tihm->stars = stars;
   
-  dohm_add (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH);
+  dohm_add_path (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH, ipod_use_unicode_hack);
 
   return 0;
 }

@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     if (argc < 4) usage();
     printf ("Creating a database... ");
 
-    if ((ret = db_create(&itunesdb, "iPod", 4)) < 0) {
+    if ((ret = db_create(&itunesdb, "iPod", 4, 0x1)) < 0) {
       printf("Could not create database.\n");
       exit(2);
     }
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
   } else {
     if (argc < 3) usage();
     printf ("Loading a database.\n");
-    if ((ret = db_load (&itunesdb, argv[1])) < 0) {
+    if ((ret = db_load (&itunesdb, argv[1], 0x1)) < 0) {
       printf("Could not open database.\n");
       exit(2);
     }

@@ -47,13 +47,6 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
   return -1;
 }
 
-/* 
-   this function was created just because this needs to be used ALOT when
-   preparing to add a song to the iTunesDB.
-
-   it creates a new tree leaf and appends it to the dohm list in the tihm
-   structure
-*/
 dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   dohm_t *dohm;
   int i;
@@ -86,16 +79,34 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   return dohm;
 }
 
-int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type) {
+int dohm_add (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
 
   if (data_len == 0)
     return -1;
 
-  if ((dohm = dohm_create (timh, data_type)) == NULL)
+  if ((dohm = dohm_create (tihm, data_type)) == NULL)
     return -1;
 
   to_unicode (&(dohm->data), &(dohm->size), data, data_len, encoding);
+
+  return 0;
+}
+
+int dohm_add_path (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type,
+		   int ipod_use_unicode_hack) {
+  dohm_t *dohm;
+
+  if (data_len == 0)
+    return -1;
+
+  if (ipod_use_unicode_hack == 0)
+    return dohm_add (tihm, data, data_len, encoding, data_type);
+
+  if ((dohm = dohm_create (tihm, data_type)) == NULL)
+    return -1;
+
+  to_unicode_hack (&(dohm->data), &(dohm->size), data, data_len, encoding);
 
   return 0;
 }

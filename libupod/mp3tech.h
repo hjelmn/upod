@@ -69,19 +69,20 @@ typedef struct {
 } id3tag;
 
 typedef struct {
-	char *filename;
-	FILE *file;
-	off_t datasize;
-	off_t data_start;
-	int header_isvalid;
-	mp3header header;
-	int id3_isvalid;
-	id3tag id3;
-	int vbr;
-	float vbr_average;
-	int seconds;
-	int frames;
-	int badframes;
+  char *filename;
+  FILE *file;
+  off_t datasize;
+  off_t data_start;
+  int header_isvalid;
+  mp3header header;
+  int id3_isvalid;
+  int id3v2_size;
+  id3tag id3;
+  int vbr;
+  float vbr_average;
+  int seconds;
+  int frames;
+  int badframes;
 } mp3info;
 
 

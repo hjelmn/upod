@@ -252,7 +252,8 @@ tihm_t *db_tihm_fill     (tree_node_t *entry);
 int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
 			  tree_node_t **parent, int tihm_num);
 int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
-			     size_t path_len, int stars, int tihm_num);
+			     size_t path_len, int stars, int tihm_num,
+			     int ipod_use_unicode_hack);
 void    tihm_free        (tihm_t *tihm);
 
 /* pihm.c */

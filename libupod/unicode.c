@@ -25,7 +25,9 @@
 #include <stdio.h>
 
 #include <string.h>
+#if !defined(const)
 #define const /* get rid of const (useless in c anyway?) */
+#endif
 #include <iconv.h>
 
 #include "hexdump.c"
@@ -81,6 +83,30 @@ void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
 
   *dst = realloc (*dst, final_size + 1);
   *dst_len = final_size;
+}
+
+void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
+		 size_t src_len, char *src_encoding) {
+  int i, j;
+
+  if (dst == NULL || dst_len == NULL)
+    return;
+
+  if (src_len == 0) {
+    *dst = NULL;
+    return;
+  }
+ 
+  *dst = calloc (1, src_len * 2);
+
+  for (i = 0, j = 0 ; i < src_len ; i++) {
+    if (!(src[i] && 0x8))
+      j++;
+    (*dst)[j++] = src[i];
+  }
+
+  *dst = realloc (*dst, j);
+  *dst_len = j*2;
 }
 
 /* Converts the input from UTF8/ASCII to Unicode */

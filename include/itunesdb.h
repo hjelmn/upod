@@ -75,6 +75,11 @@ enum show_entries {
   SHOW_STARS      = 0x17
 };
 
+enum itunesdb_flags {
+  /* Turn on hack so more unicode names will work on the ipod. This breaks those files in iTunes. */
+  FLAG_UNICODE_HACK = 0x1,
+};
+
 typedef struct _itunesdb {
   struct tree_node {
     struct tree_node *parent;
@@ -88,6 +93,7 @@ typedef struct _itunesdb {
 
   int log_level;
   FILE *log;
+  int flags;
 } itunesdb_t;
 
 typedef struct tree_node tree_node_t;
@@ -164,8 +170,8 @@ int    ipod_copy_to   (ipod_t *ipod, char *topath, char *frompath);
 int    ipod_rename    (ipod_t *ipod, char *name, int name_len);
 
 /* itunesdb2/db.c */
-int    db_create(itunesdb_t *itunesdb, char *db_name, int name_len);
-int    db_load  (itunesdb_t *itunesdb, char *path);
+int    db_create(itunesdb_t *itunesdb, char *db_name, int name_len, int flags);
+int    db_load  (itunesdb_t *itunesdb, char *path, int flags);
 int    db_write (itunesdb_t itunesdb, char *path);
 int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
@@ -222,9 +228,8 @@ GList *db_song_list            (itunesdb_t *itunesdb);
 int    db_playlist_list_songs  (itunesdb_t *itunesdb, int playlist,
 				int **list);
 
-/* functions to help fill a tihm_t structure to add a song */
-/* encoding corresponds to those used in iconv */
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
+int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
 
 /* functions for cleaning up memory */
 void   tihm_free             (tihm_t *tihm);

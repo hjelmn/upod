@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2a-29 db.c
+ *   (c) 2002-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.1.3 db.c
  *
  *   Routines for reading/writing the iPod's iTunesDB.
  *
@@ -224,7 +224,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
    < 0 on error
      0 on success
 **/
-int db_load (itunesdb_t *itunesdb, char *path) {
+int db_load (itunesdb_t *itunesdb, char *path, int flags) {
   int iTunesDB_fd;
   char *buffer;
   int ibuffer[3];
@@ -301,6 +301,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
 
   /* do the work of building the itunesdb structure */
   itunesdb->tree_root = db_build_tree(&bytes_read, NULL, &buffer);
+  itunesdb->flags = flags;
 
   free(tmp);
 
@@ -464,7 +465,7 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   /* Set the new tihm entries number to 1 + the previous one */
   tihm_num = ((int *)(dshm_header->children[dshm_header->num_children - 1]->data))[4] + 1;
 
-  if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len, stars, tihm_num)) < 0) {
+  if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len, stars, tihm_num, itunesdb->flags & 0x1)) < 0) {
     db_log (itunesdb, ret, "Could not fill tihm structure from file.\n");
     return ret;
   }

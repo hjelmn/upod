@@ -14,7 +14,10 @@ int db_sanity_tree (tree_node_t *node) {
   if ( (iptr[0] == PLHM || iptr[0] == TLHM) && 
        iptr[2] != node->parent->num_children - 1)
     return -1;
-  else if (iptr[0] == PYHM && iptr[4] != (node->num_children - 2)/2) {
+  else if (iptr[0] == PYHM && iptr[4] != (node->num_children - 2)/2 &&
+	   iptr[4] != (node->num_children - 7)/2) {
+    /* certain databases have 5(?) more entries. These may be related to the
+     on-the-go playlist feature on newer players. */
     fprintf (stderr, "check: incorrect playlist entry or pyhm child count\n");
     fprintf (stderr, " data involved:\n");
     fprintf (stderr, "  num_children = %i\n", node->num_children - 2);

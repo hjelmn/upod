@@ -30,7 +30,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/mount.h>
 
 #include <fcntl.h>
 
@@ -64,9 +63,9 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
 
   /* try iPod_control/iTunes/iTunesDB */
   sprintf (testpath, "%s/%s", dir, ITUNESDB_PATH);
-  if (db_load (&(ipod->itunesdb), testpath) < 0) {
+  if (db_load (&(ipod->itunesdb), testpath, 0x1) < 0) {
     fprintf(stderr, "iTunesDB not found, creating one\n");
-    db_create (&(ipod->itunesdb), "iPod", 4);
+    db_create (&(ipod->itunesdb), "iPod", 4, 0x1);
   }
 
   /* try iPod/iPodPrefs */

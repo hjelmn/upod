@@ -55,14 +55,14 @@
   MP3Info 0.8.4 was created by Cedric Tefft <cedric@earthling.net> 
   and Ricardo Cerqueira <rmc@rccn.net>
 */
-static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
+static int get_mp3_header_info (FILE *fh, char *file_name, tihm_t *tihm) {
   int scantype=SCAN_QUICK, fullscan_vbr=1;
   mp3info mp3;
 
   memset(&mp3,0,sizeof(mp3info));
   mp3.filename=file_name;
 
-  mp3.file = fd;
+  mp3.file = fh;
 
   get_mp3_info(&mp3, scantype, fullscan_vbr);
   if(!mp3.header_isvalid) {
@@ -83,7 +83,7 @@ static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
   else
     tihm->bitrate   = header_bitrate(&mp3.header); 
 
-  fseek (fd, 0, SEEK_SET);
+  fseek (fh, 0, SEEK_SET);
 
   return 0;
 }
@@ -100,7 +100,7 @@ static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
 int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
   struct stat statinfo;
   int ret;
-  FILE *fd;
+  FILE *fh;
 
   u_int8_t type_string[] = "MPEG audio file";
 
@@ -113,22 +113,22 @@ int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
 
   tihm->size = statinfo.st_size;
 
-  if ((fd = fopen(file_name,"r")) == NULL )
+  if ((fh = fopen(file_name,"r")) == NULL )
     return errno;
 
-  if (get_mp3_header_info(fd, file_name, tihm) < 0) {
-    fclose (fd);
+  if (get_id3_info(fh, file_name, tihm) < 0) {
+    fclose (fh);
 
     return -1;
   }
 
-  if (get_id3_info(fd, file_name, tihm) < 0) {
-    fclose (fd);
+  if (get_mp3_header_info(fh, file_name, tihm) < 0) {
+    fclose (fh);
 
     return -1;
   }
-   
-  fclose (fd);
+
+  fclose (fh);
 
   dohm_add (tihm, type_string, strlen (type_string), "UTF-8", IPOD_TYPE);
 

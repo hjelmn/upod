@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
   if (argc != 5)
     usage();
 
-  if ((ret = db_load (&ipod, argv[1])) < 0) {
+  if ((ret = db_load (&ipod, argv[1], 0x1)) < 0) {
     printf("Could not load database.\n");
     exit(2);
   }

@@ -31,7 +31,6 @@ char *str_type(int dohm_type) {
   case IPOD_COMPOSER:
     return "Composer";
   default:
-    printf ("%i\n", dohm_type);
     return "Unknown";
   }
 }
@@ -54,7 +53,7 @@ int main (int argc, char *argv[]) {
 
   db_set_debug (&itunesdb, 5, stderr);
 
-  if (db_load (&itunesdb, argv[1]) < 0) {
+  if (db_load (&itunesdb, argv[1], 0x0) < 0) {
     close (fd);
     exit(1);
   }
@@ -85,6 +84,7 @@ int main (int argc, char *argv[]) {
     fprintf (stderr, "%04i |\n", tihm->num, buffer);
     
     fprintf (stderr, " encoding: %d\n", tihm->bitrate);
+    fprintf (stderr, " length  : %03.2f\n", (double)tihm->time/60000.0);
     fprintf (stderr, " type    : %d\n", tihm->type);
     fprintf (stderr, " num dohm: %d\n", tihm->num_dohm);
     fprintf (stderr, " samplert: %d\n", tihm->samplerate);
