@@ -21,7 +21,7 @@ static u_int64_t crc64_table[256];
 static int crc32_initialized = 0;
 static int crc64_initialized = 0;
 
-void crc32_init_table(void) {
+static void crc32_init_table(void) {
   u_int32_t i, j, r;
   
   crc32_initialized = 1;
@@ -40,7 +40,7 @@ void crc32_init_table(void) {
   }
 }
 
-void crc64_init_table(void) {
+static void crc64_init_table(void) {
   u_int32_t i, j;
   u_int64_t r;
   
@@ -60,7 +60,7 @@ void crc64_init_table(void) {
   }
 }
 
-u_int32_t crc32 (u_int8_t *buf, size_t length) {
+u_int32_t upod_crc32 (u_int8_t *buf, size_t length) {
   unsigned long crc = 0;
   int i;
   
@@ -74,7 +74,7 @@ u_int32_t crc32 (u_int8_t *buf, size_t length) {
   return crc;
 }
 
-u_int64_t crc64 (u_int8_t *buf, size_t length) {
+u_int64_t upod_crc64 (u_int8_t *buf, size_t length) {
   u_int64_t crc = 0;
   int i;
   

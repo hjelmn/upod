@@ -5,7 +5,7 @@ dnl Every other copy of the package version number gets its value from here
 AM_INIT_AUTOMAKE(upod, 0.1.0)
 
 AH_TOP(
-#undef __MacOSX__
+#undef __darwin__
 #undef HAVE_UINT64
 )
 
@@ -25,6 +25,20 @@ AC_PROG_CC
 
 AC_PROG_LIBTOOL
 AM_PROG_LIBTOOL
+
+PKG_CHECK_MODULES(GLIB, glib-2.0)
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+LIBS="$LIBS $GLIB_LIBS"
+CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
+
+CPPFLAGS="$CPPFLAGS -I/sw/include"
+AC_CHECK_HEADERS([magick/api.h wand/magick_wand.h iconv.h])
+
+LIBS="$LIBS -L/sw/lib"
+AC_CHECK_LIB(Magick, AppendImages)
+AC_CHECK_LIB(Wand, DestroyMagickWand)
+AC_CHECK_LIB(iconv, libiconv_open)
 
 dnl Checks for libraries.
 
@@ -51,7 +65,7 @@ case $host in
   *-darwin*)
     osx_support=yes
     AC_MSG_RESULT(yes)
-    AC_DEFINE(__MacOSX__)
+    AC_DEFINE(__darwin__)
     AC_SUBST(MACOSX)
     ;;
   *)
@@ -61,16 +75,11 @@ case $host in
 esac
 
 AM_CONDITIONAL(MACOSX, test "$osx_support" = "yes")
-AC_CHECK_TYPE(u_int64_t, [
-			 AC_DEFINE_UNQUOTED(HAVE_UINT64)
-			 AC_SUBST (HAVE_UNIT64)
-			 ])
+AC_CHECK_TYPE(u_int64_t)
 AC_OUTPUT(
 Makefile
 libupod/Makefile
 include/Makefile
-include/itunesdb.h
 src/Makefile
-share/Makefile
 upod.lsm
 upod.spec)

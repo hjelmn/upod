@@ -76,8 +76,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   sprintf (testpath, "%s/%s", dir, ITUNESDB);
   if (db_load (&(ipod->itunesdb), testpath, 0x1) < 0) {
     fprintf(stderr, "iTunesDB not found, creating one\n");
-    db_create (&(ipod->itunesdb), "iPod", 0x1);
-    ipod->itunesdb.path = strdup (testpath);
+    db_create (&(ipod->itunesdb), "iPod", testpath, 0x1);
   }
 
   memset (&(ipod->artworkdb), 0, sizeof (ipoddb_t));
@@ -98,8 +97,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
     sprintf (testpath, "%s/%s", dir, ARTWORKDB);
     if (db_load (&(ipod->artworkdb), testpath, 0) < 0) {
       fprintf(stderr, "ArtworkDB not found, creating one\n");
-      db_photo_create (&(ipod->artworkdb));
-      ipod->photodb.path = strdup (testpath);
+      db_photo_create (&(ipod->artworkdb), testpath);
     }
 
     sprintf (testpath, "%s/Photos", dir);
@@ -113,8 +111,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
     sprintf (testpath, "%s/%s", dir, PHOTODB);
     if (db_load (&(ipod->photodb), testpath, 0) < 0) {
       fprintf(stderr, "Photo Database not found, creating one\n");
-      db_photo_create (&(ipod->photodb));
-      ipod->photodb.path = strdup (testpath);
+      db_photo_create (&(ipod->photodb), testpath);
 
       db_album_create (&ipod->photodb, "iPod photos");
     }

@@ -1,6 +1,6 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
-#undef __MacOSX__
+#undef __darwin__
 #undef HAVE_UINT64
 
 
@@ -28,11 +28,26 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the <iconv.h> header file. */
+#undef HAVE_ICONV_H
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `iconv' library (-liconv). */
+#undef HAVE_LIBICONV
+
+/* Define to 1 if you have the `Magick' library (-lMagick). */
+#undef HAVE_LIBMAGICK
+
+/* Define to 1 if you have the `Wand' library (-lWand). */
+#undef HAVE_LIBWAND
+
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
+
+/* Define to 1 if you have the <magick/api.h> header file. */
+#undef HAVE_MAGICK_API_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -81,6 +96,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the <wand/magick_wand.h> header file. */
+#undef HAVE_WAND_MAGICK_WAND_H
 
 /* Define to 1 if `major', `minor', and `makedev' are declared in <mkdev.h>.
    */

@@ -39,7 +39,6 @@
 #include "itunesdb.h"
 
 #define PACKAGE "upod"
-#define VERSION "2.1"
 
 void usage (void);
 void version (void);
@@ -314,6 +313,9 @@ int main (int argc, char *argv[]) {
   int flags = FLAG_UNICODE_HACK;
   int noartwork = 0;
   char c;
+  char *ipod_prefix = NULL;
+  char *itunesdb_path;
+  char *artworkdb_path;
 
   int ret;
 
@@ -324,9 +326,10 @@ int main (int argc, char *argv[]) {
     {"debug",         0, 0, 'd'},
     {"itunes_compat", 0, 0, 't'},
     {"version",       0, 0, 'v'},
+    {"prefix",        1, 0, 'p'},
   };
 
-  while ((c = getopt_long (argc, argv, "?c:dtv", long_options,
+  while ((c = getopt_long (argc, argv, "?c:dtvp:", long_options,
 			   &option_index)) != -1) {
     switch (c) {
     case '?':
@@ -345,6 +348,8 @@ int main (int argc, char *argv[]) {
     case 'n':
       noartwork = 1;
       break;
+    case 'p':
+      ipod_prefix = strdup (optarg);
     case 'v':
       version ();
       break;
@@ -359,43 +364,60 @@ int main (int argc, char *argv[]) {
 
   db_set_debug (&itunesdb, debug_level, stderr);
 
-  if (noartwork == 0)
+  if (ipod_prefix == NULL)
+    ipod_prefix = strdup (".");
+
+  itunesdb_path  = calloc (1, strlen (ITUNESDB) + strlen (ipod_prefix) + 1);
+  sprintf (itunesdb_path, "%s/%s", ipod_prefix, ITUNESDB);
+
+  if (noartwork == 0) {
     db_set_debug (&artworkdb, debug_level, stderr);
 
+    artworkdb_path  = calloc (1, strlen (ARTWORKDB) + strlen (ipod_prefix) + 1);
+    sprintf (artworkdb_path, "%s/%s", ipod_prefix, ARTWORKDB);
+  }
+
+  free (ipod_prefix);
+
   if (create == 0) {
-    if ((ret = db_load (&itunesdb, ITUNESDB, flags)) < 0) {
+    if ((ret = db_load (&itunesdb, itunesdb_path, flags)) < 0) {
       fprintf (stderr, "Could not open iTunesDB: %s\n", ITUNESDB);
 
       exit (1);
     }
 
+    free (itunesdb_path);
+
     if (noartwork == 0) {
-      if ((ret = db_load (&artworkdb, ARTWORKDB, flags)) < 0) {
-	if ((ret = db_photo_create (&artworkdb)) < 0) {
+      if ((ret = db_load (&artworkdb, artworkdb_path, flags)) < 0) {
+	if ((ret = db_photo_create (&artworkdb, artworkdb_path)) < 0) {
 	  fprintf (stderr, "Error creating ArtworkDB\n");
 	  
 	  exit (1);
 	}
       }
+
+      free (artworkdb_path);
     }
   } else {
-    if ((ret = db_create (&itunesdb, ipod_name, flags)) < 0) {
+    if ((ret = db_create (&itunesdb, ipod_name, itunesdb_path, flags)) < 0) {
       fprintf (stderr, "Error creating iTunesDB\n");
       
       exit (1);
     }
 
+    free (itunesdb_path);
+
     if (noartwork == 0) {
-      if ((ret = db_photo_create (&artworkdb)) < 0) {
+      if ((ret = db_photo_create (&artworkdb, artworkdb_path)) < 0) {
 	fprintf (stderr, "Error creating ArtworkDB\n");
 	
 	exit (1);
       }
+
+      free (artworkdb_path);
     }
   }
-
-  itunesdb.path  = strdup(ITUNESDB);
-  artworkdb.path = strdup(ARTWORKDB);
 
   cleanup_database (&itunesdb);
 
@@ -414,7 +436,7 @@ int main (int argc, char *argv[]) {
 
   db_free (&itunesdb);
   db_free (&artworkdb);
-
+  
   return 0;
 }
 
@@ -424,13 +446,14 @@ void usage (void) {
   printf ("Update the database in iPod_Control/iTunes/iTunesDB\n");
   printf ("with music from the Music folder.\n\n");
 
-  printf ("  -n, --noartwork      supress modifying the ArtworkDB\n");
-  printf ("  -c, --create=<name>  create new database\n");
-  printf ("  -d, --debug          increase debuging verbosity\n");
-  printf ("  -t, --itunes_compat  turn on itunes compatability for files\n"
-	  "                       with non-ASCII characters in their name\n");
-  printf ("  -?, --help           print this screen\n");
-  printf ("  -v, --version        print version\n");
+  printf ("  -p, --prefix=<prefix> set the iPod's prefix\n");
+  printf ("  -n, --noartwork       supress modifying the ArtworkDB\n");
+  printf ("  -c, --create=<name>   create new database\n");
+  printf ("  -d, --debug           increase debuging verbosity\n");
+  printf ("  -t, --itunes_compat   turn on itunes compatability for files\n"
+	  "                        with non-ASCII characters in their name\n");
+  printf ("  -?, --help            print this screen\n");
+  printf ("  -v, --version         print version\n");
 
   exit (0);
 }

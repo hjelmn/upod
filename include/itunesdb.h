@@ -210,8 +210,8 @@ int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
 
 /* itunesdb2/create.c */
-int    db_create (ipoddb_t *ipoddb, u_int8_t *db_name, int flags);
-int    db_photo_create (ipoddb_t *photodb);
+int    db_create (ipoddb_t *ipoddb, u_int8_t *db_name, u_int8_t *path, int flags);
+int    db_photo_create (ipoddb_t *photodb, u_int8_t *path);
 
 /* itunesdb2/song_list.c */
 int  db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);

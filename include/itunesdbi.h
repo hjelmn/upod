@@ -571,8 +571,8 @@ int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id)
 
 
 /* crc */
-u_int32_t crc32 (u_int8_t *buf, size_t length);
-u_int64_t crc64 (u_int8_t *buf, size_t length);
+u_int32_t upod_crc32 (u_int8_t *buf, size_t length);
+u_int64_t upod_crc64 (u_int8_t *buf, size_t length);
 
 /* sysinfo.c */
 int sysinfo_read (ipod_t *ipod, char *filename);

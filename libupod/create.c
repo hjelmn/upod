@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 create.c
+ *   v0.2.1 create.c
  *
  *   Contains db_create and various node creation routines (that dont have another home).
  *
@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 
 #include "itunesdbi.h"
@@ -104,7 +105,7 @@ static int db_plhm_create (tree_node_t **entry) {
    < 0 on error
      0 on success
 **/
-int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, int flags) {
+int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, u_int8_t *path, int flags) {
   tree_node_t *root, *entry, *entry2;
   int ret;
 
@@ -132,6 +133,7 @@ int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, int flags) {
   itunesdb->tree_root = root;
   itunesdb->flags = flags;
   itunesdb->type  = 0;
+  itunesdb->path  = strdup (path);
 
   ret = db_playlist_create (itunesdb, db_name);
 
@@ -140,7 +142,7 @@ int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, int flags) {
   return ret;
 }
 
-int db_photo_create (ipoddb_t *photodb) {
+int db_photo_create (ipoddb_t *photodb, u_int8_t *path) {
   tree_node_t *root, *entry, *entry2;
 
   if (photodb == NULL)
@@ -173,6 +175,7 @@ int db_photo_create (ipoddb_t *photodb) {
 
   photodb->tree_root = root;
   photodb->type = 1;
+  photodb->path = strdup (path);
 
   db_album_create (photodb, "Artwork");
 

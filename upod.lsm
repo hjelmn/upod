@@ -1,9 +1,9 @@
 Begin3
 Title:		upod
 Version:	0.1.0
-Entered-date:	2003-05-30
+Entered-date:	2005-02-28
 Description:	upod is an API for modifying the iTunesDB and the contents of an iPod.
-		Generated automatically from upod.lsm.in by configure.
+		upod.lsm.  Generated from upod.lsm.in by configure.
 		Please edit upod.lsm.in to fix the Keywords and
 		Primary-site entries, add several more lines of
 		description here if appropriate, and to delete these

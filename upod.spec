@@ -40,7 +40,7 @@ Summary: upod is an API for modifying the iTunesDB and the contents of an iPod.
 
 %description
 upod is an API for modifying the iTunesDB and the contents of an iPod.
-Generated automatically from upod.spec.in by configure.
+upod.spec.  Generated from upod.spec.in by configure.
 Please edit upod.spec.in to add several more lines of description
 here if appropriate, and to delete these instructions.
 

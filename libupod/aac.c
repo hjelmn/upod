@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.5.1 aac.c
+ *   v0.5.2 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
  *
@@ -23,9 +23,6 @@
 #include "config.h"
 #endif
 
-#include "itunesdbi.h"
-#include "genre.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -37,6 +34,10 @@
 
 #include <math.h>
 #include <string.h>
+
+#include "itunesdbi.h"
+
+#include "genre.h"
 
 void mp3_debug (char *, ...);
 
@@ -103,7 +104,7 @@ int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
   fseek (fd, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
   fread (image_data, 1, meta.offset - sizeof (struct qt_meta), fd);
 
-  cksum = crc64 (image_data, meta.offset - sizeof (struct qt_meta));
+  cksum = upod_crc64 (image_data, meta.offset - sizeof (struct qt_meta));
 
   tihm->has_artwork = 1;
 

@@ -220,7 +220,7 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
   image_data = (unsigned char *)calloc (1, length);
   fread (image_data, 1, length, fh);
 
-  cksum = crc64 (image_data, length);
+  cksum = upod_crc64 (image_data, length);
 
   tihm->has_artwork = 1;
   
