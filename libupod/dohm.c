@@ -105,7 +105,6 @@ int db_dohm_create_generic (tree_node_t *entry, size_t size, int type) {
   
   entry->size         = size;
   entry->data         = calloc (size, sizeof(char));
-  memset (entry->data, 0, size);
   entry->num_children = 0;
   entry->children     = NULL;
 

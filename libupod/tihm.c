@@ -108,7 +108,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   /* there may be other values wich should be set but i dont know
      which */
 }
-
+void acall(){}
 int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_len, int stars) {
   tree_node_t *dohm;
   dohm_t *dohm_data;
@@ -117,10 +117,16 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_le
   int i;
 
   memset (entry, 0, sizeof (tree_node_t));
-  mp3_fill_tihm (path, &tihm);
+  if (mp3_fill_tihm (path, &tihm) < 0) {
+    fprintf (stderr, "Invalid MP3 file: %s\n", path);
+    return -1;
+  }
 
   tihm.num = tihm_num;
   tihm.stars = stars;
+
+  if (tihm_num == 712)
+    acall();
 
   dohm_data = dohm_create (&tihm);
   dohm_data->type = IPOD_PATH;

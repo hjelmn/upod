@@ -103,6 +103,8 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len) {
   root = itunesdb->tree_root;
   if (root != NULL) db_free (itunesdb);
 
+  memset (itunesdb, 0, sizeof (itunesdb_t));
+
   root = itunesdb->tree_root = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_dbhm_create (root);
 

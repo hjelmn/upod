@@ -10,8 +10,9 @@
 #include <dirent.h>
 
 void usage(void) {
-  printf("Usage:\n");
-  printf(" db_dir <database> <dir>\n");
+  printf ("Usage:\n");
+  printf (" db_dir <database> <dir>\n");
+  printf (" db_dir -create <dir> <database>\n");
 
   exit(1);
 }
@@ -60,7 +61,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
       dir_add (ipod, path_temp);
     else if (S_ISREG (statinfo.st_mode) && entry->d_name[0] != '.') {
       added++;
-      fprintf (stderr, "Adding %s.\n", path_temp);
+      //      fprintf (stderr, "Adding %s.\n", path_temp);
       db_add (ipod, path_temp, tmp = path_unix_mac_root(path_temp), strlen(tmp), rand()%6);
     }
   }
@@ -72,16 +73,16 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 
 int main(int argc, char *argv[]) {
   itunesdb_t itunesdb;
-  int c = 0;
+  int c = 0, i;
   int ret;
 
-  if (argc != 3 && argc != 4)
+  if (argc < 3)
     usage();
 
   memset (&itunesdb, 0, sizeof (itunesdb_t));
 
   if (strcmp (argv[1], "-create") == 0) {
-    if (argc != 4) usage();
+    if (argc < 4) usage();
     printf ("Creating a database... ");
     if ((ret = db_create(&itunesdb, "iPod", 4)) < 0) {
       printf("Could not create database.\n");
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
     printf ("done.\n");
     c = 1;
   } else {
-    if (argc != 3) usage();
+    if (argc < 3) usage();
     printf ("Loading a database.\n");
     if ((ret = db_load (&itunesdb, argv[1])) < 0) {
       printf("Could not open database.\n");
@@ -100,7 +101,8 @@ int main(int argc, char *argv[]) {
     printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
   }
 
-  dir_add (&itunesdb, argv[2]);
+  for (i = 2 ; i < (argc - 1) ; i++)
+    dir_add (&itunesdb, argv[2]);
 
   if ((ret = db_sanity_check (itunesdb)) < 0) {
     printf ("There is an error in the tree: %i\n", ret);
@@ -120,7 +122,7 @@ int main(int argc, char *argv[]) {
 
 
   db_free(&itunesdb);
-  printf("%i B written to iTunesDB %s.\n", ret, argv[2]);
-
+  printf("%i B written to iTunesDB %s.\n", ret, argv[(c?(argc-1):2)]);
+    
   return 0;
 }

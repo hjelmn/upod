@@ -129,8 +129,6 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
     exit(1);
   }
 
-  memset (tnode_0, 0, sizeof(tree_node_t));
-
   tnode_0->parent = parent;
 
   bswap_block(*buffer, sizeof(u_int32_t), 3);
@@ -147,7 +145,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
 
     copy_size = entry_size;
   } else {
-    bswap_block(&(*buffer)[0xc], sizeof(u_int32_t), cell_size/4 - 3);
+    bswap_block(&(*buffer)[0xc], sizeof(u_int32_t), cell_size/4 - 3); /* three ints are already swapped */
     
     copy_size = cell_size;
   }
@@ -178,8 +176,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
   }
 
   while (*bytes_read - current_bytes_read < entry_size) {
-    tnode_0->children = realloc(tnode_0->children, 
-				++(tnode_0->num_children) *
+    tnode_0->children = realloc(tnode_0->children, ++(tnode_0->num_children) *
 				sizeof(tree_node_t *));
     
     if (tnode_0->children == NULL) {
@@ -187,9 +184,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
       exit(1);
     }
 
-    tnode_0->children[tnode_0->num_children-1] = db_build_tree(bytes_read,
-							       tnode_0,
-							       buffer);
+    tnode_0->children[tnode_0->num_children-1] = db_build_tree(bytes_read, tnode_0, buffer);
   }
 
  dbbt_done:
@@ -224,15 +219,16 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   if (path == NULL || strlen(path) == 0) return -1;
 
   if ((iTunesDB_fd = open (path, O_RDONLY)) < 0) {
-    UPOD_DEBUG (errno, "Could not open iTunesDB %s\n", path);
+    perror ("db_load|open");
     return -1;
   }
 
+  /* read in the size of the database */
   read (iTunesDB_fd, ibuffer, 12);
-
   bswap_block((char *)ibuffer, 4, 3);
 
   if (ibuffer[0] != DBHM) {
+    db_log (itunesdb, errno, "%s does not look like an iTunesDB. exiting.\n", path);
     close (iTunesDB_fd);
 
     return -1;
@@ -244,6 +240,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   /* keep track of where buffer starts */
   tmp = (int *)buffer;
 
+  /* read in the rest of the database */
   if ((ret = read (iTunesDB_fd, buffer + 12, ibuffer[2] - 12)) <
       (ibuffer[2] - 12)) {
     UPOD_ERROR(errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2],
@@ -259,6 +256,9 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   
   close (iTunesDB_fd);
 
+  memset (itunesdb, 0, sizeof (itunesdb_t));
+
+  /* do the work of building the itunesdb structure */
   itunesdb->tree_root = db_build_tree(&bytes_read, NULL, &buffer);
 
   free(tmp);
@@ -375,7 +375,7 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
   entry_num = db_tihm_retrieve (itunesdb, &entry, &parent, tihm_num);
 
   if (entry_num < 0) {
-    UPOD_DEBUG(0, "db_remove %i: no song found\n", tihm_num);
+    db_log (itunesdb, 0, "db_remove %i: no song found\n", tihm_num);
 
     return entry_num;
   }
@@ -421,7 +421,12 @@ int db_add (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, 
   new_tihm_header = (tree_node_t *)calloc(1, sizeof(tree_node_t));
   new_tihm_header->parent = dshm_header;
   
-  tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars);
+  if ((tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars)) < 0) {
+    db_log (itunesdb, tihm_num, "Could not create tihm entry\n");
+    free (new_tihm_header);
+    return -1;
+  }
+  
   db_attach (dshm_header, new_tihm_header);
 
   db_unhide(itunesdb, tihm_num);
@@ -452,7 +457,7 @@ int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
   struct db_tihm *tihm_data;
 
   if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0) {
-    UPOD_DEBUG(-2, "db_song_modify_eq %i: no song found\n", tihm_num);
+    db_log (itunesdb, -2, "db_song_modify_eq %i: no song found\n", tihm_num);
 
     return -2;
   }
@@ -465,8 +470,6 @@ int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
       perror ("db_song_modify_eq|calloc");
       return -1;
     }
-
-    memset (dohm_header, 0, sizeof(tree_node_t));
 
     db_attach (tihm_header, dohm_header);
 

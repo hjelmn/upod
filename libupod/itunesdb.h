@@ -21,6 +21,7 @@
 #define _ITUNESDB_H
 
 #include <sys/types.h>
+#include <stdio.h>
 
 #if defined(HAVE_GLIB)
 #include <glib.h>
@@ -69,7 +70,7 @@ enum show_entries {
   SHOW_STARS      = 0x17
 };
 
-struct tree {
+struct _itunesdb {
   struct tree_node {
     struct tree_node *parent;
 
@@ -81,9 +82,12 @@ struct tree {
   };
 
   struct tree_node *tree_root;
+
+  int log_level;
+  FILE *log;
 };
 
-typedef struct tree itunesdb_t;
+typedef struct _itunesdb itunesdb_t;
 typedef struct tree_node tree_node_t;
 
 typedef struct _ipod {
@@ -156,6 +160,8 @@ int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
 int    db_add   (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, int stars);
 int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
+
+int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
 
 /* make sure all the values contained in the tihm are correct, there is currently no
    checks so you could screw up a working song entry */

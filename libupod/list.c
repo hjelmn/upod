@@ -58,13 +58,13 @@ int main (int argc, char *argv[]) {
   ret = db_sanity_check(itunesdb);
 
   if (ret <= -20) {
-    printf ("There is somthing wrong with the loaded database!\n");
+    printf ("There is somthing (possibly serious!) wrong with the loaded database! :: %i\n", ret);
     db_free (&itunesdb);
     exit(1);
   } else if (ret < 0) {
     printf ("The database has small problems, continuing anyway. :: %i\n", ret);
   } else
-    printf ("The database check out.\n");
+    printf ("The database checks out.\n");
 
   /* get song lists */
   songs = db_song_list (&itunesdb);

@@ -35,6 +35,8 @@
 #define UPOD_DEBUG(x, format, args...)
 #endif
 
+void db_log (itunesdb_t *itunesdb, int error, char *format, ...);
+
 #if defined (DEBUG_MEMORY)
 #define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
 #endif
