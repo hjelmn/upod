@@ -53,7 +53,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
   if (tmp[0] == '.' || stat (dir, &statinfo) < 0) {
     /* no such file or dot file */
     added = 0;
-  } else if (S_ISREG (statinfo.st_mode)) {
+  } else if (S_ISREG (statinfo.st_mode) || S_ISLNK(statinfo.st_mode)) {
     /* regular files get inserted into the database */
     path_unix_mac_root (dir, path_temp);
     ret = db_add (ipod, dir, path_temp, strlen(path_temp), 0, 1);
