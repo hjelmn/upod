@@ -122,10 +122,10 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
 
   struct db_dohm *dohm_data;
 
-  tnode_0 = malloc (sizeof(tree_node_t));
+  tnode_0 = calloc (1, sizeof(tree_node_t));
 
   if (tnode_0 == NULL) {
-    perror("db_build_tree|malloc");
+    perror("db_build_tree|calloc");
     exit(1);
   }
 
@@ -154,7 +154,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
   
   tnode_0->num_children = 0;
   tnode_0->size = copy_size;
-  tnode_0->data = malloc (copy_size);
+  tnode_0->data = calloc (copy_size, 1);
   memcpy (tnode_0->data, *buffer, copy_size);
   
   *buffer     += copy_size;
@@ -170,10 +170,10 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
       iptr[0] == PLHM )
     goto dbbt_done;
 
-  tnode_0->children = malloc(sizeof(tree_node_t *));
+  tnode_0->children = calloc(1, sizeof(tree_node_t *));
   
   if (tnode_0->children == NULL) {
-    perror("db_build_tree|malloc");
+    perror("db_build_tree|calloc");
     exit(1);
   }
 
@@ -238,7 +238,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
     return -1;
   }
   
-  buffer = (char *)malloc(ibuffer[2]);
+  buffer = (char *)calloc(ibuffer[2], 1);
   if (buffer == NULL) UPOD_ERROR(errno, "Could not allocate memory\n");
 
   /* keep track of where buffer starts */
@@ -418,7 +418,7 @@ int db_add (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, 
     return -1;
 
   /* allocate memory for the new tree node */
-  new_tihm_header = (tree_node_t *)malloc(sizeof(tree_node_t));
+  new_tihm_header = (tree_node_t *)calloc(1, sizeof(tree_node_t));
   new_tihm_header->parent = dshm_header;
   
   tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars);
@@ -459,10 +459,10 @@ int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
 
   /* see if an equilizer entry already exists */
   if (db_dohm_retrieve (tihm_header, &dohm_header, 0x7) < 0) {
-    dohm_header = malloc (sizeof(tree_node_t));
+    dohm_header = calloc (1, sizeof(tree_node_t));
 
     if (dohm_header == NULL) {
-      perror ("db_song_modify_eq|malloc");
+      perror ("db_song_modify_eq|calloc");
       return -1;
     }
 
@@ -522,7 +522,7 @@ GList *db_song_list (itunesdb_t *itunesdb) {
     if (iptr[0] != TIHM)
       continue;
 
-    *ptr  = (GList *) malloc (sizeof(GList));
+    *ptr  = (GList *) calloc (1, sizeof(GList));
 
     (*ptr)->data = (void *) db_tihm_fill (tihm_header);
     (*ptr)->next = NULL;
@@ -565,7 +565,7 @@ int db_attach (tree_node_t *parent, tree_node_t *new_child) {
 
   /* allocate memory for the new child pointer */
   if (parent->num_children++ == 0)
-    parent->children = malloc (sizeof (tree_node_t *));
+    parent->children = calloc (1, sizeof(tree_node_t *));
   else
     parent->children = realloc (parent->children, parent->num_children * 
 				sizeof (tree_node_t *));

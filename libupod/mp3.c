@@ -89,7 +89,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
 
 	*tag_datalen = id3v2len;
 
-	*tag_data = malloc(id3v2len);
+	*tag_data = calloc(id3v2len, sizeof(char));
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, *tag_data, id3v2len);
@@ -117,7 +117,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
     /* version 1 */
     if (head == 0x54414700) {
 	*tag_datalen = 128;
-	*tag_data = malloc(128);
+	*tag_data = calloc(128, sizeof(char));
 
 	read(fd, *tag_data, 128);
 	lseek(fd, 0, SEEK_SET);
@@ -300,7 +300,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     dohm_add (tihm, tmp, strlen(tmp), IPOD_TITLE);
   }
   
-  if (tag_data)
+  if (0) //tag_data)
     free(tag_data);
 
   close(fd);

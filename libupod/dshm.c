@@ -59,8 +59,7 @@ int db_dshm_create (tree_node_t *entry, int type) {
   memset (entry, 0, sizeof (tree_node_t));
   
   entry->size = DSHM_HEADER_SIZE;
-  entry->data = malloc (entry->size);
-  memset (entry->data, 0, entry->size);
+  entry->data = calloc (entry->size, 1);
   dshm_data = (struct db_dshm *) entry->data;
 
   dshm_data->dshm = DSHM;

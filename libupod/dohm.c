@@ -61,7 +61,7 @@ dohm_t *dohm_create (tihm_t *tihm) {
     return NULL;
 
   if (tihm->num_dohm++ == 0)
-    tihm->dohms = (dohm_t *)malloc(sizeof(dohm_t));
+    tihm->dohms = (dohm_t *) calloc(1, sizeof(dohm_t));
   else
     tihm->dohms = realloc(tihm->dohms, tihm->num_dohm * sizeof(dohm_t));
   
@@ -104,7 +104,7 @@ int db_dohm_create_generic (tree_node_t *entry, size_t size, int type) {
   struct db_dohm *dohm_data;
   
   entry->size         = size;
-  entry->data         = malloc(size);
+  entry->data         = calloc (size, sizeof(char));
   memset (entry->data, 0, size);
   entry->num_children = 0;
   entry->children     = NULL;
@@ -171,8 +171,7 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
   tree_node_t **dohm_list;
   int i;
 
-  dohms = (dohm_t *) malloc (entry->num_children * sizeof(dohm_t));
-  memset(dohms, 0, entry->num_children * sizeof(dohm_t));
+  dohms = (dohm_t *) calloc (entry->num_children, sizeof(dohm_t));
 
   dohm_list = entry->children;
 
@@ -181,7 +180,7 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
 
     dohms[i].type = dohm_data->type;
     dohms[i].size = dohm_data->len;
-    dohms[i].data = (u_int16_t *) malloc (dohms[i].size);
+    dohms[i].data = (u_int16_t *) calloc (dohms[i].size, sizeof(char));
     memcpy(dohms[i].data, &(dohm_list[i]->data[40]), dohms[i].size);
   }
 
@@ -223,9 +222,8 @@ int db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm) {
   if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0)
     return -1;
 
-  if ((entry_num = db_dohm_retrieve (tihm_header, &dohm_header, dohm->type)) <
-      0) {
-    dohm_header = (tree_node_t *) malloc (sizeof (tree_node_t));
+  if ((entry_num = db_dohm_retrieve (tihm_header, &dohm_header, dohm->type)) < 0) {
+    dohm_header = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   } else {
     /* the tree is never deep, so this ends up costing theta(1) extra */
     db_detach (tihm_header, entry_num, &dohm_header);

@@ -34,7 +34,7 @@ static int db_dbhm_create (tree_node_t *entry) {
   memset (entry, 0, sizeof (tree_node_t));
   
   entry->size = DBHM_HEADER_SIZE;
-  entry->data = malloc (entry->size);
+  entry->data = calloc (entry->size, sizeof(char));
   memset (entry->data, 0, entry->size);
   dbhm_data = (struct db_dbhm *) entry->data;
 
@@ -56,7 +56,7 @@ static int db_tlhm_create (tree_node_t *entry) {
   memset (entry, 0, sizeof (tree_node_t));
   
   entry->size = TLHM_HEADER_SIZE;
-  entry->data = malloc (entry->size);
+  entry->data = calloc (entry->size, sizeof(char));
   memset (entry->data, 0, entry->size);
   tlhm_data = (struct db_tlhm *) entry->data;
 
@@ -72,7 +72,7 @@ static int db_plhm_create (tree_node_t *entry) {
   memset (entry, 0, sizeof (tree_node_t));
   
   entry->size = PLHM_HEADER_SIZE;
-  entry->data = malloc (entry->size);
+  entry->data = calloc (entry->size, sizeof(char));
   memset (entry->data, 0, entry->size);
   plhm_data = (struct db_plhm *) entry->data;
 
@@ -103,24 +103,24 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len) {
   root = itunesdb->tree_root;
   if (root != NULL) db_free (itunesdb);
 
-  root = itunesdb->tree_root = (tree_node_t *) malloc (sizeof (tree_node_t));
+  root = itunesdb->tree_root = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_dbhm_create (root);
 
   /* create song list */
-  entry = (tree_node_t *) malloc (sizeof (tree_node_t));
+  entry = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_dshm_create (entry, 1); /* type 1 is song list */
   db_attach (root, entry);
 
-  entry2 = (tree_node_t *) malloc (sizeof (tree_node_t));
+  entry2 = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_tlhm_create (entry2);
   db_attach (entry, entry2);
 
   /* create master playlist */
-  entry = (tree_node_t *) malloc (sizeof (tree_node_t));
+  entry = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_dshm_create (entry, 2); /* type 2 is playlist list */
   db_attach (root, entry);
 
-  entry2 = (tree_node_t *) malloc (sizeof (tree_node_t));
+  entry2 = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_plhm_create (entry2);
   db_attach (entry, entry2);
 

@@ -129,10 +129,10 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_le
   tihm_db_fill (entry, &tihm);
 
   for (i = 0 ; i < tihm.num_dohm ; i++) {
-    dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
+    dohm = (tree_node_t *) calloc (1, sizeof(tree_node_t));
 
     if (dohm == NULL) {
-      perror ("db_create_tihm|malloc");
+      perror ("db_create_tihm|calloc");
       return -1;
     }
 
@@ -150,8 +150,7 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
   struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
   tihm_t *tihm;
 
-  tihm = (tihm_t *) malloc (sizeof(tihm_t));
-  memset (tihm, 0, sizeof(tihm_t));
+  tihm = (tihm_t *) calloc (1, sizeof(tihm_t));
   
   tihm->num_dohm  = dbtihm->num_dohm;
   tihm->num       = dbtihm->identifier;
@@ -207,6 +206,4 @@ void tihm_free (tihm_t *tihm) {
   if (tihm == NULL) return;
 
   dohm_free (tihm->dohms, tihm->num_dohm);
-
-  free(tihm);
 }

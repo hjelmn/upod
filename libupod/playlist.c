@@ -199,7 +199,7 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
   pyhm_header = dshm_header->children[playlist + 1];
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
-  *list = malloc (sizeof (int) * pyhm_data->num_pihm);
+  *list = calloc (pyhm_data->num_pihm, sizeof (int));
 
   for (i = 0 ; i < (pyhm_header->num_children - 2)/2 ; i++) {
     pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
@@ -248,7 +248,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   new_pyhm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_pyhm == NULL) {
-    perror ("db_create_new_playlist|malloc");
+    perror ("db_create_new_playlist|calloc");
     return errno;
   }
 
@@ -265,7 +265,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   /* I dont know what this dohm entry does */
   new_dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_dohm == NULL) {
-    perror ("db_create_new_playlist|malloc");
+    perror ("db_create_new_playlist|calloc");
     return errno;
   }
   if (db_dohm_create_generic (new_dohm, 0x288, 0x000) < 0)
@@ -293,9 +293,9 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   db_attach (new_pyhm, new_dohm);
 
   /* create the title entry for the new playlist */
-  new_dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
+  new_dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_dohm == NULL) {
-    perror ("db_create_new_playlist|malloc");
+    perror ("db_create_new_playlist|calloc");
     return errno;
   }
   if (db_dohm_create_generic (new_dohm, 0x28 + unicode_len, 0) < 0)
@@ -450,15 +450,15 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
   /* allocate memory */
-  pihm = (tree_node_t *) malloc (sizeof (tree_node_t));
+  pihm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (pihm == NULL) {
-    perror ("db_add_to_playlist|malloc");
+    perror ("db_add_to_playlist|calloc");
     return -1;
   }
 
-  dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
+  dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (dohm == NULL) {
-    perror ("db_add_to_playlist|malloc");
+    perror ("db_add_to_playlist|calloc");
     return -1;
   }
 
@@ -758,7 +758,7 @@ int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **lis
   wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
   num_shown = wierd_dohm_data->shows[0].unk10[0];
 
-  *list = calloc (sizeof (int), num_shown);
+  *list = calloc (num_shown, sizeof(int));
 
   for (j = 0 ; j < num_shown ; j++)
     (*list)[j] = wierd_dohm_data->shows[j].show;
