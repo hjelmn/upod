@@ -413,7 +413,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       tihm->track = tag_data[126];
     
     if ((signed char)tag_data[127] != -1)
-      dohm_add (tihm, genre_table[tag_data[127]], strlen(genre_table[tag_data[127]]) - 1, "ISO-8859-1", IPOD_GENRE);
+      dohm_add (tihm, genre_table[tag_data[127]], strlen(genre_table[tag_data[127]]), "ISO-8859-1", IPOD_GENRE);
   }
 }
 
