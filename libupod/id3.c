@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.0u id3.c 
+ *   v1.1 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <unistd.h>
+#include <libgen.h>
+
 #include <string.h>
 #include <errno.h>
 
@@ -45,26 +48,26 @@
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>
 #endif
-
-#include "hexdump.c"
-
-#define ID3_TITLE             0
-#define ID3_TALT              1
-#define ID3_ARTIST            2
-#define ID3_ALBUM             3
-#define ID3_TRACK             4
-#define ID3_YEAR              5
-#define ID3_GENRE             6
-#define ID3_ENCODER           7
-#define ID3_COMMENT           8
-#define ID3_BPM               11
-#define ID3_YEARNEW           12
-#define ID3_DISKNUM           13
+                       /* v2     v3 */
+char *ID3_TITLE[2]   = {"TT1", "TIT1"};
+char *ID3_TALT[2]    = {"TT2", "TIT2"};
+char *ID3_ARTIST[2]  = {"TP1", "TPE1"};
+char *ID3_ALBUM[2]   = {"TAL", "TALB"};
+char *ID3_TRACK[2]   = {"TRK", "TRCK"};
+char *ID3_YEAR[2]    = {"TYE", "TYER"};
+char *ID3_GENRE[2]   = {"TCO", "TCON"};
+char *ID3_ENCODER[2] = {"TEN", "TENC"}; 
+char *ID3_COMMENT[2] = {"COM", "COMM"};
+char *ID3_BPM[2]     = {"TBP", "TBPM"};
+char *ID3_YEARNEW[2] = {"TYE", "TDRC"};
+char *ID3_DISC[2]    = {"TPA", "TPOS"};
 
 static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version);
-static void parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
-		       int id3v2_majorversion, int field, tihm_t *tihm);
+static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
+                                int id3v2_majorversion, tihm_t *tihm);
+
+u_int32_t big32_2_arch32 (u_int32_t); /* defined in aac.c */
 
 static int synchsafe_to_int (char *buf, int nbytes) {
   int id3v2_len = 0;
@@ -162,69 +165,59 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
     return 0;
 }
 
+char *id3v1_string (signed char *unclean) {
+  int i;
+  static char buffer[31];
+
+  memset (buffer, 0, 31);
+
+  for (i = 0 ; i < 30 && unclean[i] != -1 ; i++)
+    buffer[i] = unclean[i];
+
+  for (i = strlen (buffer) - 1 ; i >= 0 && buffer[i] == ' ' ; i--)
+    buffer[i] = '\0';
+
+  return buffer;
+}
+
 /*
   parse_id3
 */
 static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
 				int id3v2_majorversion, tihm_t *tihm) {
-  int data_type;
   int i, j;
-  int field;
   char *slash;
 
   if (version == 2) {
-    /* field tags associated with id3v2 with major version <= 2 */
-    char *fields[]     = {"TT1", "TT2", "TP1", "TAL", "TRK", "TYE", "TCO",
-			  "TEN", "COM", "TLE", "TKE", NULL};
-    /* field tags associated with id3v2 with major version > 2 */
-    char *fourfields[] = {"TIT1", "TIT2", "TPE1", "TALB", "TRCK", "TYER", "TCON",
-			  "TENC", "COMM", "TLEN", "TIME", "TBPM", "TDRC", "TPOS",
-			  NULL};
-    
     char *tag_temp;
-    char *sizeloc;
     char genre_temp[4];
     char encoding[11];
+    char identifier[5];
+    int newv = (id3v2_majorversion > 2) ? 1 : 0;
+
+    memset (identifier, 0, 5);
 
     for (i = 0 ; i < tag_datalen ; ) {
       int length = 0;
-      int tag_found = 0;
-      u_int8_t *tmp;
 
       fread (tag_data, 1, (id3v2_majorversion > 2) ? 10 : 6, fh);
       
       if (tag_data[0] == 0)
 	return;
-      
+
+      memcpy (identifier, tag_data, newv ? 4 : 3);
+
       if (id3v2_majorversion > 2) {
-	/* I can't find in the id3v2.3 spec where this is legal?
-	   iTunes seems to think it is */
-	if (strncmp (tag_data, "APIC", 4) == 0 || id3v2_majorversion == 4 ||
-	    strncmp (tag_data, "PRIV", 4) == 0)
-	  length = *((int *)&tag_data[4]);
+	/* id3v2.3 does not use synchsafe integers in frame headers (BAD IDEA) */
+	if (id3v2_majorversion == 3 || strcmp (identifier, "APIC") == 0 ||
+	    strcmp (identifier, "COMM") == 0)
+	  length = big32_2_arch32 (((int *)tag_data)[1]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
 
-
-	for (field = 0 ; fourfields[field] != NULL ; field++)
-	  if (strncmp(tag_data, fourfields[field], 4) == 0) {
-	    tag_found = 1;
-	    break;
-	  }
-
 	i += 10 + length;
       } else {
-	if (strncmp (tag_data, "PIC", 3) == 0)
-	  length = (tag_data[3] << 16) | (tag_data[4] << 8) | tag_data[5];
-	else
-	  length = synchsafe_to_int (&tag_data[3], 3);
-
-	for (field = 0 ; fields[field] != NULL ; field++)
-	  if (strncmp(tag_data, fields[field], 3) == 0) {
-	    tag_found = 1;
-
-	    break;
-	  }
+	length = (tag_data[3] << 16) | (tag_data[4] << 8) | tag_data[5];
 
 	i += 6 + length;
       }
@@ -235,30 +228,23 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       } else if (length == 0)
 	continue;
 
-      if (tag_found == 0 || length < 2) {
+      if (length < 2) {
 	fseek (fh, length, SEEK_CUR);
 
 	continue;
       }
 
+      if (length > 128) {
+	fseek (fh, length - 128, SEEK_CUR);
+	length = 128;
+      }
+
       memset (tag_data, 0, 128);
       fread (tag_data, 1, (length < 128) ? length : 128, fh);
 
-      if (length > 128)
-	fseek (fh, length - 128, SEEK_CUR);
-
       tag_temp = tag_data;
 
-      /* Scan past the language field in id3v2 */
-      if (field == ID3_COMMENT) {
-	tag_temp += 4;
-	length -= 4;
-
-	if (id3v2_majorversion > 2) {
-	  tag_temp++; length--;
-	}
-      }
-
+      /* Get the tag encoding */
       switch (*tag_temp) {
       case 0x00:
 	sprintf (encoding, "ISO-8859-1");
@@ -287,21 +273,16 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       if (length <= 0)
 	continue;
 
-      switch (field) {
-      case ID3_TITLE:
-      case ID3_TALT:
+      if (strcmp (identifier, ID3_TITLE[newv]) == 0 ||
+	  strcmp (identifier, ID3_TALT[newv]) == 0) 
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_TITLE);
-	break;
-      case ID3_ARTIST:
+      else if (strcmp (identifier, ID3_ARTIST[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_ARTIST);
-	break;
-      case ID3_ALBUM:
+      else if (strcmp (identifier, ID3_ALBUM[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_ALBUM);
-	break;
-      case ID3_COMMENT:
+      else if (strcmp (identifier, ID3_COMMENT[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_COMMENT);
-	break;
-      case ID3_TRACK:
+      else if (strcmp (identifier, ID3_TRACK[newv]) == 0) {
 	/* some id3 tags have track/total tracks in the TRK field */
 	slash = strchr (tag_temp, '/');
 
@@ -314,8 +295,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	  tihm->album_tracks = strtol (slash+1, NULL, 10);
 
 	if (slash) *slash = '/';
-	break;
-      case ID3_DISKNUM:
+      } else if (strcmp (identifier, ID3_DISC[newv]) == 0) {
 	/* some id3 tags have disk_num/total_disks in the TPOS field */
 	slash = strchr (tag_temp, '/');
 
@@ -326,16 +306,12 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	/* set total number of album tracks */
 	if (slash)
 	  tihm->disk_total = strtol (slash+1, NULL, 10);
-
-	break;
-      case ID3_BPM:
+      } else if (strcmp (identifier, ID3_BPM[newv]) == 0) {
 	tihm->bpm = strtol (tag_temp, NULL, 10);
-	break;
-      case ID3_YEARNEW:
-      case ID3_YEAR:
+      } else if (strcmp (identifier, ID3_YEARNEW[newv]) == 0 ||
+	       strcmp (identifier, ID3_YEAR[newv]) == 0) {
 	tihm->year = strtol (tag_temp, NULL, 10);
-	break;
-      case ID3_GENRE:
+      } else if (strcmp (identifier, ID3_GENRE[newv]) == 0) {
 	if (tag_temp[0] != '(') {
 	  dohm_add (tihm, tag_temp, length, encoding, IPOD_GENRE);
 	} else {
@@ -354,66 +330,22 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	  
 	  genre_temp[j] = 41;
 	}
-	break;
-      deafult:
-	break;
       }
     }
-    
-  } else if (version == 1) {
-    for (field = 0 ; field < ID3_BPM ; field++) {
-      char *copy_from, *tmp;
-      
-      i = 29;
 
-      switch (field) {
-      case ID3_TITLE:
-	copy_from = &tag_data[3];
-	data_type = IPOD_TITLE;
-	break;
-      case ID3_ARTIST:
-	copy_from = &tag_data[33];
-	data_type = IPOD_ARTIST;
-	break;
-      case ID3_ALBUM:
-	copy_from = &tag_data[63];
-	data_type = IPOD_ALBUM;
-	break;
-      case ID3_COMMENT:
-	copy_from = &tag_data[93];
-	data_type = IPOD_COMMENT;
-	break;
-      case ID3_TRACK:
-	if ((tag_data[126] != 0xff) && (tihm->track == 0))
-	  tihm->track = tag_data[126];
-	continue;
-      case ID3_GENRE:
-	if ((signed char)tag_data[127] == -1)
-	  continue;
-	
-	copy_from = genre_table[tag_data[127]];
-	i = strlen (copy_from - 1);
-	data_type = IPOD_GENRE;
-	break;
-      default:
-	continue;
-      }
-      
-      if ((signed char) copy_from[0] == -1)
-	continue;
-      
-      if (field != ID3_GENRE)
-	for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1 || *tmp == '\0') && i >= 0; tmp--, i--)
-	  *tmp = 0;
-      else
-	i = strlen(copy_from) - 1;
-      
-      if (i < 0)
-	continue;
-      
-      i++;
-      dohm_add (tihm, copy_from, i, "ISO-8859-1", data_type);
-    }
+  } else if (version == 1) {
+    char *tmp;
+
+    dohm_add (tihm, tmp = id3v1_string (&tag_data[3])  , strlen (tmp), "ISO-8859-1", IPOD_TITLE);
+    dohm_add (tihm, tmp = id3v1_string (&tag_data[33]) , strlen (tmp), "ISO-8859-1", IPOD_ARTIST);
+    dohm_add (tihm, tmp = id3v1_string (&tag_data[63]) , strlen (tmp), "ISO-8859-1", IPOD_ALBUM);
+    dohm_add (tihm, tmp = id3v1_string (&tag_data[93]) , strlen (tmp), "ISO-8859-1", IPOD_COMMENT);
+    
+    if ((tag_data[126] != 0xff) && (tihm->track == 0))
+      tihm->track = tag_data[126];
+    
+    if ((signed char)tag_data[127] != -1)
+      dohm_add (tihm, genre_table[tag_data[127]], strlen(genre_table[tag_data[127]]) - 1, "ISO-8859-1", IPOD_GENRE);
   }
 }
 

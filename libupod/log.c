@@ -38,6 +38,8 @@ void db_log (itunesdb_t *itunesdb, int error, char *format, ...) {
       vfprintf (itunesdb->log, format, arg);
     }
 
+    fflush (itunesdb->log);
+
     va_end (arg);
   }
 }

@@ -4,7 +4,7 @@
 
 #include <fcntl.h>
 #include <libgen.h>
-
+#include <string.h>
 #include <libgen.h>
 
 #include <sys/stat.h>
@@ -22,13 +22,14 @@ void usage(void) {
   exit(1);
 }
 
-static u_int8_t *path_unix_mac_root (char *path) {
-  char *mac_path;
+static void path_unix_mac_root (char *path, char mac_path[255]) {
   int i;
 
-  if (*path == '/') path++;
+  memset (mac_path, 0, 255);
 
-  mac_path = calloc (1, strlen(path) + 2);
+  if (*path == '/')
+    path++;
+
   mac_path[0] = ':';
 
   for (i = 0 ; i < strlen (path) ; i++)
@@ -36,54 +37,36 @@ static u_int8_t *path_unix_mac_root (char *path) {
       mac_path[i+1] = ':';
     else
       mac_path[i+1] = path[i];
-
-  mac_path[i+1] = '\0';
-
-  return mac_path;
 }
 
 int dir_add (itunesdb_t *ipod, char *dir) {
   int added = 0;
   struct stat statinfo;
-  char path_temp[255];
-  struct dirent *entry;
   char *tmp, *tdir;
+  char path_temp[255];
 
   int ret;
 
-  DIR *dir_fd;
-  
   tdir = strdup (dir);
   tmp = basename (tdir);
 
-  /* no such file or dot file */
-  if (stat (dir, &statinfo) < 0 || tmp[0] == '.')
-    return 0;
+  if (tmp[0] == '.' || stat (dir, &statinfo) < 0) {
+    /* no such file or dot file */
+    added = 0;
+  } else if (S_ISREG (statinfo.st_mode)) {
+    /* regular files get inserted into the database */
+    path_unix_mac_root (dir, path_temp);
+    ret = db_add (ipod, dir, path_temp, strlen(path_temp), 0, 1);
 
-  /* regular files get inserted into the database */
-  if (S_ISREG(statinfo.st_mode)) {
-    ret = db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1);
-
-    free (tmp);
-    if (ret < 0)
-      return 0;
-    else
-      return 1;
-  }
-
-  if (tmp[0] == '.')
-    return 0;
-
-  if (S_ISREG (statinfo.st_mode)) {
-    db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1);
-    free (tdir);
-
-    return 1;
+    added = (ret < 0) ? 0 : 1;
   } else if (S_ISDIR (statinfo.st_mode)) {
+    DIR *dir_fd;
+    struct dirent *entry;
+
     printf ("Adding dir %s\n", dir);
     dir_fd = opendir (dir);
     
-    while (entry = readdir (dir_fd)) {
+    while ((entry = readdir (dir_fd)) != NULL) {
       memset (path_temp, 0, 255);
       sprintf (path_temp, "%s/%s", dir, entry->d_name);
       

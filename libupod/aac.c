@@ -41,12 +41,29 @@ void mp3_debug (char *, ...);
 
 u_int16_t big16_2_arch16 (u_int16_t x) {
   u_int16_t z = x;
+
+#if BYTE_ORDER==LITTLE_ENDIAN
   char *tmp = (char *)&z;
   char *tmpi = (char *)&x;
 
-#if BYTE_ORDER==LITTLE_ENDIAN
   tmp[0] = tmpi[1];
   tmp[1] = tmpi[0];
+#endif
+
+  return z;
+}
+
+u_int32_t big32_2_arch32 (u_int32_t x) {
+  u_int32_t z = x;
+
+#if BYTE_ORDER==LITTLE_ENDIAN
+  char *tmp = (char *)&z;
+  char *tmpi = (char *)&x;
+
+  tmp[0] = tmpi[3];
+  tmp[1] = tmpi[2];
+  tmp[2] = tmpi[1];
+  tmp[3] = tmpi[0];
 #endif
 
   return z;
@@ -113,7 +130,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
 	  
   while (1) {
     struct qt_meta meta;
-    int data_type;
+    int data_type = -1;
     int size;
     
     fread (&meta, sizeof(struct qt_meta), 1, fd);
@@ -157,9 +174,12 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     else if (strncmp (meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
     else if (strncmp (meta.identifier, "rkn", 3) == 0) {
-      tihm->track = big16_2_arch16( ((short *)buffer)[1] );
+      tihm->track        = big16_2_arch16( ((short *)buffer)[1] );
       tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
       continue;
+    } else if (strncmp (meta.identifier, "isk", 3) == 0) {
+      tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
+      tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
     } else if (strncmp (meta.identifier, "day", 3) == 0) {
       tihm->year = strtol (buffer, NULL, 10);
       continue;
@@ -173,6 +193,8 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
   }
 
   fseek (fd, atom.size - seeked - 8, SEEK_CUR);
+
+  return 0;
 }
 
 int m4a_bitrates[] = {
@@ -188,28 +210,35 @@ void parse_stsz (FILE *fh, double *bits) {
   double bmin = 10000.0;
   int silence_frames = 0;
   double totalby;
+  int num_samples;
 
   mp3_debug ("Parsing stsz atom\n");
 
   fread (buffer, 4, 3, fh);
 
-  for (i = 0 ; i < buffer[2] ; i++) {
+  num_samples = big32_2_arch32 (buffer[2]);
+
+  for (i = 0 ; i < num_samples ; i++) {
+    int sample_size;
+
     fread (buffer, 4, 1, fh);
 
     /* mp3_debug ("Sample %i is %i bits\n", i, buffer[0]); */
 
-    if (buffer[0] > 7)
-      avg += (double)buffer[0];
+    sample_size = big32_2_arch32 (buffer[0]);
+
+    if (sample_size > 7)
+      avg += (double)sample_size;
     else
       silence_frames++;
 
-    bmax = ((double)buffer[0] > bmax) ? (double)buffer[0] : bmax;
-    bmin = ((double)buffer[0] < bmin) ? (double)buffer[0] : bmin;
+    bmax = ((double)sample_size > bmax) ? (double)sample_size : bmax;
+    bmin = ((double)sample_size < bmin) ? (double)sample_size : bmin;
   }
 
   mp3_debug ("Total sample size = %f\n", totalby=avg);
 
-  avg /= (double)buffer[2];
+  avg /= (double)num_samples;
 
   mp3_debug ("Average sample is %f bits\n", avg);
   
@@ -217,7 +246,7 @@ void parse_stsz (FILE *fh, double *bits) {
   mp3_debug ("Agerage bitrate is: %f bps\n", avg * 44.10 * 8.0);
   mp3_debug ("Maximum bitrate is: %f bps\n", bmax * 44.10 * 8.0);
 
-  *bits = totalby/((double)(buffer[2]-silence_frames)) * 8.0;
+  *bits = totalby/((double)(num_samples-silence_frames)) * 8.0;
 
   fseek (fh, current_loc, SEEK_SET);
 }
@@ -233,7 +262,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   char buffer[buffer_size];
 
   int i;
-  long int duration, time_scale, bit_rate;
+  long int duration = 0, time_scale = 0, bit_rate;
   struct qt_atom atom;
 
   int meta = type_int ("meta");

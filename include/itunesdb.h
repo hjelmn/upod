@@ -85,6 +85,7 @@ typedef struct _itunesdb {
   int log_level;
   FILE *log;
   int flags;
+  int last_tihm;
 } itunesdb_t;
 
 typedef struct tree_node tree_node_t;
@@ -228,10 +229,6 @@ void db_free               (itunesdb_t *itunesdb);
 void db_song_list_free     (GList **head);
 void db_playlist_list_free (GList **head);
 void db_playlist_song_list_free (GList **head);
-
-
-int path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src, size_t src_len);
-int unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src, size_t src_len);
 
 #if defined(__cplusplus)
 }

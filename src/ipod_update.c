@@ -328,11 +328,17 @@ int main (int argc, char *argv[]) {
   db_set_debug (&itunesdb, debug_level, stderr);
 
   if (create == 0) {
-    if ((ret = db_load (&itunesdb, ITUNESDB, flags)) < 0)
+    if ((ret = db_load (&itunesdb, ITUNESDB, flags)) < 0) {
       fprintf (stderr, "Could not open iTunesDB: %s\n", ITUNESDB);
+
+      exit (1);
+    }
   } else {
-    if ((ret = db_create (&itunesdb, ipod_name, strlen(ipod_name), flags)) < 0)
+    if ((ret = db_create (&itunesdb, ipod_name, strlen(ipod_name), flags)) < 0) {
       fprintf (stderr, "Error creating iTunesDB\n");
+      
+      exit (1);
+    }
   }
 
   cleanup_database (&itunesdb);

@@ -39,14 +39,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <string.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <sys/uio.h>
+#include <unistd.h>
 
 #include <fcntl.h>
 
 #include <errno.h>
-
-static int db_debug = 1;
 
 /*
   db_size_tree:
@@ -118,7 +121,6 @@ static tree_node_t *db_build_tree (itunesdb_t *itunesdb, size_t *bytes_read,
 				   tree_node_t *parent, char **buffer) {
   tree_node_t *tnode_0;
   int *iptr = (int *)*buffer;
-  int i;
 
   int current_bytes_read = *bytes_read;
   int entry_size, cell_size, copy_size;
@@ -313,7 +315,7 @@ int db_load (itunesdb_t *itunesdb, char *path, int flags) {
 
 static int db_write_tree (int fd, tree_node_t *entry) {
   static int ret;
-  int i, swap, length;
+  int i, swap, length = 0;
   struct db_dohm *dohm_data;
 
 #if BYTE_ORDER == BIG_ENDIAN
@@ -414,7 +416,7 @@ int db_unhide (itunesdb_t *itunesdb, u_int32_t tihm_num) {
 int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
   tree_node_t *parent, *entry;
   struct db_tlhm *tlhm;
-  int size, entry_num;
+  int entry_num;
 
   if (itunesdb == NULL || itunesdb->tree_root == NULL) return -1;
 
@@ -455,7 +457,7 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
 */
 int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path,
 	    size_t mac_path_len, int stars, int show) {
-  tree_node_t *dshm_header, *new_tihm_header, *root;
+  tree_node_t *dshm_header, *new_tihm_header;
 
   struct db_tlhm *tlhm_data;
   int tihm_num, ret;
@@ -575,8 +577,6 @@ int db_song_list (itunesdb_t *itunesdb, GList **head) {
   struct db_tlhm *tlhm_data;
   int i, *iptr;
   int ret;
-
-  struct db_tihm *tihm_data;
 
   if (head == NULL || itunesdb == NULL)
     return -EINVAL;

@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <string.h>
+
 #define DOHM_HEADER_SIZE   0x18
 
 #define DOHM_EQ_SIZE       0x3a
@@ -82,7 +84,7 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
 int dohm_add (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
 
-  if (data_len == 0)
+  if (data_len <= 0)
     return -1;
 
   if ((dohm = dohm_create (tihm, data_type)) == NULL)
@@ -242,8 +244,7 @@ void dohm_free (dohm_t *dohm, int num_dohms) {
      0 on success
 **/
 int db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm) {
-  tree_node_t *tihm_header, *dohm_header, *entry;
-  struct db_dohm *dohm_data;
+  tree_node_t *tihm_header, *dohm_header;
 
   int entry_num;
 

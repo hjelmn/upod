@@ -285,6 +285,8 @@ void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length);
 void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length);
 void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		 size_t src_len, char *src_encoding);
+void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
+		      size_t src_len, char *src_encoding);
 void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
 		      size_t src_len);
 int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len);

@@ -299,7 +299,7 @@ static int mp3_scan (struct mp3_file *mp3) {
   double total_bitrate = 0.0;
   double total_framesize = 0.0;
 
-  size_t bitrate, samplerate;
+  size_t bitrate, samplerate = 0;
   double frame_size;
 
   mp3_debug ("mp3_scan: Entering...\n");
@@ -403,7 +403,6 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
      0 if successful
 */
 int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
-  int ret;
   FILE *fh;
 
   u_int8_t type_string[] = "MPEG audio file";

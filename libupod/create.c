@@ -49,6 +49,8 @@ static int db_dbhm_create (tree_node_t *entry) {
   dbhm_data->unk0 = 0x1;
   dbhm_data->unk1 = 0x1;
   dbhm_data->unk2 = 0x2;
+
+  return 0;
 }
 
 static int db_tlhm_create (tree_node_t *entry) {
@@ -65,6 +67,8 @@ static int db_tlhm_create (tree_node_t *entry) {
 
   tlhm_data->tlhm = TLHM;
   tlhm_data->header_size = TLHM_HEADER_SIZE;
+
+  return 0;
 }
 
 static int db_plhm_create (tree_node_t *entry) {
@@ -81,6 +85,8 @@ static int db_plhm_create (tree_node_t *entry) {
 
   plhm_data->plhm = PLHM;
   plhm_data->header_size = PLHM_HEADER_SIZE;
+
+  return 0;
 }
 
 /**
@@ -101,10 +107,10 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
   tree_node_t *root, *entry, *entry2;
   int ret;
 
-  db_log (itunesdb, 0, "db_create: entering...\n");
-
-  if (itunesdb == NULL || db_name == NULL || name_len < 1)
+  if ((itunesdb == NULL) || (db_name == NULL) || (name_len < 1))
     return -EINVAL;
+
+  db_log (itunesdb, 0, "db_create: entering (itunesdb = %08x, db_name = %s, name_len = %i)...\n", itunesdb, db_name, name_len);
 
   root = itunesdb->tree_root;
 
@@ -136,7 +142,7 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   itunesdb->flags = flags;
   itunesdb->last_tihm = 0;
-  
+
   ret = db_playlist_create (itunesdb, db_name, name_len);
 
   db_log (itunesdb, 0, "db_create: complete\n");

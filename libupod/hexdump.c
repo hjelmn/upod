@@ -5,6 +5,9 @@
  *
  */
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
 static void pretty_print_block(unsigned char *b, int len);
 static void pretty_print_block(unsigned char *b, int len){
     int x, y, indent, count = 0;
