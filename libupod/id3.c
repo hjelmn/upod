@@ -68,8 +68,6 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
 static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
                                 int id3v2_majorversion, tihm_t *tihm);
 
-u_int32_t big32_2_arch32 (u_int32_t); /* defined in aac.c */
-
 static int synchsafe_to_int (char *buf, int nbytes) {
   int id3v2_len = 0;
   int error = 0;
@@ -398,10 +396,17 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
   } else if (version == 1) {
     char *tmp;
 
-    dohm_add (tihm, tmp = id3v1_string (&tag_data[3])  , strlen (tmp), "ISO-8859-1", IPOD_TITLE);
-    dohm_add (tihm, tmp = id3v1_string (&tag_data[33]) , strlen (tmp), "ISO-8859-1", IPOD_ARTIST);
-    dohm_add (tihm, tmp = id3v1_string (&tag_data[63]) , strlen (tmp), "ISO-8859-1", IPOD_ALBUM);
-    dohm_add (tihm, tmp = id3v1_string (&tag_data[93]) , strlen (tmp), "ISO-8859-1", IPOD_COMMENT);
+    tmp = id3v1_string (&tag_data[3]);
+    dohm_add (tihm, tmp, strlen (tmp), "ISO-8859-1", IPOD_TITLE);
+
+    tmp = id3v1_string (&tag_data[33]);
+    dohm_add (tihm, tmp, strlen (tmp), "ISO-8859-1", IPOD_ARTIST);
+
+    tmp = id3v1_string (&tag_data[33]);
+    dohm_add (tihm, tmp, strlen (tmp), "ISO-8859-1", IPOD_ALBUM);
+
+    tmp = id3v1_string (&tag_data[93]);
+    dohm_add (tihm, tmp, strlen (tmp), "ISO-8859-1", IPOD_COMMENT);
     
     if ((tag_data[126] != 0xff) && (tihm->track == 0))
       tihm->track = tag_data[126];

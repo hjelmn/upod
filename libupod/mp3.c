@@ -45,9 +45,6 @@
 
 #include <stdarg.h>
 
-/* from mpg123 */
-#include "genre.h"
-
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>
 #endif
@@ -155,10 +152,6 @@ static size_t mpeg_frame_length (int header) {
     frame_length = 144.0 * bitrate/samplerate + padding;
   else
     frame_length = (12 * bitrate/samplerate + padding) * 4.0;
-  /*
-  mp3_debug ("Frame length = 0x%08x, version = %02x, layer = %02x, padding = %f, bitrate = %f, samplerate = %f\n",
-	     frame_length, MPEG_VERSION(header), layer, padding, bitrate, samplerate);
-  */
 
   return (size_t)((layer != 0x11) ? (144.0 * bitrate/samplerate + padding)
 	  : (12 * bitrate/samplerate + padding) * 4.0);
@@ -193,12 +186,15 @@ static int find_first_frame (struct mp3_file *mp3) {
   mp3->skippage = 0;
 
   while (fread (&header, 4, 1, mp3->fh)) {
+    header = big32_2_arch32 (header);
+
     /* MPEG-1 Layer III */
     if ((ret = check_mp3_header (header)) == 0) {
       /* Check for Xing frame and skip it */
       fseek (mp3->fh, 32, SEEK_CUR);
       fread (&buffer, 4, 1, mp3->fh);
-      if (buffer == ('X' << 24 | 'i' << 16 | 'n' << 8 | 'g')) {
+
+      if (buffer == string_to_int ("Xing")) {
 	int xstart = ftell (mp3->fh);
 	int xflags;
 
@@ -342,6 +338,8 @@ static int mp3_scan (struct mp3_file *mp3) {
   if (mp3->frames == 0 || mp3->xdata_size == 0) {
     while (ftell (mp3->fh) < mp3->data_size) {
       fread (&header, 4, 1, mp3->fh);
+
+      header = big32_2_arch32 (header);
       
       if (check_mp3_header (header) != 0) {
 	fseek (mp3->fh, -4, SEEK_CUR);
@@ -398,14 +396,17 @@ static int mp3_scan (struct mp3_file *mp3) {
 }
 
 void mp3_close (struct mp3_file *mp3) {
-  fclose (mp3->fh);
+  if (mp3->fh)
+    fclose (mp3->fh);
 }
 
 int get_mp3_info (char *file_name, tihm_t *tihm) {
   struct mp3_file mp3;
 
-  if (mp3_open (file_name, &mp3) < 0)
+  if (mp3_open (file_name, &mp3) < 0) {
+    mp3_close (&mp3); /* Make sure everything is cleaned up */
     return -1;
+  }
 
   if (mp3_scan (&mp3) < 0) {
     mp3_close (&mp3);

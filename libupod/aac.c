@@ -40,36 +40,6 @@
 
 void mp3_debug (char *, ...);
 
-u_int16_t big16_2_arch16 (u_int16_t x) {
-  u_int16_t z = x;
-
-#if BYTE_ORDER==LITTLE_ENDIAN
-  char *tmp = (char *)&z;
-  char *tmpi = (char *)&x;
-
-  tmp[0] = tmpi[1];
-  tmp[1] = tmpi[0];
-#endif
-
-  return z;
-}
-
-u_int32_t big32_2_arch32 (u_int32_t x) {
-  u_int32_t z = x;
-
-#if BYTE_ORDER==LITTLE_ENDIAN
-  char *tmp = (char *)&z;
-  char *tmpi = (char *)&x;
-
-  tmp[0] = tmpi[3];
-  tmp[1] = tmpi[2];
-  tmp[2] = tmpi[1];
-  tmp[3] = tmpi[0];
-#endif
-
-  return z;
-}
-
 struct qt_atom {
   long size;
   long type;

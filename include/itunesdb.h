@@ -73,12 +73,17 @@ enum show_entries {
 enum itunesdb_flags {
   /* Turn on hack so more unicode filenames will work with the ipod.
      Files with non-ascii characters in their names will not play in
-     iTunes if this flag was set when they were added. */
+     iTunes if this flag is set when they are added. */
   FLAG_UNICODE_HACK = 0x1,
 
-  /* uPod will use utf-8 encoding for strings in the database.
-     With exception of playlist names. *NOTE* Does nothing yet! */
-  FLAG_NO_UNICODE = 0x2,
+  /*
+    When this flag is set uPod uses UTF-8 encoding internally.
+    UTF-16 will still be used for playlist names.
+    
+    *NOTE* If the database is opened with iTunes all strings
+    will automatically be converted to UTF-16.
+  */
+  FLAG_UTF8 = 0x2,
 };
 
 typedef struct _ipoddatabase {

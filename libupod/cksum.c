@@ -70,10 +70,7 @@ u_int32_t crc32 (u_int8_t *buf, size_t length) {
   for (i = 0 ; i < length ; i++)
     crc = (crc >> 8) ^ crc32_table[(crc ^ buf[i]) & 0xff];
   
-#if BYTE_ORDER == LITTLE_ENDIAN
-  crc = bswap_32(crc);
-#endif
-  
+  crc = big32_2_arch32 (crc);
   return crc;
 }
 
@@ -87,9 +84,7 @@ u_int64_t crc64 (u_int8_t *buf, size_t length) {
   for (i = 0 ; i < length ; i++)
     crc = (crc >> 8) ^ crc64_table[(crc ^ buf[i]) & 0xff];
 
-#if BYTE_ORDER==LITTLE_ENDIAN
-  crc = bswap_64 (crc);
-#endif
+  crc = big64_2_arch64 (crc);
 
   return crc;
 }

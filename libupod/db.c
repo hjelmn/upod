@@ -39,6 +39,10 @@
 
 #include <errno.h>
 
+u_int32_t string_to_int (unsigned char *string) {
+  return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
+}
+
 /*
   db_size_tree:
 

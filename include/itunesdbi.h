@@ -33,7 +33,8 @@
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
-#define   free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
+#define calloc(x,y) calloc (x,y); printf ("allocating %i member of size %i from line %i in file %s.\n", x, y, __LINE__, __FILE__);
+#define free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
 #endif
 
 /* some structures to help clarify code */
@@ -375,9 +376,7 @@ struct db_wierd_dohm {
   u_int32_t unk13;
 };
 
-static u_int32_t string_to_int (unsigned char *string) {
-  return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
-}
+extern u_int32_t string_to_int (unsigned char *string);
 
 struct tree_node {
   struct tree_node *parent;
@@ -448,16 +447,21 @@ struct tree_node {
 #include <machine/endian.h>
 #include <architecture/byte_order.h>
 
-#define bswap_32 NXSwapLittleLongToHost
-#define bswap_16 NXSwapLittleShortToHost
+#define bswap_32 NXSwapLong
+#define bswap_16 NXSwapShort
+#define bswap_64 NXSwapLongLong
 
 #endif
 void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 
 #if BYTE_ORDER == BIG_ENDIAN
-#define long_big_host(x) x
+#define big16_2_arch16(x) x
+#define big32_2_arch32(x) x
+#define big64_2_arch64(x) x
 #else
-#define long_big_host(x) bswap_32(x)
+#define big16_2_arch16(x) bswap_16
+#define big32_2_arch32(x) bswap_32
+#define big64_2_arch64(x) bswap_64
 #endif
 
 /* 
@@ -562,5 +566,8 @@ int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id)
 /* crc */
 u_int32_t crc32 (u_int8_t *buf, size_t length);
 u_int64_t crc64 (u_int8_t *buf, size_t length);
+
+/* sysinfo.c */
+int sysinfo_read (ipod_t *ipod, char *filename);
 
 #endif /* __ITUNESDBI_H */

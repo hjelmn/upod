@@ -35,7 +35,8 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
   int i;
   struct db_dohm *dohm_data;
 
-  if (dohm_header == NULL) return -1;
+  if (dohm_header == NULL)
+    return -EINVAL;
   
   for (i = 0 ; i < tihm_header->num_children ; i++) {
     dohm_data = (struct db_dohm *)tihm_header->children[i]->data;
@@ -46,6 +47,7 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
   }
 
   *dohm_header = 0;
+
   return -1;
 }
 
@@ -218,10 +220,15 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   u_int16_t *unicode_data;
   size_t unicode_length;
 
-  if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
-    to_unicode_hack (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
-  else
-    to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+  if (!(flags & FLAG_UTF8)) {
+    if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
+      to_unicode_hack (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+    else
+      to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+  } else {
+    unicode_data   = (u_int16_t *)dohm.data;
+    unicode_length = strlen (dohm.data);
+  }
 
   entry_size   = DOHM_HEADER_SIZE + string_header_size + unicode_length;
 
@@ -233,7 +240,11 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
     string_header = (struct string_header_12 *)&((*entry)->data[DOHM_HEADER_SIZE]);
 
     string_header->string_length = unicode_length;
-    string_header->format = 0x00000002;
+
+    if (!(flags & FLAG_UTF8))
+      string_header->format = 0x00000002;
+    else
+      string_header->format = 0x00000001;
   } else {
     struct string_header_16 *string_header;
     
@@ -242,7 +253,10 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
     string_header->string_length = unicode_length;
     string_header->unk0 = 0x00000001;
 
-    string_header->format = 0x00000000;
+    if (!(flags & FLAG_UTF8))
+      string_header->format = 0x00000000;
+    else
+      string_header->format = 0x00000001;
   }
 
   (*entry)->string_header_size = string_header_size;
