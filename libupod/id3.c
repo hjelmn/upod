@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v1.1 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -41,14 +41,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define ID3_DEBUG 1
+#define ID3_DEBUG 0
 
 #include "genre.h"
 
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>
 #endif
-                       /* v2     v3 */
+                       /* v2.2 v2.3 */
+
 char *ID3_TITLE[2]   = {"TT1", "TIT1"};
 char *ID3_TALT[2]    = {"TT2", "TIT2"};
 char *ID3_ARTIST[2]  = {"TP1", "TPE1"};
@@ -61,6 +62,7 @@ char *ID3_COMMENT[2] = {"COM", "COMM"};
 char *ID3_BPM[2]     = {"TBP", "TBPM"};
 char *ID3_YEARNEW[2] = {"TYE", "TDRC"};
 char *ID3_DISC[2]    = {"TPA", "TPOS"};
+char *ID3_ARTWORK[2] = {"PIC", "APIC"};
 
 static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version);
@@ -183,6 +185,43 @@ char *id3v1_string (signed char *unclean) {
   return buffer;
 }
 
+static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_majorversion) {
+  unsigned char *image_data;
+  int c, cksum;
+
+  if (tihm->image_data != NULL)
+    return -1;
+
+  length --;
+
+  fseek (fh, -length, SEEK_CUR);
+
+  /* Skip past type string */
+  for ( ; (c = fgetc (fh)) != '\0'; length--);
+
+  /* Seek to the start of the image data */
+  if (id3v2_majorversion > 2) {
+    fseek (fh, 2, SEEK_CUR);
+    length -= 3;
+  } else {
+    fseek (fh, 1, SEEK_CUR);
+    length -= 2;
+  }    
+
+  image_data = (unsigned char *)calloc (1, length);
+  fread (image_data, 1, length, fh);
+
+  cksum = crc32 (image_data, length);
+
+  tihm->has_artwork = 1;
+  tihm->artwork_id1 = cksum;
+
+  tihm->image_data  = image_data;
+  tihm->image_size  = length;
+
+  return 0;
+}
+
 /*
   parse_id3
 */
@@ -201,7 +240,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
     memset (identifier, 0, 5);
 
     for (i = 0 ; i < tag_datalen ; ) {
-      int length = 0;
+      size_t length = 0;
 
       fread (tag_data, 1, (id3v2_majorversion > 2) ? 10 : 6, fh);
       
@@ -211,9 +250,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       memcpy (identifier, tag_data, newv ? 4 : 3);
 
       if (id3v2_majorversion > 2) {
-	/* id3v2.3 does not use synchsafe integers in frame headers (BAD IDEA) */
-	/* I have no idea about the "COM " frame, it's an oddball (the spec
-	   exists for a reason.) */
+	/* id3v2.3 does not use synchsafe integers in frame headers. */
 	if (id3v2_majorversion == 3 || strcmp (identifier, "APIC") == 0 ||
 	    strcmp (identifier, "COMM") == 0 || strcmp (identifier, "COM ") == 0)
 	  length = big32_2_arch32 (((int *)tag_data)[1]);
@@ -241,7 +278,9 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       if (length > 128) {
 	fseek (fh, length - 128, SEEK_CUR);
-	length = 128;
+	if (strcmp (identifier, "APIC") != 0 &&
+	    strcmp (identifier, "PIC") != 0)
+	  length = 128;
       }
 
       memset (tag_data, 0, 128);
@@ -270,10 +309,13 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       default:
 	sprintf (encoding, "ISO-8859-1");
       }
-      
-      for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
-      for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
-      /*      length--; */
+
+      if (strcmp (identifier, "APIC") != 0 &&
+	  strcmp (identifier, "PIC") != 0) {
+	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
+	for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
+	/*      length--; */
+      }
 
       if (length <= 0)
 	continue;
@@ -287,6 +329,8 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_ALBUM);
       else if (strcmp (identifier, ID3_COMMENT[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_COMMENT);
+      else if (strcmp (identifier, ID3_ARTWORK[newv]) == 0)
+	parse_artwork (tihm, fh, length, id3v2_majorversion);
       else if (strcmp (identifier, ID3_TRACK[newv]) == 0) {
 	/* some id3 tags have track/total tracks in the TRK field */
 	slash = strchr (tag_temp, '/');

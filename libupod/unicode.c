@@ -70,16 +70,17 @@ void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
 
   /* UTF-8 encoding could be as large as 3 bytes for every 2 bytes
      of Unicode input */
-  outbytes= (src_len/2)*3;
-  *dst = outbuf  = calloc ((src_len/2)*3, 1);
+  outbytes = src_len/2;
+  *dst = outbuf  = calloc (outbytes + 1, 1);
 
-  conv = iconv_open ("UTF-8", "UTF-16");
+  conv = iconv_open ("ASCII", "UTF-16BE");
   iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
   iconv_close (conv);
  
-  final_size = (src_len/2)*3 - outbytes;
+  final_size = src_len/2 - outbytes;
 
   *dst = realloc (*dst, final_size + 1);
+  (*dst)[final_size] = '\0';
   *dst_len = final_size;
 }
 
@@ -113,9 +114,13 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
     *dst = NULL;
     return;
   }
- 
   *dst = calloc (1, src_len * 2);
+  /*
+  *dst_len = src_len;
+  memmove (*dst, src, src_len);
 
+  return;
+  */
   for (i = 0, j = 0 ; i < src_len ; i++) {
     if (!(src[i] && 0x8))
       j++;
@@ -154,7 +159,7 @@ void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
  
   final_size = src_len * 2 - outbytes;
 
-  *dst = realloc (*dst, final_size);
+  *dst = realloc (*dst, final_size + 1);
   *dst_len = final_size;
 }
 

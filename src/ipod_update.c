@@ -1,6 +1,6 @@
 /**
  *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.1a1 ipod_update.c
+ *   v1.2a1 ipod_update.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU Public License as published by
@@ -39,7 +39,7 @@
 #include "itunesdb.h"
 
 #define PACKAGE "upod"
-#define VERSION "1.0"
+#define VERSION "2.0"
 
 void usage (void);
 void version (void);
@@ -88,7 +88,8 @@ int glist_cmp (gpointer data1, gpointer data2) {
   return (strcasecmp ((char *)data1, (char *)data2) == 0) ? 1 : 0;
 }
 
-int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
+int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidden,
+	       int playlist) {
   char scratch[1024];
 
   DIR *dirp;
@@ -133,7 +134,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
       mac_path = path_unix_mac_root (scratch);
       if ((tmp = g_list_find_custom (hidden, scratch,
 				     (GCompareFunc)glist_cmp)) != NULL) {
-	tihm_num = db_song_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 0);
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, strlen (mac_path), 0, 0);
 
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
 						    strlen (mac_path))) >= 0)) {
@@ -144,7 +145,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
 	free (tmp->data);
 	hidden = g_list_delete_link (hidden, tmp);
       } else {
-	tihm_num = db_song_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 1);
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, strlen (mac_path), 0, 1);
 
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
 						    strlen (mac_path))) >= 0)) {
@@ -161,7 +162,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
 
       free (mac_path);
     } else
-      parse_dir (scratch, itunesdb, hidden, playlist);
+      parse_dir (scratch, itunesdb, artworkdb, hidden, playlist);
   }
 
   closedir (dirp);
@@ -172,7 +173,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
   return 0;
 }
 
-int parse_playlists (char *path, ipoddb_t *itunesdb) {
+int parse_playlists (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
   char scratch[1024];
 
   DIR *dirp;
@@ -207,7 +208,7 @@ int parse_playlists (char *path, ipoddb_t *itunesdb) {
       }
     }
 
-    parse_dir (scratch, itunesdb, NULL, playlist);
+    parse_dir (scratch, itunesdb, artworkdb, NULL, playlist);
   }
   
   closedir (dirp);
@@ -215,7 +216,7 @@ int parse_playlists (char *path, ipoddb_t *itunesdb) {
   return 0;
 }
 
-int write_database (ipoddb_t *itunesdb) {
+int write_itdatabase (ipoddb_t *itunesdb) {
   struct stat statinfo;
   int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
@@ -234,6 +235,27 @@ int write_database (ipoddb_t *itunesdb) {
   }
 
   return db_write (*itunesdb, ITUNESDB);
+}
+
+int write_awdatabase (ipoddb_t *artworkdb) {
+  struct stat statinfo;
+  int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+
+  if (stat ("iPod_Control", &statinfo) < 0)
+    mkdir ("iPod_Control", mode);
+  else if (!S_ISDIR (statinfo.st_mode)) {
+    fprintf (stderr, "iPod_Control is not a directory!\n");
+    return -1;
+  }
+
+  if (stat ("iPod_Control/Artwork", &statinfo) < 0)
+    mkdir ("iPod_Control/Artwork", mode);
+  else if (!S_ISDIR (statinfo.st_mode)) {
+    fprintf (stderr, "iPod_Control/Artwork is not a directory!\n");
+    return -1;
+  }
+
+  return db_write (*artworkdb, ITUNESDB);
 }
 
 /* remove files that no longer exist from the database */
@@ -279,7 +301,7 @@ int cleanup_database (ipoddb_t *itunesdb) {
 }
 
 int main (int argc, char *argv[]) {
-  ipoddb_t itunesdb;
+  ipoddb_t itunesdb, artworkdb;
   int option_index;
   int debug_level = 0;
   int create = 0;
@@ -332,22 +354,40 @@ int main (int argc, char *argv[]) {
 
       exit (1);
     }
+    if ((ret = db_load (&artworkdb, ITUNESDB, flags)) < 0) {
+      if ((ret = db_photo_create (&artworkdb)) < 0) {
+	fprintf (stderr, "Error creating ArtworkDB\n");
+	
+	exit (1);
+      }
+    }
   } else {
     if ((ret = db_create (&itunesdb, ipod_name, strlen(ipod_name), flags)) < 0) {
       fprintf (stderr, "Error creating iTunesDB\n");
       
       exit (1);
     }
+    if ((ret = db_photo_create (&artworkdb)) < 0) {
+      fprintf (stderr, "Error creating ArtworkDB\n");
+      
+      exit (1);
+    }
   }
+
+  itunesdb.path   = ITUNESDB;
+  artworkdb.path = ARTWORKDB;
 
   cleanup_database (&itunesdb);
 
-  parse_playlists ("Music", &itunesdb);
+  parse_playlists ("Music", &itunesdb, &artworkdb);
 
-  ret = write_database (&itunesdb);
+  ret = write_itdatabase (&itunesdb);
+  printf ("%i B written to the iTunesDB: %s\n", ret, ITUNESDB);
+  ret = write_awdatabase (&artworkdb);
+  printf ("%i B written to the ArtworkDB: %s\n", ret, ARTWORKDB);
 
   db_free (&itunesdb);
-  printf ("%i B written to the iTunesDB: %s\n", ret, ITUNESDB);
+  db_free (&artworkdb);
 
   return 0;
 }

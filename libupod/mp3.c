@@ -52,13 +52,13 @@
 #include <libgen.h>
 #endif
 
-#define MP3_DEBUG 1
+#define MP3_DEBUG 0
 
 #define MP3_PROTECTION_BIT 0x00010000
 #define MP3_PADDING_BIT    0x00000200
 
 void mp3_debug (char *format, ...) {
-#if defined(MP3_DEBUG)
+#if MP3_DEBUG==1
   va_list arg;
   va_start (arg, format);
   vfprintf (stderr, format, arg);

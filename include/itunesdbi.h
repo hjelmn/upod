@@ -265,6 +265,20 @@ struct db_dohm {
   u_int32_t unk1;
 };
 
+/* When format == 1 the string is encoded as UTF-8 */
+struct string_header_12 {
+  u_int32_t string_length;
+  u_int32_t format;
+  u_int32_t unk1;
+};
+
+struct string_header_16 {
+  u_int32_t unk0;
+  u_int32_t string_length;
+  u_int32_t format;
+  u_int32_t unk2;
+};
+
 struct db_wierd_dohm {
   u_int32_t dohm;
   u_int32_t header_size; /* 0x018 */

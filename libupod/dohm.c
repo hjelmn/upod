@@ -147,19 +147,6 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
   return 0;
 }
 
-struct string_header_12 {
-  u_int32_t string_length;
-  u_int32_t unk0;
-  u_int32_t unk1;
-};
-
-struct string_header_16 {
-  u_int32_t unk0;
-  u_int32_t string_length;
-  u_int32_t unk1;
-  u_int32_t unk2;
-};
-
 int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
   int entry_size;
 
@@ -173,7 +160,7 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
     string_header = (struct string_header_12 *)&((*entry)->data[DOHM_HEADER_SIZE]);
 
     string_header->string_length = dohm.size;
-    string_header->unk0 = 0x00000002;
+    string_header->format = 0x00000002;
   } else {
     struct string_header_16 *string_header;
     
@@ -181,6 +168,8 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
 
     string_header->string_length = dohm.size;
     string_header->unk0 = 0x00000001;
+
+    string_header->format = 0x00000000;
   }
 
   (*entry)->string_header_size = string_header_size;

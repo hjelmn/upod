@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.1beta1 image_list.c
+ *   v0.0.2 image_list.c
  *
  *   Functions to manipulate the list of artwork in an ArtworkDB.
  *   
@@ -29,7 +29,7 @@
 
 #include <sys/uio.h>
 #include <unistd.h>
-
+#include <libgen.h>
 #include <fcntl.h>
 
 #include <errno.h>
@@ -40,7 +40,9 @@
 
 static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 
-int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifier) {
+/* The image described by image_data will be scaled to the correct size */
+int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
+		  size_t image_size, size_t thumb_width, size_t thumb_height) {
   tree_node_t *dshm_header;
   tree_node_t *dohm_header, *inhm_header, *iihm_header;
 
@@ -49,10 +51,18 @@ int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifie
   char file_name[255];
   char file_name_mac[255];
   unsigned long file_id;
+  unsigned long image_height, image_width;
+  unsigned long scale_width, scale_height;
+  unsigned long border_height, border_width;
+
+  char *tmp;
+
+  MagickWand *magick_wand;
+  PixelWand *pixel_wand;
 
   int ret;
 
-  if ((photodb == NULL) || (magick_wand == NULL) || (iihm_identifier < 1))
+  if ((photodb == NULL) || (iihm_identifier < 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_thumb_add: entering...\n");
@@ -64,12 +74,51 @@ int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifie
     return ret;
   }
 
-  if (MagickGetImageWidth(magick_wand) == 56)
+  /* Make thumbnails and add them to the database */
+  magick_wand = NewMagickWand ();
+  pixel_wand  = NewPixelWand ();
+
+  PixelSetColor (pixel_wand, "black");
+
+  ret = MagickReadImageBlob (magick_wand, image_data, image_size);
+  if (ret == MagickFalse) {
+    DestroyMagickWand (magick_wand);
+
+    fprintf (stderr, "******* Error reading image blob *******\n");
+
+    return -1;
+  }
+
+  image_height = MagickGetImageHeight (magick_wand);
+  image_width  = MagickGetImageWidth (magick_wand);
+
+  if (image_width > image_height) {
+    scale_width  = thumb_width;
+    scale_height = (int) ((float)thumb_width * (float) image_height/(float) image_width)/2 * 2;
+  } else {
+    scale_width  = (int) ((float)thumb_height * (float) image_width/(float) image_height)/2 * 2;
+    scale_height = thumb_height;
+  }
+
+  border_width  = (thumb_width - scale_width)/2;
+  border_height = (thumb_height - scale_height)/2;
+  
+  MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
+  MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
+
+  if (thumb_width == 56)
     file_id = 1017;
-  else if (MagickGetImageWidth(magick_wand) == 140)
+  else if (thumb_width == 140)
     file_id = 1016;
-   
-  sprintf (file_name, "F%lu_1.ithmb", file_id);
+  else if (thumb_width == 640)
+    file_id = 1019;
+  else
+    file_id = 1015;
+
+
+  tmp = strdup (photodb->path);
+  sprintf (file_name, "%s/F%lu_1.ithmb", dirname (tmp), file_id);
+  free (tmp);
 
   sprintf (file_name_mac, ":F%lu_1.ithmb", file_id);
 
@@ -81,23 +130,49 @@ int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifie
   db_attach (dohm_header, inhm_header);
   db_attach (iihm_header, dohm_header);
 
+  DestroyMagickWand (magick_wand);
+  DestroyPixelWand (pixel_wand);
+
   iihm_data = (struct db_iihm *)iihm_header->data;
   iihm_data->num_thumbs++;
 
   return 0;
 }
 
-int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_size) {
+static int iihm_lookup (ipoddb_t *photodb, int id1, int id2) {
+  tree_node_t *dshm_header;
+  int i, ret;
+  struct db_ilhm *ilhm_data;
+
+  if (photodb == NULL)
+    return -EINVAL;
+
+  db_log (photodb, 0, "iihm_lookup: entering...\n");
+
+  /* find the image list */
+  if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
+    db_log (photodb, ret, "Could not get image list header\n");
+    return ret;
+  }
+
+  ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
+
+  for (i = 0 ; i < ilhm_data->num_images ; i++) {
+    struct db_iihm *iihm_data = (struct db_iihm *)dshm_header->children[i + 1]->data;
+
+    if (iihm_data->id1 == id1 && iihm_data->id2 == id2)
+      return 1;
+  }
+
+  return 0;
+}
+
+int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_size, int id1, int id2) {
   tree_node_t *dshm_header, *new_iihm_header;
   struct db_ilhm *ilhm_data;
   struct db_dfhm *dfhm_data;
 
-  MagickWand *magick_wand;
-  PixelWand *pixel_wand;
-  int identifier, id1, id2, ret;
-  int image_height, image_width;
-  int scale_height, scale_width;
-  int border_height, border_width;
+  int identifier, ret;
 
   if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
     return -EINVAL;
@@ -110,9 +185,15 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
     return ret;
   }
 
+  if (iihm_lookup (photodb, id1, id2)) {
+    db_log (photodb, ret, "Image already exists in the database\n");
+
+    return 0;
+  }
+
   dfhm_data = (struct db_dfhm *)photodb->tree_root->data;
 
-  id1 = id2 = identifier = dfhm_data->next_iihm;
+  identifier = dfhm_data->next_iihm;
 
   if ((ret = db_iihm_create (&new_iihm_header, identifier, id1, id2)) < 0) {
     db_log (photodb, ret, "Could not create iihm entry\n");
@@ -122,65 +203,26 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   new_iihm_header->parent = dshm_header;
   db_attach (dshm_header, new_iihm_header);
 
+  db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
+
+  if (db_thumb_add (photodb, identifier, image_data, image_size, 56, 56) < 0) {
+    db_log (photodb, -1, "Could not create default thumbnails.\n");
+
+    db_detach (dshm_header, dshm_header->num_children-1, &new_iihm_header);
+    db_free_tree (new_iihm_header);
+    
+    return -1;
+  }
+
+  db_thumb_add (photodb, identifier, image_data, image_size, 140, 140);
+
   /* everything was successfull, increase the image count in the ilhm header */
   ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
   ilhm_data->num_images += 1;
 
   dfhm_data->next_iihm++;
 
-  db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
-
-  /* Make thumbnails and add them to the database */
-  magick_wand = NewMagickWand ();
-  pixel_wand  = NewPixelWand ();
-
-  ret = MagickReadImageBlob (magick_wand, image_data, image_size);
-  if (ret == MagickFalse) {
-    DestroyMagickWand (magick_wand);
-
-    return -1;
-  }
-
-  image_height = MagickGetImageHeight (magick_wand);
-  image_width  = MagickGetImageWidth (magick_wand);
-
-  if (image_width > image_height) {
-    scale_width  = 140;
-    scale_height = (int) (140.0 * (float) image_height/(float) image_width)/2 * 2;
-  } else {
-    scale_width  = (int) (140.0 * (float) image_width/(float) image_height)/2 * 2;
-    scale_height = 140;
-  }
-
-  border_height = (140 - scale_height)/2;
-  border_width  = (140 - scale_width)/2;
-  
-  MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
-  MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
-  db_thumb_add (photodb, magick_wand, identifier);
-  DestroyMagickWand (magick_wand);
-
-
-  if (image_width > image_height) {
-    scale_width  = 56;
-    scale_height = (int) (56.0 * (float) image_height/(float) image_width)/2 * 2;
-  } else {
-    scale_width  = (int) (56.0 * (float) image_width/(float) image_height)/2 * 2;
-    scale_height = 56;
-  }
-
-  border_height = (56 - scale_height)/2;
-  border_width  = (56 - scale_width)/2;
-
-  magick_wand = NewMagickWand();
-  ret = MagickReadImageBlob (magick_wand, image_data, image_size);
-  MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
-  MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
-  db_thumb_add (photodb, magick_wand, identifier);
-
-
-  DestroyMagickWand (magick_wand);
-  DestroyPixelWand (pixel_wand);
+  db_log (photodb, 0, "db_photo_add: completed...\n");
 
   return identifier;
 }
@@ -280,7 +322,9 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
   iihm_data = (struct db_iihm *)iihm_header->data;
 
   iihm->identifier = iihm_data->identifier;
-  iihm->num_inhm  = iihm_data->num_thumbs;
+  iihm->id1        = iihm_data->id1;
+  iihm->id2        = iihm_data->id2;
+  iihm->num_inhm   = iihm_data->num_thumbs;
 
   iihm->inhms      = (inhm_t *) calloc (iihm->num_inhm, sizeof (inhm_t));
 

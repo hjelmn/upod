@@ -92,7 +92,7 @@ int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
    < 0 on error
    >=0 on success
 */
-int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
+int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *mac_path,
 		 size_t mac_path_len, int stars, int show) {
   tree_node_t *dshm_header, *new_tihm_header;
 
@@ -113,7 +113,7 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
 
   if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len,
 				  stars, tihm_num, itunesdb->flags & 0x1)) < 0) {
-    db_log (itunesdb, ret, "Could not fill tihm structure from file.\n");
+    db_log (itunesdb, ret, "Could not fill tihm structure from file: %s.\n", path);
     return ret;
   }
 
@@ -122,6 +122,9 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
     free (new_tihm_header);
     return ret;
   }
+
+  if (artworkdb && tihm.image_data)
+    db_photo_add (artworkdb, tihm.image_data, tihm.image_size, tihm.artwork_id1, tihm.artwork_id2);
 
   tihm_free (&tihm);
   

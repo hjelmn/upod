@@ -29,31 +29,34 @@ void usage(void) {
 }
 
 int main(int argc, char *argv[]) {
-  ipoddb_t ipod;
+  ipoddb_t itunesdb, artworkdb;
   tihm_t new_entry;
   int ret;
+
+  memset (&itunesdb, 0, sizeof (ipoddb_t));
+  memset (&artworkdb, 0, sizeof (ipoddb_t));
 
   if (argc != 5)
     usage();
 
-  if ((ret = db_load (&ipod, argv[1], 0x1)) < 0) {
+  if ((ret = db_load (&itunesdb, argv[1], 0x1)) < 0) {
     printf("Could not load database.\n");
     exit(2);
   }
 
   printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
 
-  if (db_song_add (&ipod, argv[3], argv[4], strlen(argv[4]), 0, 1) < 0) {
+  if (db_song_add (&itunesdb, NULL, argv[3], argv[4], strlen(argv[4]), 0, 1) < 0) {
     printf("Song could not be added.\n");
     exit(2);
   }
 
-  if ((ret = db_write (ipod, argv[2])) < 0) {
+  if ((ret = db_write (itunesdb, argv[2])) < 0) {
     printf("Database could not be written to file.\n");
     exit(2);
   }
 
-  db_free(&ipod);
+  db_free(&itunesdb);
   printf("%i B written to iTunesDB %s.\n", ret, argv[2]);
 
   return 0;

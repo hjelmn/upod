@@ -145,9 +145,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
     bswap_block (&((*buffer)[0x18]), 4, 1);
 
-    if ((dohm_data->type & 0x01000000) != 0)
-      copy_size = entry_size;
-    else if (dohm_contains_string(dohm_data) == 0) {
+    if (dohm_contains_string(dohm_data) == 0) {
       copy_size = entry_size;
       bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
     } else if (iptr[6] == 1) {
@@ -164,7 +162,8 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
       tnode_0->string_header_size = 12;
 
       copy_size = entry_size;
-    }
+    } else
+      bswap_block (&((*buffer)[0x18]), 4, 1);
 
   } else if (iptr[0] == TIHM) {
     struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
@@ -330,7 +329,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   ipod_db->tree_root = db_build_tree(ipod_db, &bytes_read, NULL, &buffer);
 
   ipod_db->flags = flags;
-
+  ipod_db->path  = strdup (path);
   free(tmp);
 
   return bytes_read;
@@ -347,14 +346,24 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 
   if (dohm_data->dohm == DOHM) {
     iptr = (int *)dohm_data;
-    if ((dohm_data->type & 0x01000000) != 0)
-      swap = 9;
-    else if (entry->string_header_size == 16) {
+    if (entry->string_header_size == 16) {
+      struct string_header_16 *string_header;
+
+      string_header = (struct string_header_16 *)&entry->data[0x18];
+
       swap = 10;
-      bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+
+      if (string_header->format != 1)
+	bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
     } else if (entry->string_header_size == 12) {
+      struct string_header_12 *string_header;
+
+      string_header = (struct string_header_12 *)&entry->data[0x18];
+
       swap = 9;
-      bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
+      
+      if (string_header->format != 1)
+	bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
     } else
       swap = entry->size/4;
 
@@ -369,9 +378,17 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 #if BYTE_ORDER == BIG_ENDIAN
   if (dohm_data->dohm == DOHM && (dohm_data->type & 0x01000000) == 0) {
     if (entry->string_header_size == 16) {
-      bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+      struct string_header_16 *string_header;
+      string_header = (struct string_header_16 *)&entry->data[0x18];
+
+      if (string_header->format != 1)
+	bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
     } else if (entry->string_header_size == 12) {
-      bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
+      struct string_header_12 *string_header;
+      string_header = (struct string_header_12 *)&entry->data[0x18];
+
+      if (string_header->format != 1)
+	bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
     }
   }
 #endif

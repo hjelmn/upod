@@ -32,6 +32,8 @@ extern "C" {
 #include <glib.h>
 
 #define ITUNESDB "iPod_Control/iTunes/iTunesDB"
+#define ARTWORKDB "iPod_Control/Artwork/ArtworkDB"
+#define PHOTODB "Photos/Photo Database"
 
 enum dohm_types_t {
   IPOD_TITLE=1,
@@ -94,6 +96,8 @@ typedef struct _ipoddatabase {
   int last_entry;
 
   int database_type;
+
+  char *path;
 } ipoddb_t;
 
 typedef struct tree_node tree_node_t;
@@ -104,6 +108,12 @@ typedef struct _ipod {
 
   char *dir;
   char *itunesdb_path;
+
+  /* Sysinfo */
+  char *board;
+  char *model_number;
+  char *serial_number;
+  char *sw_version;
 } ipod_t;
  
 typedef struct dohm {
@@ -128,6 +138,9 @@ typedef struct inhm {
 
 typedef struct iihm {
   int identifier;
+
+  int id1;
+  int id2;
 
   u_int32_t num_inhm;
   inhm_t *inhms;
@@ -164,6 +177,14 @@ typedef struct tihm {
   u_int32_t creation_date;
   u_int16_t bpm; /* beats/min */
 
+  /* These three fields only apply to color iPods */
+  u_int32_t has_artwork;
+  u_int32_t artwork_id1;
+  u_int32_t artwork_id2;
+
+  unsigned char *image_data;
+  size_t image_size;
+
   int num_dohm;
 
   dohm_t *dohms;
@@ -179,15 +200,6 @@ typedef struct pyhm {
 
 typedef pyhm_t mhyp_t;
 
-/* all strings passed to the below functions are ascii not unicode */
-/* itunesdb2/ipod.c */
-/* valid fstypes are "hfsplus" and "fat32" */
-int    ipod_open      (ipod_t *ipod, char *dir, char *dev, char *fstype);
-int    ipod_close     (ipod_t *ipod);
-int    ipod_copy_from (ipod_t *ipod, char *topath, char *frompath);
-int    ipod_copy_to   (ipod_t *ipod, char *topath, char *frompath);
-int    ipod_rename    (ipod_t *ipod, char *name, int name_len);
-
 /* itunesdb2/db.c */
 int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
@@ -198,7 +210,7 @@ int    db_photo_create (ipoddb_t *photodb);
 
 /* itunesdb2/song_list.c */
 int  db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
-int  db_song_add   (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
+int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
 int  db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
 int  db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
@@ -206,9 +218,11 @@ int  db_song_list (ipoddb_t *itunesdb, GList **head);
 void db_song_list_free (GList **head);
 int  db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 int  db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num);
-/* itunesdb2/artworkdb.c */
-int    db_photo_list (ipoddb_t *artworkdb, GList **head);
-void   db_photo_list_free (GList **head);
+
+/* itunesdb2/image_list.c */
+int  db_photo_add (ipoddb_t *artworkdb, unsigned char *image_data, size_t image_size, int id1, int id2);
+int  db_photo_list (ipoddb_t *artworkdb, GList **head);
+void db_photo_list_free (GList **head);
 
 int    db_set_debug (ipoddb_t *itunesdb, int level, FILE *out);
 

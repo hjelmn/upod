@@ -93,7 +93,8 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
 
   ret = -1;
  found:
-  db_log (itunesdb, 0, "db_lookup: found\n");
+  if (ret != -1)
+    db_log (itunesdb, 0, "db_lookup: found\n");
 
   free(unicode_data);
   return ret;
@@ -170,7 +171,9 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
 
   ret = -1;
  found_playlist:
-  db_log (itunesdb, 0, "db_lookup_playlist: found\n");
+  if (ret != -1)
+    db_log (itunesdb, 0, "db_lookup_playlist: found\n");
+
   free (unicode_data);
 
   return ret;

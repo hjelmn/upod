@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.4 aac.c
+ *   v0.5.0 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
  *
@@ -38,6 +38,8 @@
 #include <math.h>
 #include <string.h>
 
+
+unsigned int crc32 (unsigned char *, unsigned int);
 void mp3_debug (char *, ...);
 
 u_int16_t big16_2_arch16 (u_int16_t x) {
@@ -118,6 +120,34 @@ int is_media_header (int type) {
   return 0;
 }
 
+int parse_covr (char *buffer, int buffer_size, FILE *fd, struct qt_meta meta, tihm_t *tihm) {
+  unsigned char *image_data;
+  unsigned long cksum;
+
+  if (tihm->image_data)
+    return 0;
+
+  mp3_debug ("Cover artwork found. Image size is %i B\n", meta.offset);
+
+  image_data = (unsigned char *)calloc(1, meta.offset - sizeof (struct qt_meta));
+
+  fseek (fd, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
+  fread (image_data, 1, meta.offset - sizeof (struct qt_meta), fd);
+
+  /* TODO -- Use a 64 bit checksum */
+  cksum = crc32 (image_data, meta.offset - sizeof (struct qt_meta));
+
+  tihm->has_artwork = 1;
+
+  /* By using a checksum duplicate artwork will be avoided */
+  tihm->artwork_id1 = cksum;
+
+  tihm->image_data  = image_data;
+  tihm->image_size  = meta.offset - sizeof (struct qt_meta);
+
+  return 0;
+}
+
 /* Parse user data's (udat) meta data (meta) section */
 int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
@@ -180,7 +210,10 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     } else if (strncmp (meta.identifier, "day", 3) == 0) {
       tihm->year = strtol (buffer, NULL, 10);
       continue;
-    }else if (strncmp (meta.identifier, "mpo", 3) == 0) {
+    } else if (strncmp (meta.identifier, "ovr", 3) == 0) {
+      parse_covr (buffer, buffer_size, fd, meta, tihm);
+      continue;
+    } else if (strncmp (meta.identifier, "mpo", 3) == 0) {
       tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
       continue;
     } else
@@ -198,7 +231,7 @@ int m4a_bitrates[] = {
   28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
 };
 
-void parse_stsz (FILE *fh, double *bits, int time_scale) {
+void parse_stsz (FILE *fh, double *bits, int time_scale, int faac) {
   int current_loc = ftell (fh);
   int buffer[10];
   double avg = 0.0;
@@ -207,7 +240,7 @@ void parse_stsz (FILE *fh, double *bits, int time_scale) {
   double bmin = 10000.0;
   int silence_frames = 0;
   double totalby;
-  int num_samples;
+  int num_samples = 0;
   long int bit_rate;
 
   mp3_debug ("Parsing stsz atom\n");
@@ -215,6 +248,8 @@ void parse_stsz (FILE *fh, double *bits, int time_scale) {
   fread (buffer, 4, 3, fh);
 
   num_samples = big32_2_arch32 (buffer[2]);
+
+  mp3_debug ("Atom contains %i samples\n", num_samples);
 
   for (i = 0 ; i < num_samples ; i++) {
     int sample_size;
@@ -234,7 +269,7 @@ void parse_stsz (FILE *fh, double *bits, int time_scale) {
     bmin = ((double)sample_size < bmin) ? (double)sample_size : bmin;
   }
 
-  bit_rate = (long int)(((avg * 8.0/((double)(num_samples-silence_frames))) * (double)time_scale/1000.0)/1000.0);
+  bit_rate = (long int)(((avg * 8.0/((double)(num_samples-silence_frames))) * time_scale/1000.0)/1000.0);
 
   mp3_debug ("Bit_rate is: %i\n", bit_rate);
 
@@ -276,7 +311,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   int meta = string_to_int ("meta");
   int mdat = string_to_int ("mdat");
   int stsz = string_to_int ("stsz");
-
+  int faac = 0;
   double bits;
 
   memset (tihm, 0, sizeof(tihm_t));
@@ -311,32 +346,37 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   }
 
   fread (buffer, 1, atom.size - sizeof(atom), fd);
-  if (strncmp (buffer, "M4A", 3) != 0) {
+  if (strncmp (buffer, "M4A", 3) != 0 &&
+      strncmp (buffer, "mp42", 4) != 0) {
     fclose (fd);
 
     return -1;
   }
 
+  if (strncmp (buffer, "mp42", 4) == 0)
+    faac = 1;
+
   while (1) {
     if (fread (&atom, sizeof(atom), 1, fd) != 1) {
       fclose (fd);
-      return -1;
+      return -errno;
     }
 
     if (atom.type == mdat || atom.size == 0)
       break;
 
-    if (atom.type == stsz)
-      parse_stsz (fd, &bits, time_scale);
+    if (atom.type == stsz && atom.size > 0x14)
+      parse_stsz (fd, &bits, time_scale, faac);
 
     if (atom.size > sizeof(atom)) {
       if (atom.size - sizeof(atom) < 2001) {
-	if (is_media_header (atom.type)) {
+	if (is_media_header (atom.type) && time_scale == 0) {
 	  struct mdhd *mdhd = (struct mdhd *)buffer;
 	  
 	  fread (buffer, atom.size - sizeof(atom), 1, fd);
 
 	  time_scale = mdhd->time_scale;
+
 	  duration = (double)mdhd->duration/(double)time_scale;
 
 	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %fsecs\n", time_scale, duration);
@@ -361,21 +401,23 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   mp3_debug ("aac_fill_tihm: size = %i\n", atom.size);
 
-  if ((bit_rate - 32) <= m4a_bitrates[14]) {
-    for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
-      int temp = m4a_bitrates[i-1] - bit_rate;
-      int temp2 = m4a_bitrates[i] - bit_rate;
-      if (temp < 0 && (temp + temp2) > 0) {
-	bit_rate = m4a_bitrates[i-1];
-	break;
-      } else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
-	bit_rate = m4a_bitrates[i];
-	break;
+  if (!faac) {
+    if ((bit_rate - 32) <= m4a_bitrates[14]) {
+      for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
+	int temp = m4a_bitrates[i-1] - bit_rate;
+	int temp2 = m4a_bitrates[i] - bit_rate;
+	if (temp < 0 && (temp + temp2) > 0) {
+	  bit_rate = m4a_bitrates[i-1];
+	  break;
+	} else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
+	  bit_rate = m4a_bitrates[i];
+	  break;
+	}
       }
-    }
-    dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
-  } else
-    dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
+      dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
+    } else
+      dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
+  }
 
   if (bit_rate == 0)
     return -1;

@@ -1,6 +1,6 @@
 /**
- *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.1 tihm.c
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -102,7 +102,13 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->start_time  = tihm->start_time;
   tihm_data->stop_time   = tihm->stop_time;
 
-  tihm_data->has_artwork = 0xffffffff;
+  if (tihm->has_artwork) {
+    tihm_data->has_artwork = 0xffff0001;
+    tihm_data->iihm_id1 = tihm->artwork_id1;
+    tihm_data->iihm_id2 = tihm->artwork_id2;
+  } else
+    tihm_data->has_artwork = 0xffffffff;
+
   /* it may be useful to set other values in the tihm structure but many
      have still not been deciphered */
 
@@ -254,6 +260,9 @@ int db_song_modify (ipoddb_t *itunesdb, int tihm_num, tihm_t *tihm) {
 void tihm_free (tihm_t *tihm) {
   if (tihm == NULL)
     return;
+
+  if (tihm->image_data)
+    free (tihm->image_data);
 
   dohm_free (tihm->dohms, tihm->num_dohm);
 }
