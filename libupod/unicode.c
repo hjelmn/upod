@@ -1,8 +1,6 @@
 /**
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 endian.c
- *
- *   upod endianness functions
+ *   v0.1.0a unicode.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -25,26 +23,23 @@
 
 #include "upodi.h"
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
+void char_to_unicode (char *dst, char *src, size_t src_length) {
+  int i;
+  
+  memset (dst, 0, src_length * 2);
+
+  for (i = 0 ; i < src_length ; i++)
+    dst[i * 2] = src[i];
+}
+
+void unicode_to_char (char *dst, char *src, size_t src_length) {
   int i;
 
-#if BYTE_ORDER == BIG_ENDIAN
-  for (i = 0 ; i < nmemb ; i++)
-    switch (membsize) {
-    case 2:
-      {
-	short *r = (short *)ptr;
-	/* may be needed for unicode strings */
-	r[i] = bswap_16 (r[i]);
-      }
-    case 4:
-      {
-	long *r = (long *)ptr;
-	r[i] = bswap_32 (r[i]);
-      }
-    }
-#endif
+  memset(dst, 0, src_length/2);
+
+  for (i = 0 ; i < src_length/2 ; i++)
+    dst[i] = src[i * 2];
 }

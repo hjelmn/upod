@@ -1,8 +1,6 @@
 /**
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 endian.c
- *
- *   upod endianness functions
+ *   v0.1.0a tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -25,26 +23,40 @@
 
 #include "upodi.h"
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
+#define PIHM               0x7069686d
+#define PIHM_HEADER_SIZE   0x4c
+#define PIHM_TOTAL_SIZE    0x4c
+
+int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   int i;
 
-#if BYTE_ORDER == BIG_ENDIAN
-  for (i = 0 ; i < nmemb ; i++)
-    switch (membsize) {
-    case 2:
-      {
-	short *r = (short *)ptr;
-	/* may be needed for unicode strings */
-	r[i] = bswap_16 (r[i]);
-      }
-    case 4:
-      {
-	long *r = (long *)ptr;
-	r[i] = bswap_32 (r[i]);
-      }
-    }
-#endif
+  for ( i = 2 ; i < entry->num_children ; i++ )
+    if (((int *)(entry->children[i]->data))[6] == tihm_num)
+      return i;
+
+  return -1;
+}
+
+int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk) {
+  int *iptr;
+  
+  entry->size = PIHM_HEADER_SIZE;
+  entry->data = calloc (1, PIHM_HEADER_SIZE);
+  entry->num_children = 0;
+  entry->children     = NULL;
+
+  iptr = (int *)entry->data;
+
+  iptr[0] = PIHM;
+  iptr[1] = PIHM_HEADER_SIZE;
+  iptr[2] = PIHM_TOTAL_SIZE;
+  iptr[3] = 1;
+  iptr[5] = junk + 1;
+  iptr[6] = tihm_num;
+  iptr[7] = 0xb864adba;
+
+  return 0;
 }
