@@ -787,7 +787,7 @@ int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
   dohm_data   = (struct db_dohm *)dohm_header->data;
 
   /* one extra byte is needed to hold the terminating \0 */
-  *name = malloc (dohm_data->len/2 + 1);
+  *name = calloc (1, dohm_data->len/2 + 1);
 
   unicode_to_char (*name, &dohm_header->data[0x28], dohm_data->len);
 

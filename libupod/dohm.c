@@ -168,7 +168,7 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
     dohm_data = (struct db_dohm *)dohm_list[i]->data;
 
     dohms[i].type = dohm_data->type;
-    dohms[i].size = dohm_data->record_size;
+    dohms[i].size = dohm_data->len;
     dohms[i].data = (u_int16_t *) malloc (dohms[i].size);
     memcpy(dohms[i].data, &(dohm_list[i]->data[40]), dohms[i].size);
   }

@@ -1,4 +1,4 @@
-#include "upod.h"
+#include "itunesdb.h"
 
 #include <stdlib.h>
 
@@ -12,7 +12,7 @@ void usage(void) {
 }
 
 int main(int argc, char *argv[]) {
-  ipod_t ipod;
+  itunesdb_t ipod;
   GList *list;
   int *reflist;
   int ret;
@@ -39,13 +39,13 @@ int main(int argc, char *argv[]) {
 
   if (qlist) {
     GList *tmp;
-    list = db_return_playlist_list (&ipod);
+    list = db_playlist_list (&ipod);
     
     for (tmp = list ; tmp ; tmp = tmp->next)
       printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num, ((pyhm_t *)tmp->data)->name);
     db_playlist_list_free(list);
   } else if (cr) {
-    if (db_create_new_playlist (&ipod, argv[3]) > 0) {
+    if (db_playlist_create (&ipod, argv[3], strlen(argv[3])) > 0) {
       db_write (ipod, argv[1]);
     }
 

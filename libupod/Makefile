@@ -3,12 +3,12 @@ OBJS =  db.o tihm.o endian.o dohm.o mp3.o mp3tech.o unicode.o pihm.o non-posix.o
 SRCS =  db.c tihm.c endian.c dohm.c mp3.c mp3tech.c unicode.c pihm.c non-posix.c \
 	ipod.c playlist.c pyhm.c create.c dshm.c checks.c ipod.c
 
-CFLAGS = -g3 -I../include -traditional-cpp -D__darwin__
+CFLAGS = -g3 -I../include -traditional-cpp -D__darwin__ -ansi
 GCC = gcc
 .c.o: ../include/upodi.h ../include/upod.h
 	$(GCC) -c $(CFLAGS) $*.c
 
-all: libipod.a db_add db_remove db_hide db_unhide db_list db_adddir
+all: libipod.a db_add db_remove db_hide db_unhide db_list db_adddir db_pl
 
 libipod.a: $(OBJS)
 	ar cr libipod.a $(OBJS)
@@ -39,5 +39,5 @@ clean:
 	rm -f $(OBJS)
 
 clean_all:
-	rm -f $(OBJS) libipod.a db_add db_remove db_hide db_unhide db_list db_lookup add.o remove.o hide.o unhide.o list.o lookup.o
+	rm -f $(OBJS) libipod.a db_add db_remove db_hide db_unhide db_list db_lookup db_pl pl.o add.o remove.o hide.o unhide.o list.o lookup.o
 
