@@ -64,6 +64,7 @@ typedef struct tihm {
   u_int32_t length;
   u_int32_t size;
   u_int32_t mod_date;
+  u_int32_t track;
 
   /* in thousants of seconds */
   u_int32_t time;

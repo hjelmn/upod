@@ -116,7 +116,7 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
   tihm_data->date        = time(NULL); // mod_date (not really)
   tihm_data->file_size   = tihm.size;
   tihm_data->duration    = tihm.time;
-  tihm_data->order       = 0; /* XXX -- FIXME -- Might actually want track number */
+  tihm_data->order       = tihm.track;
   tihm_data->sample_rate = tihm.samplerate << 16;
 
   /* XXX -- i don't know if these mean anything */
@@ -171,6 +171,7 @@ tihm_t *db_tihm_fill (struct tree_node *entry) {
   tihm->samplerate= dbtihm->sample_rate >> 16;
   tihm->encoding  = dbtihm->encoding;
   tihm->type      = dbtihm->type;
+  tihm->track     = dbtihm->order;
 
   tihm->dohms     = db_dohm_fill (entry);
 

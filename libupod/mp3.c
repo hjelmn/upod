@@ -132,7 +132,8 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
   char *tmpc;
   dohm_t *dohm;
 
-  dohm = dohm_create(tihm);
+  if (field != ID3_TRACK)
+    dohm = dohm_create(tihm);
   
   switch (field) {
   case ID3_ARTIST:
@@ -151,6 +152,8 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
   case ID3_COMMENT:
     dohm->type = IPOD_COMMENT;
     break;
+  case ID3_TRACK:
+    break;
   default:
     return;
   }
@@ -164,7 +167,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
     char *tag_temp;
     char *sizeloc;
     char genre_temp[4];
-    
+
     /* look for a needle in a haystack */
     if ( ((tag_temp = (char *)memmem(tag_data, tag_datalen, fields[field], 0x03)) != NULL ) ||
 	 ((tag_temp = (char *)memmem(tag_data, tag_datalen, fourfields[field], 0x03)) != NULL) ) {
@@ -174,19 +177,33 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       /* skip the flags field */
       for (tag_temp += 2 ; (*tag_temp == 0) ; tag_temp++);
       
-      if ((field != ID3_GENRE) || ( *(tag_temp) != 40) ) {
+      if ((field != ID3_TRACK) &&
+	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) ) {
 	int length = 0;
 	
 	length = *(sizeloc) - 1;
+
+	if (length < 1)
+	  goto id3_error;
 	
 	dohm->size = 2 * length;
 	dohm->data = calloc (1, dohm->size);
-	
+
 	if (dohm->data != NULL)
 	  char_to_unicode (dohm->data, tag_temp, length);
 	else
 	  goto id3_error;
-	
+      } else if (field == ID3_TRACK) {
+	char *slash;
+
+	/* some id3 tags have track/total tracks in the TRK field */
+	slash = strchr (tag_temp, '/');
+
+	if (slash) *slash = 0;
+
+	tihm->track = atol (tag_temp);
+
+	if (slash) *slash = '/';
       } else {
 	int i;
 	
@@ -244,10 +261,10 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
     char_to_unicode (dohm->data, copy_from, i);
   }
 
-    return;
+  return;
  id3_not_found:
  id3_error:
-    dohm_destroy(tihm);
+  dohm_destroy(tihm);
 }
 
 static int get_id3_info (char *file_name, tihm_t *tihm) {
@@ -272,6 +289,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     parse_id3(tag_data, tag_datalen, version, ID3_ALBUM  , tihm);
     parse_id3(tag_data, tag_datalen, version, ID3_COMMENT, tihm);
     parse_id3(tag_data, tag_datalen, version, ID3_GENRE  , tihm);
+    parse_id3(tag_data, tag_datalen, version, ID3_TRACK  , tihm);
 
     free(tag_data);
   }
@@ -292,7 +310,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
   }
   
   close(fd);
-
+  
   return version;
 }
 
@@ -334,20 +352,23 @@ static int get_mp3_header_info (char *file_name, tihm_t *tihm) {
 }
 
 /*
-  mp3_fill_tihm: fills a tihm structure for adding a file to the iTunesDB.
+  mp3_fill_tihm:
+
+  fills a tihm structure for adding a mp3 to the iTunesDB.
+
+  Returns:
+   < 0 if any error occured
+     0 if successful
 */
 int mp3_fill_tihm (char *file_name, tihm_t *tihm){
   struct stat statinfo;
-
-  int id3_version;
-  int mp3_header_offset;
-
-  char type_string[] = "MPEG audio file";
-  
   int ret;
 
   dohm_t *dohm;
+  char type_string[] = "MPEG audio file";
 
+  /* zero the structure to avoid getting any weird values for
+     data not found (such as track number) */
   memset (tihm, 0, sizeof(tihm_t));
 
   ret = stat(file_name, &statinfo);
@@ -359,11 +380,13 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
 
   tihm->size = statinfo.st_size;
 
-  if ((id3_version = get_id3_info(file_name, tihm)) < 0)
+  if (get_id3_info(file_name, tihm) < 0)
     return -1;
   
-  if ((mp3_header_offset = get_mp3_header_info(file_name, tihm)) < 0)
+  if (get_mp3_header_info(file_name, tihm) < 0) {
+    tihm_free (tihm);
     return -1;
+  }
 
   dohm = dohm_create(tihm);
 
