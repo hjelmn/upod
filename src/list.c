@@ -106,31 +106,33 @@ int main (int argc, char *argv[]) {
 
     printf("\n");
   }
-
+  
   /* free the song list */
   db_song_list_free (songs);
-
+  songs = NULL;
+  
   /* dump playlist contents */
+  
   for (tmp = playlists ; tmp ; tmp = tmp->next) {
     int num_ref;
     int *list = NULL;
-
+    
     pyhm = (pyhm_t *)tmp->data;
     /* P(laylist) M(aster) */
     printf ("playlist name: %s(%s) len=%i\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
-
+    
     num_ref = db_playlist_list_songs (&itunesdb, pyhm->num, &list);
-
+    
     for (i = 0 ; i < num_ref ; i++)
       printf ("%i ", list[i]);
-
+    
     printf ("\n");
     free(list);
   }
-
-  db_free(&itunesdb);
-  db_song_list_free (songs);
+  
   db_playlist_list_free (playlists);
+  db_free(&itunesdb);
+
   close(fd);
 
   return 0;
