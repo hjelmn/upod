@@ -62,7 +62,7 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
     return NULL;
 
   /* Do not allow more than one dohm entry with the same type */
-  if (data_type > 0)
+  if (data_type > 0 && data_type != IPOD_PATH)
     for (i = 0 ; i < tihm->num_dohm ; i++)
       if (tihm->dohms[i].type == data_type)
 	return NULL;

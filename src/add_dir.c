@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <libgen.h>
 
-#include <ncurses.h>
 #include <libgen.h>
 
 #include <sys/stat.h>
@@ -77,8 +76,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 
     return 1;
   } else if (S_ISDIR (statinfo.st_mode)) {
-    wprintw (stdscr,"Adding dir %s\n", dir);
-    refresh();
+    printf ("Adding dir %s\n", dir);
     dir_fd = opendir (dir);
     
     while (entry = readdir (dir_fd)) {
@@ -100,57 +98,46 @@ int main(int argc, char *argv[]) {
   int ret;
   int db, i;
   
-  initscr ();
-  scrollok(stdscr, 1);
-
   memset (&itunesdb, 0, sizeof  (itunesdb_t));
   db_set_debug (&itunesdb, 0, stderr);
 
   if (strcmp (argv[1], "-create") == 0) {
     if (argc < 4) usage();
-    wprintw (stdscr,"Creating a database... ");
+    printf ("Creating a database... ");
 
     if ((ret = db_create(&itunesdb, "iPod", 4)) < 0) {
-      wprintw(stdscr,"Could not create database.\n");
+      printf("Could not create database.\n");
       exit(2);
     }
-    wprintw (stdscr,"done.\n");
+    printf ("done.\n");
     c = 1;
     db = 2;
   } else {
     if (argc < 3) usage();
     printf ("Loading a database.\n");
     if ((ret = db_load (&itunesdb, argv[1])) < 0) {
-      wprintw(stdscr,"Could not open database.\n");
+      printf("Could not open database.\n");
       exit(2);
     }
 
-    wprintw(stdscr, "%i B read from iTunesDB %s.\n", ret, argv[1]);
+    printf( "%i B read from iTunesDB %s.\n", ret, argv[1]);
     db = 1;
   }
-
-  refresh();
 
   for (i = (db + 1) ; i < argc ; i++)
     dir_add (&itunesdb, argv[i]);
 
   if ((ret = db_sanity_check (itunesdb)) < 0) {
-    wprintw (stdscr, "There is an error in the tree: %i\n", ret);
+    printf ( "There is an error in the tree: %i\n", ret);
   }
 
-  refresh();
-
   if ((ret = db_write (itunesdb, argv[db])) < 0) {
-    wprintw(stdscr, "Database could not be written to file.\n");
+    printf ("Database could not be written to file.\n");
     exit(2);
   }
 
   db_free (&itunesdb);
-  wprintw (stdscr, "%i B written to the iTunes database: %s.\n", ret, argv[db]);
-
-  refresh ();
-  getch ();
-  endwin ();
+  printf ( "%i B written to the iTunes database: %s.\n", ret, argv[db]);
 
   return 0;
 }
