@@ -15,10 +15,10 @@ int db_sanity_tree (tree_node_t *node) {
        iptr[2] != node->parent->num_children - 1)
     return -1;
   else if (iptr[0] == PYHM && iptr[4] != (node->num_children - 2)/2) {
-    printf ("check: incorrect playlist entry or pyhm child count\n");
-    printf (" data involved:\n");
-    printf ("  num_children = %i\n", node->num_children - 2);
-    printf ("  num_entries  = %i\n", iptr[4]);
+    fprintf (stderr, "check: incorrect playlist entry or pyhm child count\n");
+    fprintf (stderr, " data involved:\n");
+    fprintf (stderr, "  num_children = %i\n", node->num_children - 2);
+    fprintf (stderr, "  num_entries  = %i\n", iptr[4]);
     return -3;
   }
   

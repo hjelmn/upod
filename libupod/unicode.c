@@ -25,7 +25,7 @@
 #include <stdio.h>
 
 #include <string.h>
-#define const /* get rid of const (useless in c anyway) */
+#define const /* get rid of const (useless in c anyway?) */
 #include <iconv.h>
 
 #include "hexdump.c"
