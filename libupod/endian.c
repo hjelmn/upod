@@ -25,27 +25,32 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <endian.h>
 
 void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
   int i;
 
-#if BYTE_ORDER == BIG_ENDIAN
-  for (i = 0 ; i < nmemb ; i++)
-    switch (membsize) {
+#if __BYTE_ORDER == __BIG_ENDIAN
+  switch (membsize) {
     case 2:
       {
-	short *r = (short *)ptr;
-	/* may be needed for unicode strings */
+        u_int16_t *r = (u_int16_t *)ptr;
 
-	r[i] = bswap_16 (r[i]);
-	break;
+        for (i = 0 ; i < nmemb ; i++)
+          r[i] = bswap_16 (r[i]);
+
+        break;
       }
+
     case 4:
       {
-	long *r = (long *)ptr;
-	r[i] = bswap_32 (r[i]);
-	break;
+        u_int32_t *r = (u_int32_t *)ptr;
+
+        for (i = 0 ; i < nmemb ; i++)
+          r[i] = bswap_32 (r[i]);
+
+        break;
       }
-    }
+  }
 #endif
 }
