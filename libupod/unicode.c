@@ -26,7 +26,7 @@
 
 #include "hexdump.c"
 
-/* -- XXX -- Not used --- XXX --- */5C
+/* -- XXX -- Not used --- XXX --- */
 void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
   int i;
 
