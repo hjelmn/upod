@@ -256,7 +256,6 @@ static void one_pass_parse_id3 (char *tag_data, int tag_datalen, int version,
 	break;
       case ID3_BPM:
 	tihm->bpm = strtol (tag_temp, NULL, 10);
-	fprintf (stderr, " ***** BPM = %i *****\n", tihm->bpm);
 	break;
       case ID3_GENRE:
 	if (tag_temp[0] != '(') {
