@@ -1,6 +1,6 @@
 /**
  *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0b id3.c 
+ *   v0.1.1 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -312,7 +312,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	  genre_temp[j] = 0;
 	  
 	  if (atoi (genre_temp) > 147)
-	    return;
+	    continue;
 	  
 	  dohm_add (tihm, genre_table[atoi(genre_temp)],
 		    strlen (genre_table[atoi(genre_temp)]), IPOD_GENRE);
@@ -334,29 +334,35 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       switch (field) {
       case ID3_TITLE:
 	copy_from = &tag_data[3];
+	data_type = IPOD_TITLE;
 	break;
       case ID3_ARTIST:
 	copy_from = &tag_data[33];
+	data_type = IPOD_ARTIST;
 	break;
       case ID3_ALBUM:
 	copy_from = &tag_data[63];
+	data_type = IPOD_ALBUM;
 	break;
       case ID3_COMMENT:
 	copy_from = &tag_data[93];
+	data_type = IPOD_COMMENT;
 	break;
       case ID3_GENRE:
-	if ((int)tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
-	  return;
+	if ((int)tag_data[127] >= genre_count ||
+	    (signed char)tag_data[127] == -1)
+	  continue;
 	
 	copy_from = genre_table[tag_data[127]];
 	i = strlen (copy_from - 1);
+	data_type = IPOD_GENRE;
 	break;
       default:
-	return;
+	continue;
       }
       
       if ((signed char) copy_from[0] == -1)
-	return;
+	continue;
       
       if (field != ID3_GENRE)
 	for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1) && i >= 0; tmp--, i--)
@@ -365,7 +371,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	i = strlen(copy_from) - 1;
       
       if (i < 0)
-	return;
+	continue;
       
       i++;
       dohm_add (tihm, copy_from, i, data_type);
