@@ -229,7 +229,7 @@ int db_write (ipod_t ipod, char *path) {
 
   if (ipod.iTunesDB.tree_root == NULL) return -1;
 
-  fd = open(path, O_WRONLY | O_CREAT | perms);
+  fd = open(path, O_WRONLY | O_CREAT, perms);
 
   if (fd < 0) {
     perror("db_write");
