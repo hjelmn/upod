@@ -100,7 +100,7 @@ int main (int argc, char *argv[]) {
 	if (tihm->dohms[i].type == IPOD_EQ)
 	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
 	else
-	  fprintf (stdout, " %10s : **%s**\n", str_type(tihm->dohms[i].type), buffer);
+	  fprintf (stdout, " %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
 	
 	if (buffer)
 	  free (buffer);
@@ -131,7 +131,7 @@ int main (int argc, char *argv[]) {
     db_playlist_song_list (&itunesdb, pyhm->num, &list);
     
     for (tmp2 = g_list_first (list) ; tmp2 ; tmp2 = g_list_next (tmp2))
-      fprintf (stdout, "%ui ", (unsigned int)tmp2->data);
+      fprintf (stdout, "%u ", (unsigned int)tmp2->data);
     
     fprintf (stdout, "\n");
     db_playlist_song_list_free(&list);
