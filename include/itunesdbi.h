@@ -37,6 +37,7 @@ void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 #endif
 
 /* some structures to help clarify code */
+/* iTunesDB Database Header */
 struct db_dbhm {
   u_int32_t dbhm;
   u_int32_t header_size;
@@ -44,7 +45,7 @@ struct db_dbhm {
   u_int32_t unk0;
 
   u_int32_t unk1;
-  u_int32_t unk2;
+  u_int32_t num_dshm;
   u_int32_t unk3;
   u_int32_t unk4;
 };
@@ -57,6 +58,7 @@ struct db_dshm {
 };
 
 /* plhms are list headers to pyhms */
+/* iTunesDB Playlist Header */
 struct db_plhm {
   u_int32_t plhm;
   u_int32_t header_size;
@@ -65,6 +67,7 @@ struct db_plhm {
 };
 
 /* tlhms are list headers to tihms */
+/* iTunesDB Track List Header */
 struct db_tlhm {
   u_int32_t tlhm;
   u_int32_t header_size;
@@ -72,6 +75,7 @@ struct db_tlhm {
   u_int32_t unk0;
 };
 
+/* iTunesDB Playlist Item Header */
 struct db_pihm {
   u_int32_t pihm;
   u_int32_t header_size;
@@ -84,18 +88,22 @@ struct db_pihm {
   u_int32_t unk2;
 };
 
+/* Playlist Header */
 struct db_pyhm {
   u_int32_t pyhm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t name_index;
+  u_int32_t num_dohm;
 
   u_int32_t num_pihm;
   u_int32_t is_visible;
-  u_int32_t unk0;
-  u_int32_t unk1;
+  u_int32_t modification_date;
+  u_int32_t playlist_id;
+
+  u_int32_t unk0[0x13];
 };
 
+/* Track Item Header */
 struct db_tihm {
   u_int32_t tihm;
   u_int32_t header_size;
@@ -122,7 +130,7 @@ struct db_tihm {
   /* in millisecs */
   u_int32_t start_time;
   u_int32_t stop_time;
-  u_int32_t unk3;
+  u_int32_t sound_check;
 
   u_int32_t num_played[2]; /* no idea why there are two of these */
   u_int32_t last_played_date;
@@ -131,17 +139,18 @@ struct db_tihm {
   u_int32_t disk_total;
   u_int32_t unk6;
   u_int32_t modification_date;
-  u_int32_t unk7;
+  u_int32_t bookmark_time;
 
   /* These ids might be an image checksum to avoid duplicates */
   u_int32_t iihm_id1;
   u_int32_t iihm_id2;
 
-  u_int32_t unk11; /* includes bpm */
+  u_int32_t unk11; /* includes bpm, checked */
   u_int32_t has_artwork; /* usually 0xffff0001 BE */
 };
 
 /* Photo Database */
+/* ArtworkDB Database Header */
 struct db_dfhm {
   u_int32_t dfhm;
   u_int32_t header_size;
@@ -149,13 +158,14 @@ struct db_dfhm {
   u_int32_t unk0;
 
   u_int32_t unk1;
-  u_int32_t unk2;
+  u_int32_t num_dshm;
   u_int32_t unk3;
   u_int32_t next_iihm;
 
   u_int32_t unk4[21];
 };
 
+/* Thumbnail Header */
 struct db_inhm {
   u_int32_t inhm;
   u_int32_t header_size;
@@ -174,6 +184,7 @@ struct db_inhm {
   u_int32_t unk4[7];
 };
 
+/* Image Item Header */
 struct db_iihm {
   u_int32_t iihm;
   u_int32_t header_size;
@@ -188,6 +199,7 @@ struct db_iihm {
   u_int32_t unk1[30];
 };
 
+/* Image List Header */
 struct db_ilhm {
   u_int32_t ilhm;
   u_int32_t header_size;
@@ -196,6 +208,7 @@ struct db_ilhm {
   u_int32_t unk0[20];
 };
 
+/* Album List Header */
 struct db_alhm {
   u_int32_t alhm;
   u_int32_t header_size;
@@ -204,6 +217,7 @@ struct db_alhm {
   u_int32_t unk0[20];
 };
 
+/* Album Header */
 struct db_abhm {
   u_int32_t abhm;
   u_int32_t header_size;
@@ -223,6 +237,7 @@ struct db_abhm {
   u_int32_t unk8[21];
 };
 
+/* Album Item Header */
 struct db_aihm {
   u_int32_t aihm;
   u_int32_t header_size;
@@ -235,12 +250,14 @@ struct db_aihm {
   u_int32_t unk3[2];
 };
 
+/* Fileid List Header */
 struct db_flhm {
   u_int32_t flhm;
   u_int32_t header_size;
   u_int32_t num_files;
 };
 
+/* Fileid Item Header */
 struct db_fihm {
   u_int32_t fihm;
   u_int32_t header_size;
@@ -254,7 +271,7 @@ struct db_fihm {
   u_int32_t unk3[24];
 };
 
-/* DOHM */
+/* Data Object Header */
 struct db_dohm {
   u_int32_t dohm;
   u_int32_t header_size;
@@ -425,7 +442,9 @@ int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
 			  u_int32_t junk);
 
 /* pyhm.c */
-int     db_pyhm_create   (tree_node_t **entry);
+int db_pyhm_create (tree_node_t **entry, int is_visible);
+int db_pyhm_set_id (tree_node_t *entry, int id);
+int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
 
 /* dohm.c */
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
@@ -437,6 +456,11 @@ int     db_dohm_create_eq (tree_node_t **entry, int eq);
 int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size);
 dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
+/* Operations on a wierd dohm */
+int db_dohm_itunes_create (tree_node_t **entry);
+int db_dohm_itunes_show (tree_node_t *entry, int column_id, int column_width);
+int db_dohm_itunes_hide (tree_node_t *entry, int column_id);
+
 
 /* dshm.c */
 int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
