@@ -117,8 +117,7 @@ struct db_tihm {
 
   u_int32_t creation_date;
   u_int32_t file_size;
-  /* in millisecs */
-  u_int32_t duration;
+  u_int32_t duration; /* in millisecs */
   u_int32_t order;
 
   u_int32_t album_tracks; /* number of tracks on album */
@@ -222,9 +221,9 @@ struct db_abhm {
   u_int32_t abhm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t unk0;
+  u_int32_t num_dohm;
   
-  u_int32_t unk1;
+  u_int32_t num_aihm;
   u_int32_t unk2;
   u_int32_t unk3;
   u_int32_t unk4;
@@ -244,7 +243,7 @@ struct db_aihm {
   u_int32_t record_size;
   u_int32_t unk0;
 
-  u_int32_t unk1;
+  u_int32_t reference;
   u_int32_t unk2[3];
 
   u_int32_t unk3[2];
@@ -441,10 +440,19 @@ int     db_pihm_search   (tree_node_t *entry, u_int32_t tihm_num);
 int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
 			  u_int32_t junk);
 
+/* aihm.c */
+int db_aihm_search (struct tree_node *entry, u_int32_t image_id);
+int db_aihm_create (struct tree_node **entry, u_int32_t image_id);
+
 /* pyhm.c */
 int db_pyhm_create (tree_node_t **entry, int is_visible);
 int db_pyhm_set_id (tree_node_t *entry, int id);
 int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
+
+/* abhm.c */
+int db_abhm_create (tree_node_t **entry);
+int db_abhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
+int db_abhm_aihm_attach (tree_node_t *entry, tree_node_t *aihm);
 
 /* dohm.c */
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,

@@ -1,6 +1,6 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 pyhm.c
+ *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.0.1 abhm.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -27,38 +27,38 @@
 
 #include <errno.h>
 
-#define PYHM_HEADER_SIZE 0x6c
+#define ABHM_HEADER_SIZE 0x94
 
-int db_pyhm_create (tree_node_t **entry, int is_visible) {
+int db_abhm_create (tree_node_t **entry) {
   struct db_pyhm *pyhm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, PYHM, PYHM_HEADER_SIZE, PYHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, ABHM, ABHM_HEADER_SIZE, ABHM_HEADER_SIZE)) < 0)
     return ret;
 
   pyhm_data = (struct db_pyhm *)(*entry)->data;
-  pyhm_data->is_visible  = (is_visible) ? 1 : 0;
 
   return 0;
 }
 
-int db_pyhm_set_id (tree_node_t *entry, int id) {
-  struct db_pyhm *pyhm_data;
-
-  pyhm_data = (struct db_pyhm *)entry->data;
-  pyhm_data->playlist_id = id;
-
-  return 0;
-}
-
-int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
-  struct db_pyhm *pyhm_data;
+int db_abhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
+  struct db_abhm *abhm_data;
   
-  pyhm_data = (struct db_pyhm *)entry->data;
-  pyhm_data->num_dohm++;
+  abhm_data = (struct db_abhm *)entry->data;
+  abhm_data->num_dohm++;
 
   db_attach (entry, dohm);
 
   return 0;
 }
 
+int db_abhm_aihm_attach (tree_node_t *entry, tree_node_t *aihm) {
+  struct db_abhm *abhm_data;
+  
+  abhm_data = (struct db_abhm *)entry->data;
+  abhm_data->num_aihm++;
+
+  db_attach (entry, aihm);
+
+  return 0;
+}

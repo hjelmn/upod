@@ -22,37 +22,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define PIHM_HEADER_SIZE   0x4c
+#define AIHM_HEADER_SIZE   0x28
 
-int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
+int db_aihm_search (struct tree_node *entry, u_int32_t image_id) {
   int i;
-  struct db_pihm *pihm_data;
-  struct db_pyhm *pyhm_data;
+  struct db_aihm *aihm_data;
+  struct db_abhm *abhm_data;
 
-  pyhm_data = (struct db_pyhm *)entry->data;
+  abhm_data = (struct db_abhm *)entry->data;
 
-  for (i = pyhm_data->num_dohm ; i < entry->num_children ; i ++) {
-    pihm_data = (struct db_pihm *)entry->children[i]->data;
-    if (pihm_data->pihm == PIHM && pihm_data->reference == tihm_num)
+  for (i = abhm_data->num_dohm ; i < entry->num_children ; i++ ) {
+    aihm_data = (struct db_aihm *)entry->children[i]->data;
+    if (aihm_data->reference == image_id)
       return i;
   }
 
   return -1;
 }
 
-int db_pihm_create (struct tree_node **entry, u_int32_t tihm_num,
-		    u_int32_t junk) {
-  struct db_pihm *pihm_data;
+int db_aihm_create (struct tree_node **entry, u_int32_t image_id) {
+  struct db_aihm *aihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, PIHM, PIHM_HEADER_SIZE, PIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, AIHM, AIHM_HEADER_SIZE, AIHM_HEADER_SIZE)) < 0)
     return ret;
 
-  pihm_data = (struct db_pihm *)(*entry)->data;
-  
-  pihm_data->unk[0] = 1;
-  pihm_data->unk[2] = junk + 1;
-  pihm_data->reference = tihm_num;
+  aihm_data = (struct db_aihm *)(*entry)->data;
+  aihm_data->reference = image_id;
 
   return 0;
 }

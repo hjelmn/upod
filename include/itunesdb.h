@@ -258,10 +258,18 @@ int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int cola,
 int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list);
 
 
+
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
 int db_playlist_list (ipoddb_t *itunesdb, GList **head);
 int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head);
+
+int db_album_number       (ipoddb_t *photodb);
+int db_album_list         (ipoddb_t *photodb, GList **head);
+int db_album_image_remove (ipoddb_t *photodb, int album, int image_id);
+int db_album_image_add    (ipoddb_t *photodb, int album, int image_id);
+int db_album_create       (ipoddb_t *photodb, char *name, int name_len);
+
 
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
 int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
@@ -273,6 +281,7 @@ void inhm_free (inhm_t *inhm);
 void db_free   (ipoddb_t *itunesdb);
 
 void db_playlist_list_free (GList **head);
+void db_album_list_free (GList **head);
 void db_playlist_song_list_free (GList **head);
 
 #if defined(__cplusplus)
