@@ -35,3 +35,10 @@
 #include <errno.h>
 
 #include "itunesdbi.h"
+
+int db_photo_list (ipoddb_t *artworkdb, GList **head) {
+  return -1; /* Not yet implemented */
+}
+
+void db_photo_list_free (GList **head) {
+}

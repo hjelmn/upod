@@ -175,7 +175,8 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
       iptr[0] == DOHM ||
       iptr[0] == PLHM ||
       iptr[0] == ILHM ||
-      iptr[0] == ALHM)
+      iptr[0] == ALHM ||
+      iptr[0] == FLHM)
     goto dbbt_done;
 
   tnode_0->children = calloc(1, sizeof(tree_node_t *));

@@ -172,13 +172,18 @@ int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
 
 
-/* itunesddb2/song_list.c */
+/* itunesdb2/song_list.c */
 int    db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
 int    db_song_add   (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
 int    db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
 int    db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
+int    db_song_list (ipoddb_t *itunesdb, GList **head);
+void   db_song_list_free (GList **head);
 
+/* itunesdb2/artworkdb.c */
+int    db_photo_list (ipoddb_t *artworkdb, GList **head);
+void   db_photo_list_free (GList **head);
 
 int    db_set_debug (ipoddb_t *itunesdb, int level, FILE *out);
 
@@ -217,7 +222,6 @@ int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list)
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
 int db_playlist_list (ipoddb_t *itunesdb, GList **head);
-int db_song_list (ipoddb_t *itunesdb, GList **head);
 int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head);
 
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
@@ -227,7 +231,6 @@ int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int d
 void tihm_free             (tihm_t *tihm);
 void db_free               (ipoddb_t *itunesdb);
 
-void db_song_list_free     (GList **head);
 void db_playlist_list_free (GList **head);
 void db_playlist_song_list_free (GList **head);
 

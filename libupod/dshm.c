@@ -26,15 +26,20 @@
 
 #define DSHM_HEADER_SIZE 0x60
 
-int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
+/* An itunesdb has two dshm entries. An artworkdb has three. */
+int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header,
 		      int type) {
   int i;
   struct tree_node *root;
   struct db_dshm *dshm_data;
 
-  if (itunesdb == NULL || dshm_header == NULL) return -1;
-  root = itunesdb->tree_root;
-  if (root == NULL) return -1;
+  if (ipod_db == NULL || dshm_header == NULL)
+    return -1;
+
+  root = ipod_db->tree_root;
+
+  if (root == NULL)
+    return -1;
 
   for (i = 0 ; i < root->num_children ; i++) {
     *dshm_header = (tree_node_t *) root->children[i];
@@ -43,6 +48,7 @@ int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
     if (dshm_data->dshm == DSHM && dshm_data->type == type)
       break;
   }
+
   if (i == root->num_children){
     *dshm_header = NULL;
     return -1;
