@@ -151,8 +151,6 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
       dohm_add(tihm, genre_table[genre_num],
 	       strlen(genre_table[genre_num]), data_type);
 
-      pretty_print_block(buffer, meta.offset - sizeof(struct qt_meta));
-
       continue;
     } else if (strncmp (meta.identifier, "cmt", 3) == 0) 
       data_type = IPOD_COMMENT;
