@@ -118,9 +118,10 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
   tihm_data->duration    = tihm.time;
   tihm_data->order       = 0; /* XXX -- FIXME -- Might actually want track number */
   tihm_data->sample_rate = tihm.samplerate << 16;
+
   /* XXX -- i don't know if these mean anything */
-  tihm_data->unk[0]      = long_big_host(0x080);
-  tihm_data->unk[1]      = long_big_host(0x100);
+  tihm_data->unk[0]      = long_big_host(0x000);
+  tihm_data->unk[1]      = long_big_host(0x000);
 
   /* there may be other values wich should be set but i dont know
      which */

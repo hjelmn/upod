@@ -271,7 +271,7 @@ int db_hide (ipod_t *ipod, u_int32_t tihm_num) {
        !strstr((*master)->data, "pyhm") ; master++);
 
   pyhm = (struct db_pyhm *)(*master)->data;
-  pyhm->num_pihm -= 2;
+  pyhm->num_pihm -= 1;
 
   entry_num = db_pihm_search (*master, tihm_num);
 
@@ -342,7 +342,7 @@ int db_unhide (ipod_t *ipod, u_int32_t tihm_num) {
 
   /* increment the total number of songs contained in the playlist */
   pyhm = (struct db_pyhm *)((*master)->data);
-  pyhm->num_pihm += 2; /* actually, total number of pihms and dohms (i think) */
+  pyhm->num_pihm += 1; /* actually, total number of pihms and dohms (i think) */
 
   (*master)->num_children += 2;
 
