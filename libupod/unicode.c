@@ -1,8 +1,8 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.1 unicode.c
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 unicode.c
  *
- *   convert to, from unicode, utf-8 using iconv
+ *   convert to/from unicode/utf-8 using iconv
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by

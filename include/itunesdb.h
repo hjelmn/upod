@@ -195,14 +195,15 @@ int    db_create (ipoddb_t *ipoddb, char *db_name, int name_len, int flags);
 int    db_photo_create (ipoddb_t *photodb);
 
 /* itunesdb2/song_list.c */
-int    db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
-int    db_song_add   (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
-int    db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
+int  db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
+int  db_song_add   (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
+int  db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
-int    db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
-int    db_song_list (ipoddb_t *itunesdb, GList **head);
-void   db_song_list_free (GList **head);
-
+int  db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
+int  db_song_list (ipoddb_t *itunesdb, GList **head);
+void db_song_list_free (GList **head);
+int  db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num);
+int  db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 /* itunesdb2/artworkdb.c */
 int    db_photo_list (ipoddb_t *artworkdb, GList **head);
 void   db_photo_list_free (GList **head);

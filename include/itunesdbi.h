@@ -146,7 +146,12 @@ struct db_dfhm {
   u_int32_t record_size;
   u_int32_t unk0;
 
-  u_int32_t unk1[25];
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t next_iihm;
+  u_int32_t unk3;
+
+  u_int32_t unk4[21];
 };
 
 struct db_inhm {
@@ -451,4 +456,8 @@ int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2);
 int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier);
 int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
                       tree_node_t **parent, int iihm_identifier);
+
+/* fihm.c */
+int db_fihm_create (tree_node_t **entry, unsigned int file_id);
+int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id);
 #endif /* __ITUNESDBI_H */
