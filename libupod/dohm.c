@@ -32,18 +32,29 @@
 #define DOHM_PIHM_SIZE     0x02c
 #define DOHM_ITUNES_SIZE   0x288
 
-int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
-		      int dohm_type) {
+/* returns first dohm entry with type dohm_type */
+int db_dohm_retrieve (tree_node_t *entry, tree_node_t **dohm_header, int dohm_type) {
   int i;
+  int num_dohms;
   struct db_dohm *dohm_data;
+  struct db_generic *data;
 
-  if (dohm_header == NULL)
+  if (dohm_header == NULL || entry == NULL)
     return -EINVAL;
   
-  for (i = 0 ; i < tihm_header->num_children ; i++) {
-    dohm_data = (struct db_dohm *)tihm_header->children[i]->data;
-    if (dohm_data->type == dohm_type) {
-      *dohm_header = tihm_header->children[i];
+  data = (struct db_generic *)entry->data;
+
+  /* limit the search if the entry has a num_dohm field */
+  if (data->type == TIHM || data->type == PYHM)
+    num_dohms = data->num_dohm;
+  else
+    num_dohms = entry->num_children;
+
+  for (i = 0 ; i < num_dohms ; i++) {
+    dohm_data = (struct db_dohm *)entry->children[i]->data;
+
+    if (dohm_data->dohm == DOHM && dohm_data->type == dohm_type) {
+      *dohm_header = entry->children[i];
       return i;
     }
   }

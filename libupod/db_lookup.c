@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 db_lookup.c
+ *   v0.3.0 db_lookup.c
  *
  *   Contains function for looking up a tihm entry in the iTunesDB
  *
@@ -27,13 +27,12 @@
 #include <stdio.h>
 
 #include "itunesdbi.h"
-#include "hexdump.c"
 
 /*
   db_lookup:
 
   Returns the tihm identifier of the first match to data.
-  The data field is in UTF-8 format
+  The data field is in UTF-8 or ASCII format
 
   Returns:
      -1 if not found
@@ -105,65 +104,46 @@ int db_lookup_tihm (ipoddb_t *itunesdb, char *data) {
 
 int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
   tree_node_t *dshm_header, *dohm_header = NULL;
-  int i, j, ret;
-  size_t unicode_data_len;
-  u_int16_t *unicode_data;
-
-  int *iptr;
+  tree_node_t *dohm_temp, *pyhm_header;
+  int i, ret;
 
   /* simpifies code */
   struct db_plhm *plhm_data;
-  struct db_dohm *dohm_data = NULL;
 
+  dohm_t dohm;
+  
   db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
 
-  if (db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, NULL) != 0)
-    return -1;
+  if ((ret = db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, NULL)) != 0)
+    return ret;
 
-  to_unicode (&unicode_data, &unicode_data_len, data, strlen(data), "UTF-8");
+  dohm.type = IPOD_TITLE;
+  dohm.data = data;
 
-  if (itunesdb->log_level > 1)
-    pretty_print_block ((unsigned char *)unicode_data, unicode_data_len);
+  db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
 
   db_log (itunesdb, 0, "db_lookup_playlist: number of playlists = %i\n", plhm_data->num_pyhm);
 
-  for (i = 1 ; i < plhm_data->num_pyhm+1 ; i++) {
-    dohm_header = NULL;
+  ret = -1;
 
-    for (j = 0 ; j < dshm_header->children[i]->num_children ; j++) {
-      dohm_header = dshm_header->children[i]->children[j];
-      dohm_data = (struct db_dohm *)dohm_header->data;
+  for (i = 1 ; i <= plhm_data->num_pyhm ; i++) {
+    pyhm_header = dshm_header->children[i];
 
-      if (dohm_data->dohm == DOHM && dohm_data->type == IPOD_TITLE)
-	break;
-    }
+    db_dohm_retrieve (pyhm_header, &dohm_header, IPOD_TITLE);
 
-    if (dohm_header == NULL)
-      continue;
+    if (db_dohm_compare (dohm_temp, dohm_header) == 0) {
+      ret = i - 1;
 
-    iptr = (int *)dohm_data;
-
-    if (itunesdb->log_level > 1)
-      pretty_print_block (&dohm_header->data[0x28], (iptr[7] == 0) ? 2 : iptr[7]);
-
-    /* again, exact matches only */
-    if (unicode_data_len != iptr[7])
-      continue;
-    
-    if (memcmp (&dohm_header->data[0x28], unicode_data, unicode_data_len) == 0) {
-      ret = i-1;
-      goto found_playlist;
+      break;
     }
   }
 
-  db_log (itunesdb, 0, "db_lookup_playlist: not found\n");
-
-  ret = -1;
- found_playlist:
   if (ret != -1)
     db_log (itunesdb, 0, "db_lookup_playlist: found\n");
+  else
+    db_log (itunesdb, 0, "db_lookup_playlist: not found\n");
 
-  free (unicode_data);
+  db_free_tree (dohm_temp);
 
   return ret;
 }

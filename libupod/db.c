@@ -536,12 +536,6 @@ int db_detach (tree_node_t *parent, int child_num, tree_node_t **entry) {
   return 0;
 }
 
-struct db_generic {
-  u_int32_t type;
-  u_int32_t cell_size;
-  u_int32_t subtree_size;
-};
-
 int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int subtree) {
   struct db_generic *data;
   if (entry == NULL)
