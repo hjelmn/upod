@@ -1,8 +1,8 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.3 itunesdbi.h
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 itunesdbi.h
  *
- *   Internal functions. Do not include upodi.h in any end software.
+ *   Internal functions. Do not include ipoddbi.h in any end software.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -29,7 +29,7 @@
 
 #include "itunesdb.h"
 
-void db_log (itunesdb_t *itunesdb, int error, char *format, ...);
+void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
 #define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
@@ -385,7 +385,7 @@ int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
 int     db_tihm_create   (tree_node_t *entry, tihm_t *tihm);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
-int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
+int     db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 			  tree_node_t **parent, int tihm_num);
 int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
 			     size_t path_len, int stars, int tihm_num,
@@ -412,7 +412,7 @@ dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
 
 /* dshm.c */
-int db_dshm_retrieve (itunesdb_t *itunesdb, tree_node_t **dshm_header,
+int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
 		      int type);
 int db_dshm_create (tree_node_t *entry, int type);
 
@@ -434,6 +434,6 @@ int aac_fill_tihm (char *, tihm_t *);
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
-int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
+int db_playlist_retrieve_header (ipoddb_t *, tree_node_t **, tree_node_t **);
 
 #endif /* __ITUNESDBI_H */

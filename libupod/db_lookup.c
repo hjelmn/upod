@@ -1,6 +1,6 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2 db_lookup.c
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 db_lookup.c
  *
  *   Contains function for looking up a tihm entry in the iTunesDB
  *
@@ -41,7 +41,7 @@
    >= 0 if found
 */
 
-int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
+int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
   struct tree_node *dshm, *tihm, *dohm;
   int i, j, ret;
 
@@ -110,11 +110,11 @@ int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
    < -1 on any error occurred
    >= 0 on found
 */
-int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
+int db_lookup_tihm (ipoddb_t *itunesdb, char *data, int data_len) {
   return db_lookup (itunesdb, -1, data, data_len);
 }
 
-int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
+int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
   tree_node_t *dshm_header, *plhm_header, *dohm_header;
   int i, j, ret;
   size_t unicode_data_len;

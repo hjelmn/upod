@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a dohm.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 dohm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -235,7 +235,7 @@ void dohm_free (dohm_t *dohm, int num_dohms) {
    Modifies (or adds) a dohm in (to) a song entry.
 
   Arguments:
-   itunesdb_t *itunesdb - opened itunesdb
+   ipoddb_t *itunesdb - opened itunesdb
    int         tihm_num - song entry to be modified
    dohm_t     *dohm     - structure containing information to be changed
 
@@ -243,7 +243,7 @@ void dohm_free (dohm_t *dohm, int num_dohms) {
    < 0 on error
      0 on success
 **/
-int db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm) {
+int db_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm) {
   tree_node_t *tihm_header, *dohm_header;
 
   int entry_num;

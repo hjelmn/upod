@@ -121,7 +121,7 @@ struct db_tihm {
   /* in millisecs */
   u_int32_t start_time;
   u_int32_t stop_time;
-  u_int32_t unk3;
+  u_int32_t unk3; /**/
 
   u_int32_t num_played[2]; /* no idea why there are two of these */
   u_int32_t last_played_date;

@@ -40,7 +40,7 @@ int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
   return -1;
 }
 
-int db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
+int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 		      tree_node_t **parent, int tihm_num) {
   tree_node_t *root, *dshm_header;
   struct db_dshm *dshm_data;
@@ -253,7 +253,7 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
    Updates the song database entry tihm_num.
 
    Arguments:
-    itunesdb_t *itunesdb - opened itunesdb
+    ipoddb_t *itunesdb - opened itunesdb
     int         tihm_num - tihm reference
     tihm_t     *tihm     - data to change
 
@@ -261,7 +261,7 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
     -1 on error
      0 on success
 **/
-int db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm) {
+int db_song_modify (ipoddb_t *itunesdb, int tihm_num, tihm_t *tihm) {
   tree_node_t *tihm_header;
 
   if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0)

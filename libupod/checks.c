@@ -45,7 +45,7 @@ int db_sanity_tree (tree_node_t *node) {
   return 0;
 }
 
-int db_sanity_check (itunesdb_t itunesdb) {
+int db_sanity_check (ipoddb_t itunesdb) {
   int ret;
 
   /* ultimate insanity (no db) */

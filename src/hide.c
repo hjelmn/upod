@@ -1,3 +1,22 @@
+/**
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 hide.c
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *   
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *   
+ *   You should have received a copy of the GNU Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ **/
+
 #include "itunesdb.h"
 
 #include <stdlib.h>
@@ -10,7 +29,7 @@ void usage(void) {
 }
 
 int main(int argc, char *argv[]) {
-  itunesdb_t itunesdb;
+  ipoddb_t itunesdb;
   int ret;
 
   if (argc != 4)
@@ -23,7 +42,7 @@ int main(int argc, char *argv[]) {
     exit(2);
   }
 
-  if (db_hide (&itunesdb, atoi(argv[3])) != 0) {
+  if (db_song_hide (&itunesdb, atoi(argv[3])) != 0) {
     printf("Song could not be hidden.\n");
     exit(2);
   }

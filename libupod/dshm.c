@@ -26,7 +26,7 @@
 
 #define DSHM_HEADER_SIZE 0x60
 
-int db_dshm_retrieve (itunesdb_t *itunesdb, tree_node_t **dshm_header,
+int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
 		      int type) {
   int i;
   struct tree_node *root;

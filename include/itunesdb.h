@@ -1,6 +1,6 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.3 itunesdb.h
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0a itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -71,7 +71,7 @@ enum itunesdb_flags {
   FLAG_UNICODE_HACK = 0x1,
 };
 
-typedef struct _itunesdb {
+typedef struct _ipoddatabase {
   struct tree_node {
     struct tree_node *parent;
 
@@ -86,12 +86,16 @@ typedef struct _itunesdb {
   FILE *log;
   int flags;
   int last_tihm;
-} itunesdb_t;
+
+  int database_type;
+} ipoddb_t;
 
 typedef struct tree_node tree_node_t;
 
 typedef struct _ipod {
-  itunesdb_t itunesdb;
+  ipoddb_t itunesdb;
+  ipoddb_t artworkdb;
+
   char *dir;
   char *itunesdb_path;
 } ipod_t;
@@ -162,69 +166,65 @@ int    ipod_copy_to   (ipod_t *ipod, char *topath, char *frompath);
 int    ipod_rename    (ipod_t *ipod, char *name, int name_len);
 
 /* itunesdb2/db.c */
-int    db_create(itunesdb_t *itunesdb, char *db_name, int name_len, int flags);
-int    db_load  (itunesdb_t *itunesdb, char *path, int flags);
-int    db_write (itunesdb_t itunesdb, char *path);
-int    db_write_unix (itunesdb_t itunesdb, char *path);
-int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
-int    db_add   (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
-int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
+int    db_create(ipoddb_t *ipoddb, char *db_name, int name_len, int flags);
+int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
+int    db_write (ipoddb_t ipoddb, char *path);
 
-int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
+
+/* itunesddb2/song_list.c */
+int    db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
+int    db_song_add   (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
+int    db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
+/* eq is an integer specifier from TunesEQPresets */
+int    db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
+
+
+int    db_set_debug (ipoddb_t *itunesdb, int level, FILE *out);
 
 /* make sure all the values contained in the tihm are correct, there is currently no
    checks so you could screw up a working song entry */
-int    db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm);
+int    db_song_modify (ipoddb_t *itunesdb, int tihm_num, tihm_t *tihm);
 
 /* returns the tihm number of the first match to data of dohm_type */
-int    db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len);
+int    db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len);
 /* returns the playlist number of first match */
-int    db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len);
+int    db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len);
 
-/* eq is an integer specifier from TunesEQPresets */
-int    db_modify_eq(itunesdb_t *itunesdb, u_int32_t tihm_num, int eq);
-/* volume adjustment is an integer between -100 and +100 */
-int    db_modify_volume_adjustment (itunesdb_t *itunesdb, u_int32_t tihm_num,
-				    int volume_adjustment) ;
-/* start and stop times are in seconds */
-int    db_modify_start_stop_time   (itunesdb_t *itunesdb, u_int32_t tihm_num,
-				    int start_time, int stop_time);
-
-int db_playlist_number      (itunesdb_t *itunesdb);
-int db_playlist_create      (itunesdb_t *itunesdb, char *name, int name_len);
-int db_playlist_rename      (itunesdb_t *itunesdb, int playlist, char *name,
+int db_playlist_number      (ipoddb_t *itunesdb);
+int db_playlist_create      (ipoddb_t *itunesdb, char *name, int name_len);
+int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, char *name,
 			     int name_len);
-int db_playlist_delete      (itunesdb_t *itunesdb, int playlist);
-int db_playlist_tihm_add    (itunesdb_t *itunesdb, int playlist, int tihm_num);
-int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist, int tihm_num);
-int db_playlist_clear       (itunesdb_t *itunesdb, int playlist);
-int db_playlist_fill        (itunesdb_t *itunesdb, int playlist);
-int db_playlist_remove_all  (itunesdb_t *itunesdb, int tihm_num);
-int db_playlist_get_name    (itunesdb_t *itunesdb, int playlist,
+int db_playlist_delete      (ipoddb_t *itunesdb, int playlist);
+int db_playlist_tihm_add    (ipoddb_t *itunesdb, int playlist, int tihm_num);
+int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int tihm_num);
+int db_playlist_clear       (ipoddb_t *itunesdb, int playlist);
+int db_playlist_fill        (ipoddb_t *itunesdb, int playlist);
+int db_playlist_remove_all  (ipoddb_t *itunesdb, int tihm_num);
+int db_playlist_get_name    (ipoddb_t *itunesdb, int playlist,
 			     u_int8_t **name);
 
 /* this has to deal with the view in itunes, you can use them if you
    wish */
-int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column,
+int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column,
 			     u_int16_t width);
-int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column);
-int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola,
+int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column);
+int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int cola,
 			     int pos);
-int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **list);
+int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list);
 
 
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
-int db_playlist_list (itunesdb_t *itunesdb, GList **head);
-int db_song_list (itunesdb_t *itunesdb, GList **head);
-int db_playlist_song_list (itunesdb_t *itunesdb, int playlist, GList **head);
+int db_playlist_list (ipoddb_t *itunesdb, GList **head);
+int db_song_list (ipoddb_t *itunesdb, GList **head);
+int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head);
 
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
 int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
 
 /* functions for cleaning up memory */
 void tihm_free             (tihm_t *tihm);
-void db_free               (itunesdb_t *itunesdb);
+void db_free               (ipoddb_t *itunesdb);
 
 void db_song_list_free     (GList **head);
 void db_playlist_list_free (GList **head);

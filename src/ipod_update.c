@@ -1,6 +1,6 @@
 /**
- *   (c) 2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.0a0 ipod_update.c
+ *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v1.1a1 ipod_update.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU Public License as published by
@@ -88,7 +88,7 @@ int glist_cmp (gpointer data1, gpointer data2) {
   return (strcasecmp ((char *)data1, (char *)data2) == 0) ? 1 : 0;
 }
 
-int parse_dir (char *path, itunesdb_t *itunesdb, GList *hidden, int playlist) {
+int parse_dir (char *path, ipoddb_t *itunesdb, GList *hidden, int playlist) {
   char scratch[1024];
 
   DIR *dirp;
@@ -116,7 +116,7 @@ int parse_dir (char *path, itunesdb_t *itunesdb, GList *hidden, int playlist) {
     }
   }
 
-  while (dirent = readdir (dirp)) {
+  while ((dirent = readdir (dirp)) != NULL) {
     char *mac_path;
 
     if (dirent->d_name[0] == '.')
@@ -133,22 +133,22 @@ int parse_dir (char *path, itunesdb_t *itunesdb, GList *hidden, int playlist) {
       mac_path = path_unix_mac_root (scratch);
       if ((tmp = g_list_find_custom (hidden, scratch,
 				     (GCompareFunc)glist_cmp)) != NULL) {
-	tihm_num = db_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 0);
+	tihm_num = db_song_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 0);
 
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
 						    strlen (mac_path))) >= 0)) {
-	  db_hide (itunesdb, tihm_num);
+	  db_song_hide (itunesdb, tihm_num);
 	  tihm_num = -1;
 	}
 
 	free (tmp->data);
 	hidden = g_list_delete_link (hidden, tmp);
       } else {
-	tihm_num = db_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 1);
+	tihm_num = db_song_add (itunesdb, scratch, mac_path, strlen (mac_path), 0, 1);
 
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
 						    strlen (mac_path))) >= 0)) {
-	  db_unhide (itunesdb, tihm_num);
+	  db_song_unhide (itunesdb, tihm_num);
 	  tihm_num = -1;
 	}
       }
@@ -172,11 +172,10 @@ int parse_dir (char *path, itunesdb_t *itunesdb, GList *hidden, int playlist) {
   return 0;
 }
 
-int parse_playlists (char *path, itunesdb_t *itunesdb) {
+int parse_playlists (char *path, ipoddb_t *itunesdb) {
   char scratch[1024];
 
   DIR *dirp;
-  FILE *fh;
   struct dirent *dirent;
   struct stat statinfo;
 
@@ -186,7 +185,7 @@ int parse_playlists (char *path, itunesdb_t *itunesdb) {
     return -errno;
   }
 
-  while (dirent = readdir (dirp)) {
+  while ((dirent = readdir (dirp)) != NULL) {
     int playlist = -1;
 
     if (dirent->d_name[0] == '.')
@@ -216,7 +215,7 @@ int parse_playlists (char *path, itunesdb_t *itunesdb) {
   return 0;
 }
 
-int write_database (itunesdb_t *itunesdb) {
+int write_database (ipoddb_t *itunesdb) {
   struct stat statinfo;
   int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
@@ -238,7 +237,7 @@ int write_database (itunesdb_t *itunesdb) {
 }
 
 /* remove files that no longer exist from the database */
-int cleanup_database (itunesdb_t *itunesdb) {
+int cleanup_database (ipoddb_t *itunesdb) {
   GList *tmp, *song_list = NULL;
   tihm_t *tihm;
   char *unix_path;
@@ -267,7 +266,7 @@ int cleanup_database (itunesdb_t *itunesdb) {
 
     if (stat (unix_path, &statinfo) < 0) {
       printf ("%s(%s): no longer exists. Removing from the iTunesDB\n", unix_path, buffer);
-      db_remove (itunesdb, tihm->num);
+      db_song_remove (itunesdb, tihm->num);
     }
 
     free (unix_path);
@@ -280,11 +279,11 @@ int cleanup_database (itunesdb_t *itunesdb) {
 }
 
 int main (int argc, char *argv[]) {
-  itunesdb_t itunesdb;
+  ipoddb_t itunesdb;
   int option_index;
   int debug_level = 0;
   int create = 0;
-  char *ipod_name;
+  char *ipod_name = NULL;
   int flags = FLAG_UNICODE_HACK;
   char c;
 
@@ -323,7 +322,7 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  memset (&itunesdb, 0, sizeof (itunesdb_t));
+  memset (&itunesdb, 0, sizeof (ipoddb_t));
 
   db_set_debug (&itunesdb, debug_level, stderr);
 

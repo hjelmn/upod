@@ -1,3 +1,22 @@
+/**
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 add_dir.c
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *   
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *   
+ *   You should have received a copy of the GNU Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ **/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -39,7 +58,7 @@ static void path_unix_mac_root (char *path, char mac_path[255]) {
       mac_path[i+1] = path[i];
 }
 
-int dir_add (itunesdb_t *ipod, char *dir) {
+int dir_add (ipoddb_t *ipod, char *dir) {
   int added = 0;
   struct stat statinfo;
   char *tmp, *tdir;
@@ -56,7 +75,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
   } else if (S_ISREG (statinfo.st_mode) || S_ISLNK(statinfo.st_mode)) {
     /* regular files get inserted into the database */
     path_unix_mac_root (dir, path_temp);
-    ret = db_add (ipod, dir, path_temp, strlen(path_temp), 0, 1);
+    ret = db_song_add (ipod, dir, path_temp, strlen(path_temp), 0, 1);
 
     added = (ret < 0) ? 0 : 1;
   } else if (S_ISDIR (statinfo.st_mode)) {
@@ -82,12 +101,12 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 }
 
 int main(int argc, char *argv[]) {
-  itunesdb_t itunesdb;
+  ipoddb_t itunesdb;
   int c = 0;
   int ret;
   int db, i;
   
-  memset (&itunesdb, 0, sizeof  (itunesdb_t));
+  memset (&itunesdb, 0, sizeof  (ipoddb_t));
   db_set_debug (&itunesdb, 0, stderr);
 
   if (strcmp (argv[1], "-create") == 0) {

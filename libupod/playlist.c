@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2a playlist.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 playlist.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -33,7 +33,7 @@
   dshm to the pointers that are passed in.
 
   Arguments:
-   itunesdb_t *itunesdb    - opened itunesdb
+   ipoddb_t *itunesdb    - opened itunesdb
    tree_node  **plhm_header - pointer to location of desired pointer
    tree_node  **dshm_heade  - pointer to location of desired parent pointer.
 
@@ -41,7 +41,7 @@
    < 0 on error
      0 on success
 */
-int db_playlist_retrieve_header (itunesdb_t *itunesdb, tree_node_t **plhm_header,
+int db_playlist_retrieve_header (ipoddb_t *itunesdb, tree_node_t **plhm_header,
 				 tree_node_t **dshm_header) {
   tree_node_t *temp;
   
@@ -64,13 +64,13 @@ int db_playlist_retrieve_header (itunesdb_t *itunesdb, tree_node_t **plhm_header
   Returns the number of playlists in the itunesdb.
 
   Arguments:
-   itunesdb_t *itunesdb - open itunesdb
+   ipoddb_t *itunesdb - open itunesdb
 
   Returns:
    < 1 on error
    number of playlists on success
 **/
-int db_playlist_number (itunesdb_t *itunesdb) {
+int db_playlist_number (ipoddb_t *itunesdb) {
   tree_node_t *plhm_header;
   struct db_plhm *plhm_data;
 
@@ -94,13 +94,13 @@ int db_playlist_number (itunesdb_t *itunesdb) {
   the itunesdb.
 
   Arguments:
-   itunesdb_t *itunesdb - opened itunesdb
+   ipoddb_t *itunesdb - opened itunesdb
 
   Returns:
    NULL on error
    pointer to head of linked list on success
 **/
-int db_playlist_list (itunesdb_t *itunesdb, GList **head) {
+int db_playlist_list (ipoddb_t *itunesdb, GList **head) {
   tree_node_t *plhm_header, *dshm_header, *pyhm_header;
   tree_node_t *dohm_header = NULL;
   struct pyhm *pyhm;
@@ -181,7 +181,7 @@ void db_playlist_list_free (GList **head) {
   Stores an integer list of all the references contained in a playlist.
 
   Argument:
-   itunesdb_t *itunesdb - opened itunesdb
+   ipoddb_t *itunesdb - opened itunesdb
    int         playlist - playlist index (0 is master)
    int       **list     - pointer to where the list should go
 
@@ -189,7 +189,7 @@ void db_playlist_list_free (GList **head) {
    < 0 on error
      0 on success
 */
-int db_playlist_song_list (itunesdb_t *itunesdb, int playlist, GList **head) {
+int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head) {
   tree_node_t *plhm_header, *dshm_header, *pyhm_header;
 
   struct db_plhm *plhm_data;
@@ -247,7 +247,7 @@ void db_playlist_song_list_free (GList **head) {
    Creates a new playlist on the ipod with name.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    char       *name     - Name of new playlist
    int         name_len - length of buffer name
 
@@ -255,7 +255,7 @@ void db_playlist_song_list_free (GList **head) {
    < 0 on error
      0 on success
 **/
-int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
+int db_playlist_create (ipoddb_t *itunesdb, char *name, int name_len) {
   tree_node_t *plhm_header, *new_pyhm, *new_dohm, *dshm_header;
   struct db_plhm *plhm;
   struct db_dohm *dohm;
@@ -368,12 +368,12 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
    Rename a playlist in the itunesdb.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is master)
    char       *name     - New playlist name
    int         name_len - Lenth of name
 **/
-int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name_len) {
+int db_playlist_rename (ipoddb_t *itunesdb, int playlist, char *name, int name_len) {
   tree_node_t *plhm_header, *name_dohm, *dshm_header, *entry, *pyhm_header;
 
   struct db_plhm *plhm;
@@ -453,14 +453,14 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
     Delete a playlist from the itunesdb.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is master)
 
   Returns:
    < 0 on error or when attempting to remove the master playlist
      0 on success
 **/
-int db_playlist_delete (itunesdb_t *itunesdb, int playlist) {
+int db_playlist_delete (ipoddb_t *itunesdb, int playlist) {
   tree_node_t *plhm_header, *dshm_header, *pyhm_header;
   struct db_plhm *plhm_data;
 
@@ -494,7 +494,7 @@ int db_playlist_delete (itunesdb_t *itunesdb, int playlist) {
     Adds a reference to song tihm_num to playlist.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is the master playlist)
    int         tihm_num - Song reference to remove
 
@@ -502,7 +502,7 @@ int db_playlist_delete (itunesdb_t *itunesdb, int playlist) {
    < 0 on error
      0 on success
 **/
-int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
+int db_playlist_tihm_add (ipoddb_t *itunesdb, int playlist, int tihm_num) {
   tree_node_t *plhm_header, *pyhm_header, *dshm_header;
   tree_node_t *pihm, *dohm;
 
@@ -570,7 +570,7 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
     Removes the reference to song tihm_num from playlist.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is the master playlist)
    int         tihm_num - Song reference to remove
 
@@ -578,7 +578,7 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
    < 0 on error
      0 on success
 **/
-int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist,
+int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist,
 			     int tihm_num) {
   tree_node_t *plhm_header, *pyhm_header, *dshm_header;
   tree_node_t *pihm, *dohm;
@@ -630,14 +630,14 @@ int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist,
     Clears all references from playlist.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is the master playlist)
 
   Returns:
    < 0 on error
      0 on success
 */
-int db_playlist_clear (itunesdb_t *itunesdb, int playlist) {
+int db_playlist_clear (ipoddb_t *itunesdb, int playlist) {
   tree_node_t *plhm_header, *pyhm_header, *dshm_header;
   tree_node_t *pihm, *dohm;
 
@@ -677,14 +677,14 @@ int db_playlist_clear (itunesdb_t *itunesdb, int playlist) {
     Fills a playlist with references to every song.
 
   Arguments:
-   itunesdb_t *itunesdb - Opened itunesdb
+   ipoddb_t *itunesdb - Opened itunesdb
    int         playlist - Playlist index (0 is the master playlist)
 
   Returns:
    < 0 on error
      0 on success
 */
-int db_playlist_fill (itunesdb_t *itunesdb, int playlist) {
+int db_playlist_fill (ipoddb_t *itunesdb, int playlist) {
   tree_node_t *first_dshm, *tlhm_header;
 
   struct db_tlhm *tlhm_data;
@@ -709,7 +709,7 @@ int db_playlist_fill (itunesdb_t *itunesdb, int playlist) {
   return 0;
 }
 
-int db_playlist_remove_all (itunesdb_t *itunesdb, int tihm_num) {
+int db_playlist_remove_all (ipoddb_t *itunesdb, int tihm_num) {
   int i, total;
 
   total = db_playlist_number (itunesdb);
@@ -720,7 +720,7 @@ int db_playlist_remove_all (itunesdb_t *itunesdb, int tihm_num) {
   return 0;
 }
 
-int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column, u_int16_t width) {
+int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column, u_int16_t width) {
   tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
 
   int num_shown;
@@ -751,7 +751,7 @@ int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column, u_i
   return 0;
 }
 
-int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column) {
+int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column) {
   tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
   int i, j;
 
@@ -796,7 +796,7 @@ int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column) {
 /*
   first position is position 0
 */
-int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola, int pos) {
+int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int cola, int pos) {
   tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
   int j;
   int finish;
@@ -838,7 +838,7 @@ int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola, int p
   return 0;
 }
 
-int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **list) {
+int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list) {
   tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
   int j;
   int num_shown;
@@ -871,7 +871,7 @@ int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **lis
   return num_shown;
 }
 
-int db_playlist_get_name (itunesdb_t *itunesdb, int playlist,
+int db_playlist_get_name (ipoddb_t *itunesdb, int playlist,
 			     u_int8_t **name) {
   tree_node_t *plhm_header, *pyhm_header, *dshm_header;
   tree_node_t *dohm_header = NULL;

@@ -1,6 +1,6 @@
 /**
- *   (c) 2002-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.0 create.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v1.1 create.c
  *
  *   Contains db_create and various node creation routines (that dont have another home).
  *
@@ -95,7 +95,7 @@ static int db_plhm_create (tree_node_t *entry) {
   Creates an empty itunesdb.
 
   Arguments:
-   itunesdb_t *itunesdb - pointer to where the database should be loaded.
+   ipoddb_t *itunesdb - pointer to where the database should be loaded.
    char       *db_name  - name of this database, usually the name of your ipod
    int         name_len - length of db_name
 
@@ -103,7 +103,7 @@ static int db_plhm_create (tree_node_t *entry) {
    < 0 on error
      0 on success
 **/
-int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
+int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
   tree_node_t *root, *entry, *entry2;
   int ret;
 
@@ -117,7 +117,7 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
   if (root != NULL)
     db_free (itunesdb);
 
-  memset (itunesdb, 0, sizeof (itunesdb_t));
+  memset (itunesdb, 0, sizeof (ipoddb_t));
 
   root = itunesdb->tree_root = (tree_node_t *) calloc (1, sizeof(tree_node_t));
   db_dbhm_create (root);
