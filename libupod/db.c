@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.3 db.c
+ *   v0.1.4 db.c
  *
  *   Routines for reading/writing the iPod's iTunesDB.
  *
@@ -448,9 +448,9 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
 
   Returns:
    < 0 on error
-     0 on success
+   >=0 on success
 */
-int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars) {
+int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show) {
   tree_node_t *dshm_header, *new_tihm_header, *root;
 
   struct db_tlhm *tlhm_data;
@@ -462,6 +462,9 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   if (db_dshm_retrieve (itunesdb, &dshm_header, 1) < 0)
     return -1;
 
+  if (db_lookup (itunesdb, IPOD_PATH, mac_path, mac_path_len) > -1)
+    return -1; /* A song already exists in the database with this path */
+  
   /* Set the new tihm entries number to 1 + the previous one */
   tihm_num = ((int *)(dshm_header->children[dshm_header->num_children - 1]->data))[4] + 1;
 
@@ -481,9 +484,6 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
 
   new_tihm_header->parent = dshm_header;
 
-  if (db_lookup (itunesdb, IPOD_PATH, mac_path, mac_path_len) > -1)
-    return -1; /* A song already exists in the database with this path */
-  
   if ((ret = db_tihm_create (new_tihm_header, &tihm)) < 0) {
     db_log (itunesdb, ret, "Could not create tihm entry\n");
     free (new_tihm_header);
@@ -494,13 +494,14 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   
   db_attach (dshm_header, new_tihm_header);
 
-  db_unhide(itunesdb, tihm_num);
+  if (show != 0)
+    db_unhide(itunesdb, tihm_num);
 
   /* everything was successfull, increase the tihm count in the tlhm header */
   tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
   tlhm_data->num_tihm += 1;
 
-  return 0;
+  return tihm_num;
 }
 
 /**
@@ -561,27 +562,31 @@ int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
    NULL on error
    ptr  on success
 **/
-GList *db_song_list (itunesdb_t *itunesdb) {
-  GList **ptr, *head;
+int db_song_list (itunesdb_t *itunesdb, GList **head) {
   tree_node_t *dshm_header, *tihm_header, *tlhm_header;
   struct db_tlhm *tlhm_data;
   int i, *iptr;
+  int ret;
 
   struct db_tihm *tihm_data;
 
+  if (head == NULL || itunesdb == NULL)
+    return -EINVAL;
+
+  *head = NULL;
+
   /* get the tree node containing the song list */
-  if (db_dshm_retrieve (itunesdb, &dshm_header, 0x1) < 0)
-    return NULL;
+  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 0x1)) < 0)
+    return ret;
 
   tlhm_header = dshm_header->children[0];
   tlhm_data   = (struct db_tlhm *)tlhm_header->data;
 
   /* cant create a song list if there are no songs */
   if (tlhm_data->num_tihm == 0)
-    return NULL;
+    return -1;
 
-  ptr  = &(head);
-  for (i = 1 ; i < dshm_header->num_children ; i++) {
+  for (i = dshm_header->num_children-1 ; i > 0 ; i--) {
     tihm_header = dshm_header->children[i];
     iptr = (int *)tihm_header->data;
 
@@ -590,15 +595,10 @@ GList *db_song_list (itunesdb_t *itunesdb) {
     if (iptr[0] != TIHM)
       continue;
 
-    *ptr  = (GList *) calloc (1, sizeof(GList));
-
-    (*ptr)->data = (void *) db_tihm_fill (tihm_header);
-    (*ptr)->next = NULL;
-
-    ptr = &((*ptr)->next);
+    *head = g_list_prepend (*head, db_tihm_fill (tihm_header));
   }
 
-  return head;
+  return 0;
 }
 
 /**
@@ -613,17 +613,15 @@ GList *db_song_list (itunesdb_t *itunesdb) {
   Returns:
    nothing, void function
 **/
-void db_song_list_free (GList *head) {
+void db_song_list_free (GList **head) {
   GList *tmp;
-  while (head) {
-    tmp = head->next;
 
-    tihm_free ((tihm_t *)head->data);
-    free (head->data);
+  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp))
+    tihm_free ((tihm_t *)(tmp->data));
 
-    free(head);
-    head = tmp;
-  }
+  g_list_free (*head);
+
+  *head = NULL;
 }
 
 int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {

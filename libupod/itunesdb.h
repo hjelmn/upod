@@ -27,18 +27,9 @@ extern "C" {
 #include <sys/types.h>
 #include <stdio.h>
 
-#if defined(HAVE_GLIB)
 #include <glib.h>
-#else
-typedef struct _glist {
-  struct _glist *next, *prev;
-  void *data;
-} GList;
-#endif
 
-#if defined (USE_HFSPLUS)
-#include <HFSPlus.h>
-#endif
+#define ITUNESDB "iPod_Control/iTunes/iTunesDB"
 
 enum dohm_types_t {
   IPOD_TITLE=1,
@@ -175,7 +166,7 @@ int    db_load  (itunesdb_t *itunesdb, char *path, int flags);
 int    db_write (itunesdb_t itunesdb, char *path);
 int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
-int    db_add   (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars);
+int    db_add   (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
 int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
 
 int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
@@ -185,7 +176,7 @@ int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
 int    db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm);
 
 /* returns the tihm number of the first match to data of dohm_type */
-int    db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len);
+int    db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len);
 /* returns the playlist number of first match */
 int    db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len);
 
@@ -223,19 +214,20 @@ int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **lis
 
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
-GList *db_playlist_list        (itunesdb_t *itunesdb);
-GList *db_song_list            (itunesdb_t *itunesdb);
-int    db_playlist_list_songs  (itunesdb_t *itunesdb, int playlist,
-				int **list);
+int db_playlist_list (itunesdb_t *itunesdb, GList **head);
+int db_song_list (itunesdb_t *itunesdb, GList **head);
+int db_playlist_song_list (itunesdb_t *itunesdb, int playlist, GList **head);
 
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
 int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
 
 /* functions for cleaning up memory */
-void   tihm_free             (tihm_t *tihm);
-void   db_free               (itunesdb_t *itunesdb);
-void   db_song_list_free     (GList *head);
-void   db_playlist_list_free (GList *head);
+void tihm_free             (tihm_t *tihm);
+void db_free               (itunesdb_t *itunesdb);
+
+void db_song_list_free     (GList **head);
+void db_playlist_list_free (GList **head);
+void db_playlist_song_list_free (GList **head);
 
 #if defined(__cplusplus)
 }

@@ -53,10 +53,15 @@ int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
   size_t unicode_data_len;
   u_int16_t *unicode_data;
 
+  db_log (itunesdb, 0, "db_lookup: entering...\n");
+
   if (db_dshm_retrieve (itunesdb, &dshm, 0x1) != 0)
     return -1;
 
-  to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
+  if ((itunesdb->flags & FLAG_UNICODE_HACK) && dohm_type == IPOD_PATH)
+    to_unicode_hack (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
+  else
+    to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
 
   tlhm_data = (struct db_tlhm *)dshm->children[0]->data;
 
@@ -82,8 +87,12 @@ int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
     }
   }
  notfound:
+  db_log (itunesdb, 0, "db_lookup: not found\n");
+
   ret = -1;
  found:
+  db_log (itunesdb, 0, "db_lookup: found\n");
+
   free(unicode_data);
   return ret;
 }
@@ -115,17 +124,32 @@ int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
   struct db_plhm *plhm_data;
   struct db_dohm *dohm_data;
 
+  db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
+
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) != 0)
     return -1;
 
   to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
 
+  if (itunesdb->log_level > 1)
+    pretty_print_block ((unsigned char *)unicode_data, unicode_data_len);
+
   plhm_data = (struct db_plhm *)plhm_header->data;
 
-  for (i = 1 ; i < plhm_data->num_pyhm ; i++) {
-    dohm_header = dshm_header->children[i+1]->children[1];
-    dohm_data = (struct db_dohm *)dohm_header->data;
-   
+  db_log (itunesdb, 0, "num_pyhm == %i\n", plhm_data->num_pyhm);
+
+  for (i = 1 ; i < plhm_data->num_pyhm+1 ; i++) {
+    for (j = 0 ; j < dshm_header->children[i]->num_children ; j++) {
+      dohm_header = dshm_header->children[i]->children[j];
+      dohm_data = (struct db_dohm *)dohm_header->data;
+
+      if (dohm_data->dohm == DOHM && dohm_data->type == IPOD_TITLE)
+	break;
+    }
+
+    if (itunesdb->log_level > 1)
+      pretty_print_block (&dohm_header->data[0x28], (dohm_data->len == 0) ? 2 : dohm_data->len);
+
     /* again, exact matches only */
     if (unicode_data_len != dohm_data->len)
       continue;
@@ -137,7 +161,12 @@ int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
   }
 
  notfound_playlist:
+  db_log (itunesdb, 0, "db_lookup_playlist: not found\n");
+
   ret = -1;
  found_playlist:
+  db_log (itunesdb, 0, "db_lookup_playlist: found\n");
+  free (unicode_data);
+
   return ret;
 }

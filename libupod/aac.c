@@ -1,5 +1,5 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@unm.edu>
+ *   (c) 2003-2004 Nathan Hjelm <hjelmn@unm.edu>
  *   v0.3 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
@@ -234,7 +234,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
     fread (&atom, sizeof(atom), 1, fd);
 
-    if (atom.type == mdat)
+    if (atom.type == mdat || atom.size == 0)
       break;
 
     if (atom.size > sizeof(atom)) {

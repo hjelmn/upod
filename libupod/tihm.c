@@ -1,5 +1,5 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.1.1 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -118,8 +118,8 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->start_time  = tihm->start_time;
   tihm_data->stop_time   = tihm->stop_time;
 
-  /* there may be other values wich should be set but i dont know
-     which */
+  /* it may be useful to set other values in the tihm structure but many
+     have still not been deciphered */
 }
 
 int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len,
@@ -131,7 +131,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
 
   if (strcasecmp (path + (strlen(path) - 3), "mp3") == 0) {
     if (mp3_fill_tihm (path, tihm) < 0) {
-      tihm_free (tihm); /* structure may have been partially filled */
+      tihm_free (tihm); /* structure may have been partially filled before error */
       
       return -1;
     }
@@ -139,7 +139,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
 	      (strcasecmp (path + (strlen(path) - 3), "m4p") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "aac") == 0) ) {
     if (aac_fill_tihm (path, tihm) < 0) {
-      tihm_free (tihm); /* structure may have been partially filled */
+      tihm_free (tihm); /* structure may have been partially filled before error */
 
       return -1;
     }
@@ -154,6 +154,12 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
   return 0;
 }
 
+/*
+ db_tihm_create:
+ 
+ Creates a database entry from a structure describing the song and stores the
+ data into the location pointed to by entry.
+*/
 int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
   tree_node_t *dohm;
   dohm_t *dohm_data;
@@ -241,9 +247,7 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
 /**
    db_song_modify:
 
-    Modifies the data of a song entry. Be sure that all the values you
-   want to change are correct before calling this function; It will screw
-   up that entry if you don't.
+   Updates the song database entry tihm_num.
 
    Arguments:
     itunesdb_t *itunesdb - opened itunesdb
@@ -261,6 +265,9 @@ int db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm) {
     return -1;
 
   tihm_db_fill (tihm_header, tihm);
+
+  /* The database entry's size will not change so it is unnecessary to
+     update size fields for the parents. */
 
   return 0;
 }

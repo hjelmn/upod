@@ -61,9 +61,9 @@
 #define ID3_YEARNEW           12
 #define ID3_DISKNUM           13
 
-static int find_id3 (int version, FILE *fh, char *tag_data, int *tag_datalen,
+static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version);
-static void parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int version,
+static void parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
 		       int id3v2_majorversion, int field, tihm_t *tihm);
 
 static int synchsafe_to_int (char *buf, int nbytes) {
@@ -89,7 +89,7 @@ static int synchsafe_to_int (char *buf, int nbytes) {
 
   The file descriptor is reset to the start of the file on completion.
 */
-static int find_id3 (int version, FILE *fh, char *tag_data, int *tag_datalen,
+static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version) {
     int head;
     char data[10];
@@ -165,7 +165,7 @@ static int find_id3 (int version, FILE *fh, char *tag_data, int *tag_datalen,
 /*
   parse_id3
 */
-static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int version,
+static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
 				int id3v2_majorversion, tihm_t *tihm) {
   int data_type;
   int i, j;
@@ -197,6 +197,8 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	return;
       
       if (id3v2_majorversion > 2) {
+	/* I can't find in the id3v2.3 spec where this is legal?
+	   iTunes seems to think it is */
 	if (strncmp (tag_data, "APIC", 4) == 0 || id3v2_majorversion == 4)
 	  length = *((int *)&tag_data[4]);
 	else
@@ -225,6 +227,12 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 
 	i += 6 + length;
       }
+
+      if (length < 0) {
+	fprintf (stderr, "id3v2 tag data length is < 0... Aborting!\n");
+	break;
+      } else if (length == 0)
+	continue;
 
       if (tag_found == 0 || length < 2) {
 	fseek (fh, length, SEEK_CUR);
@@ -386,7 +394,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	continue;
       
       if (field != ID3_GENRE)
-	for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1) && i >= 0; tmp--, i--)
+	for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1 || *tmp == '\0') && i >= 0; tmp--, i--)
 	  *tmp = 0;
       else
 	i = strlen(copy_from) - 1;
@@ -402,7 +410,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 
 int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   int tag_datalen = 0, id3_len = 0;
-  char tag_data[128];
+  unsigned char tag_data[128];
   int version;
   int id3v2_majorversion;
   

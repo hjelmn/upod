@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 #define DBHM_HEADER_SIZE 0x68
 #define TLHM_HEADER_SIZE 0x5c
@@ -98,10 +99,17 @@ static int db_plhm_create (tree_node_t *entry) {
 **/
 int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
   tree_node_t *root, *entry, *entry2;
+  int ret;
 
-  if (itunesdb == NULL) return -1;
+  db_log (itunesdb, 0, "db_create: entering...\n");
+
+  if (itunesdb == NULL || db_name == NULL || name_len < 1)
+    return -EINVAL;
+
   root = itunesdb->tree_root;
-  if (root != NULL) db_free (itunesdb);
+
+  if (root != NULL)
+    db_free (itunesdb);
 
   memset (itunesdb, 0, sizeof (itunesdb_t));
 
@@ -128,5 +136,9 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   itunesdb->flags = flags;
 
-  return db_playlist_create (itunesdb, db_name, name_len);
+  ret = db_playlist_create (itunesdb, db_name, name_len);
+
+  db_log (itunesdb, 0, "db_create: complete\n");
+
+  return ret;
 }

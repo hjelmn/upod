@@ -94,7 +94,7 @@ int db_playlist_number (itunesdb_t *itunesdb) {
    NULL on error
    pointer to head of linked list on success
 **/
-GList *db_playlist_list (itunesdb_t *itunesdb) {
+int db_playlist_list (itunesdb_t *itunesdb, GList **head) {
   tree_node_t *plhm_header, *dshm_header, *pyhm_header, *dohm_header;
   struct pyhm *pyhm;
 
@@ -102,17 +102,19 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
   struct db_dohm *dohm_data;
   struct db_pyhm *pyhm_data;
 
-  GList *head, **current, *prev = NULL;
-
   int i, j;
+
+  if (head == NULL || itunesdb == NULL || itunesdb->tree_root == NULL)
+    return -EINVAL;
+
+  *head = NULL;
 
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return NULL;
 
   plhm_data = (struct db_plhm *) plhm_header->data;
 
-  current = &head;
-  for ( i = 1 ; i < dshm_header->num_children ; i++ ) {
+  for ( i = dshm_header->num_children-1 ; i > 0 ; i--) {
     pyhm_header = dshm_header->children[i];
     pyhm_data = (struct db_pyhm *)pyhm_header->data;
 
@@ -124,21 +126,16 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
       }
     }
 
-    *current = calloc (1, sizeof (GList));
     pyhm     = calloc (1, sizeof (struct pyhm));
     pyhm->num = i - 1;
 
     unicode_to_utf8 (&pyhm->name, &pyhm->name_len, 
 		     (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
 
-    (*current)->data = (void *)pyhm;
-    
-    (*current)->prev = prev;
-    prev = *current;
-    current = &(*current)->next;
+    *head = g_list_prepend (*head, pyhm);
   }
 
-  return head;
+  return 0;
 }
 
 /**
@@ -147,29 +144,22 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
   Frees the memory used by a GList containing playlist information.
 
   Arguments:
-   GList *head - head of allocated playlist list
+   GList **head - pointer to head of allocated playlist list
 
   Returns:
    nothing, void function
 **/
-void db_playlist_list_free (GList *head) {
-  struct pyhm *pyhm;
+void db_playlist_list_free (GList **head) {
+  GList *tmp;
+  if (head == NULL)
+    return;
 
-  while (head) {
-    GList *tmp = head->next;
+  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp))
+    free (tmp->data);
 
-    if (head->data) {
-      pyhm = (struct pyhm *)head->data;
+  g_list_free (*head);
 
-      if (pyhm->name)
-	free (pyhm->name);
-
-      free (head->data);
-    }
-    
-    free (head);
-    head = tmp;
-  }
+  *head = NULL;
 }
 
 /**
@@ -186,7 +176,7 @@ void db_playlist_list_free (GList *head) {
    < 0 on error
      0 on success
 */
-int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
+int db_playlist_song_list (itunesdb_t *itunesdb, int playlist, GList **head) {
   tree_node_t *plhm_header, *dshm_header, *pyhm_header;
 
   struct db_plhm *plhm_data;
@@ -196,7 +186,10 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
   int i;
   int num_entries;
 
-  if (itunesdb == NULL || list == NULL) return -1;
+  if (itunesdb == NULL || head == NULL)
+    return -EINVAL;
+
+  *head = NULL;
 
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
@@ -210,18 +203,25 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
 
   if (pyhm_data->num_pihm > 0) {
     num_entries = (pyhm_header->num_children - 2)/2;
-    *list = calloc (num_entries, sizeof (int));
     
     for (i = 0 ; i < num_entries ; i++) {
       pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
-      (*list)[i] = pihm_data->reference;
+
+      (*head) = g_list_prepend (*head, (void *)pihm_data->reference);
     }
 
     return num_entries;
   }
 
-  *list = NULL;
   return 0;
+}
+
+void db_playlist_song_list_free (GList **head) {
+  if (head == NULL)
+    return;
+
+  g_list_free (*head);
+  head = NULL;
 }
 
 /**
@@ -253,6 +253,8 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   if (name == NULL || name_len == 0) return -1;
   if (itunesdb == NULL) return -1;
+
+  db_log (itunesdb, 0, "db_playlist_create: entering...\n");
 
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
@@ -333,6 +335,8 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   /* this MUST be done last to avoid adding the sizes it's children twice */
   db_attach (dshm_header, new_pyhm);
+
+  db_log (itunesdb, 0, "db_playlist_create: complete\n");
 
   free (unicode_data);
   return plhm->num_pyhm++;
@@ -469,6 +473,8 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
   struct db_plhm *plhm_data;
   struct db_pyhm *pyhm_data;
 
+  int entry_num;
+
   if (itunesdb == NULL) return -1;
   
   /* make sure the tihm exists in the database before continuing */
@@ -486,26 +492,31 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
   pyhm_header = dshm_header->children[playlist + 1];
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
-  /* allocate memory */
-  pihm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
-  if (pihm == NULL) {
-    perror ("db_add_to_playlist|calloc");
-    return -1;
+  /* check if the reference already exists in this playlist */
+  entry_num = db_pihm_search (pyhm_header, tihm_num);
+
+  if (entry_num == -1) {
+    /* allocate memory */
+    pihm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
+    if (pihm == NULL) {
+      perror ("db_add_to_playlist|calloc");
+      return -1;
+    }
+    
+    dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
+    if (dohm == NULL) {
+      perror ("db_add_to_playlist|calloc");
+      return -1;
+    }
+    
+    db_pihm_create (pihm, tihm_num, tihm_num);
+    db_dohm_create_generic (dohm, 0x2c, tihm_num);
+    
+    db_attach (pyhm_header, pihm);
+    db_attach (pyhm_header, dohm);
+    
+    pyhm_data->num_pihm += 1;
   }
-
-  dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
-  if (dohm == NULL) {
-    perror ("db_add_to_playlist|calloc");
-    return -1;
-  }
-
-  db_pihm_create (pihm, tihm_num, tihm_num);
-  db_dohm_create_generic (dohm, 0x2c, tihm_num);
-
-  db_attach (pyhm_header, pihm);
-  db_attach (pyhm_header, dohm);
-
-  pyhm_data->num_pihm += 1;
 
   return 0;
 }
@@ -534,8 +545,11 @@ int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist,
 
   int entry_num;
 
-  if (itunesdb == NULL) return -1;
-  
+  db_log (itunesdb, 0, "db_playlist_tihm_remove: entering...\n");
+
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
@@ -550,13 +564,17 @@ int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist,
   /* search and destroy */
   entry_num = db_pihm_search (pyhm_header, tihm_num);
 
-  db_detach (pyhm_header, entry_num, &pihm);
-  db_detach (pyhm_header, entry_num, &dohm);
+  if (entry_num > -1) {
+    db_detach (pyhm_header, entry_num, &pihm);
+    db_detach (pyhm_header, entry_num, &dohm);
+    
+    db_free_tree (pihm);
+    db_free_tree (dohm);
+    
+    pyhm_data->num_pihm -= 1;
+  }
 
-  db_free_tree (pihm);
-  db_free_tree (dohm);
-
-  pyhm_data->num_pihm -= 1;
+  db_log (itunesdb, 0, "db_playlist_tihm_remove: complete\n");
 
   return 0;
 }

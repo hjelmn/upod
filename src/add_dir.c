@@ -59,7 +59,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 
   /* regular files get inserted into the database */
   if (S_ISREG(statinfo.st_mode)) {
-    if (db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), rand()%6) < 0)
+    if (db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1) < 0)
       return 0;
     else
       return 1;
@@ -71,7 +71,7 @@ int dir_add (itunesdb_t *ipod, char *dir) {
     return 0;
 
   if (S_ISREG (statinfo.st_mode)) {
-    db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), rand()%6);
+    db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1);
     free (tmp);
 
     return 1;

@@ -16,8 +16,7 @@ void usage(void) {
 
 int main(int argc, char *argv[]) {
   itunesdb_t itunesdb;
-  GList *list;
-  int *reflist;
+  GList *list, *reflist, *tmp;
   int ret;
   int qlist = 0;
   int cr = 0;
@@ -46,26 +45,30 @@ int main(int argc, char *argv[]) {
   printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
 
   if (qlist) {
-    GList *tmp;
-    list = db_playlist_list (&itunesdb);
+    db_playlist_list (&itunesdb, &list);
     
-    for (tmp = list ; tmp ; tmp = tmp->next)
-      printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num, ((pyhm_t *)tmp->data)->name);
-    db_playlist_list_free(list);
+    for (tmp = g_list_first (list) ; tmp ; tmp = g_list_next (tmp))
+      printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num,
+	      ((pyhm_t *)tmp->data)->name);
+    db_playlist_list_free(&list);
   } else if (cr) {
     if (db_playlist_create (&itunesdb, argv[3], strlen(argv[3])) > 0) {
       db_write (itunesdb, argv[1]);
     }
 
   } else if (rn) {
-    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4], strlen(argv[4])) == 0) {
+    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4],
+			    strlen(argv[4])) == 0) {
       db_write (itunesdb, argv[1]);
     }
   } else {
     int i;
-    if ((ret = db_playlist_list_songs (&itunesdb, atoi(argv[3]), &reflist)) > 0) {
-      for (i = 0 ; i < ret ; i++)
-	printf("Reference: %08x\n", reflist[i]);
+    if ((ret = db_playlist_song_list (&itunesdb, atoi(argv[3]),
+				      &reflist)) > 0) {
+      for (tmp = g_list_first (reflist) ; tmp ; tmp = g_list_next (tmp))
+	printf("Reference: %08x\n", (unsigned int)(tmp->data));
+
+      db_playlist_song_list_free (&reflist);
     }
   }
 
