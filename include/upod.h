@@ -23,7 +23,7 @@
 #define PATH_MAX 255
 
 enum dohm_types_t {IPOD_TITLE=1, IPOD_PATH, IPOD_ALBUM, IPOD_ARTIST, IPOD_GENRE,
-		   IPOD_TYPE, IPOD_COMMENT};
+		   IPOD_TYPE, IPOD_EQ, IPOD_COMMENT};
 
 struct tree {
   struct tree_node {
@@ -98,6 +98,8 @@ int    db_add   (ipod_t *ipod, char *filename, char *path); /*called by ipod_add
 int    db_unhide(ipod_t *ipod, u_int32_t tihm_num); /* called by db_add */
 
 int    db_lookup(ipod_t ipod, int dohm_type, char *data, int data_len);
+
+int    db_modify_eq(ipod_t *ipod, u_int32_t tihm_num, int eq);
 
 typedef struct glist {
   struct glist *next;

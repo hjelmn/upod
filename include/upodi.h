@@ -75,12 +75,14 @@ struct db_tihm {
   u_int32_t num_dohm;
   u_int32_t identifier;
   u_int32_t type;
+  u_int32_t unk0;
+  u_int32_t unk1;
   u_int32_t date;
   u_int32_t file_size;
   u_int32_t duration;
   u_int32_t order;
   u_int32_t encoding;
-  u_int32_t unk[4];
+  u_int32_t unk[2];
   u_int32_t sample_rate;
 };
 
@@ -122,6 +124,13 @@ struct db_dohm {
 #endif
 void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 
+#if BYTE_ORDER == BIG_ENDIAN
+#define long_big_host(x) x
+#else
+#define long_big_host(x) bswap_32(x)
+#endif
+
+
 tihm_t db_song_info (ipod_t *ipod, u_int32_t mhit_num);
 
 /* libupod/tihm.c */
@@ -143,8 +152,13 @@ void unicode_to_char (char *dst, char *src, size_t src_length);
 /* libupod/dohm.c */
 dohm_t *dohm_create (tihm_t *tihm);
 void    dohm_destroy(tihm_t *tihm);
+
 int     db_dohm_create_generic (struct tree_node *entry, size_t size, int junk);
+int     db_dohm_create_eq (struct tree_node *entry, int eq);
+
+struct tree_node *db_dohm_search(struct tree_node *tihm_entry, int dohm_num);
 dohm_t *db_dohm_fill (struct tree_node *entry);
+
 void    dohm_free (dohm_t *dohm, int num_dohm);
 
 /* path seperator should be : */
