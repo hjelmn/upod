@@ -33,3 +33,16 @@ void *memmem(void *haystack, size_t haystack_size, void *needle, size_t needle_s
   /* not found */
   return NULL;
 }
+
+int path_mac_to_unix (char *mac_path, char *unix_dst) {
+  int i;
+
+  for (i = 0 ; mac_path[i] != '\0' && i < PATH_MAX ; i++) {
+    if (mac_path[i] == ':')
+      unix_dst[i] = '/';
+    else
+      unix_dst[i] = mac_path[i];
+  }
+
+  return 0;
+}

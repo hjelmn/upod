@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
   }
 
   printf("%i B written to iTunesDB %s.\n", ret, argv[2]);
+  db_free(&ipod);
 
   return 0;
 }
