@@ -1,6 +1,8 @@
 /**
  *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a unicode.c
+ *   v0.1.1 unicode.c
+ *
+ *   convert to, from unicode, utf-8 using iconv
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -23,6 +25,8 @@
 #include <stdio.h>
 
 #include <string.h>
+#define const /* get rid of const (useless in c anyway) */
+#include <iconv.h>
 
 #include "hexdump.c"
 
@@ -46,7 +50,72 @@ void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length) {
     dst[i] = (u_int8_t)src[i];
 }
 
+void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
+		      size_t src_len) {
+  iconv_t conv;
+  size_t final_size;
+  char *inbuf, *outbuf;
+  size_t inbytes, outbytes;
+  
+  if (dst == NULL || dst_len == NULL)
+    return;
+
+  if (src_len == 0) {
+    *dst = NULL;
+    return;
+  }
+
+  inbytes = src_len;
+  inbuf   = (char *)src;
+
+  /* UTF-8 encoding could be as large as 3 bytes for every 2 bytes
+     of Unicode input */
+  outbytes= (src_len/2)*3;
+  *dst = outbuf  = calloc ((src_len/2)*3, 1);
+
+  conv = iconv_open ("UTF-8", "UTF-16");
+  iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
+  iconv_close (conv);
+ 
+  final_size = (src_len/2)*3 - outbytes;
+
+  *dst = realloc (*dst, final_size + 1);
+  *dst_len = final_size;
+}
+
 /* Converts the input from UTF8/ASCII to Unicode */
+void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
+		 size_t src_len, char *src_encoding) {
+  iconv_t conv;
+  size_t final_size;
+  char *inbuf, *outbuf;
+  size_t inbytes, outbytes;
+  
+  if (dst == NULL || dst_len == NULL)
+    return;
+
+  if (src_len == 0) {
+    *dst = NULL;
+    return;
+  }
+
+  inbytes = src_len;
+  inbuf   = (char *)src;
+
+  outbytes= src_len * 2;
+  *dst = outbuf  = calloc (src_len * 2, 1);
+
+  conv = iconv_open ("UTF-16BE", src_encoding);
+  iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
+  iconv_close (conv);
+ 
+  final_size = src_len * 2 - outbytes;
+
+  *dst = realloc (*dst, final_size);
+  *dst_len = final_size;
+}
+
+/*
 void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 			     size_t src_len) {
   int i, x;
@@ -58,7 +127,7 @@ void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 
   *dst_len = 0;
 
-  /* unicode id3 tags create by iTunes start with the 24 bit tag 0x01fffe (or, so I have noticed) */
+   unicode id3 tags create by iTunes start with the 24 bit tag 0x01fffe (or, so I have noticed)
   if (src_len > 3 && (((int *)src)[0] & 0x01fffe00) == 0x01fffe00) {
     *dst_len = src_len-3;
     *dst = calloc (2, *dst_len/2);
@@ -103,9 +172,9 @@ void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
     memcpy (*dst, scratch, 2*x);
   }
 }
-  
+*/  
 int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len) {
-  int i;
+  size_t i;
 
   if (string2_len > string1_len)
     return 1;

@@ -86,13 +86,16 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   return dohm;
 }
 
-int dohm_add (tihm_t *timh, char *data, int data_len, int data_type) {
+int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
+
+  if (data_len == 0)
+    return -1;
 
   if ((dohm = dohm_create (timh, data_type)) == NULL)
     return -1;
 
-  unicode_check_and_copy (&(dohm->data), &(dohm->size), data, data_len);
+  to_unicode (&(dohm->data), &(dohm->size), data, data_len, encoding);
 
   return 0;
 }
@@ -193,7 +196,7 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
 
     dohms[i].type = dohm_data->type;
     dohms[i].size = dohm_data->len;
-    dohms[i].data = (u_int16_t *) calloc (dohms[i].size, sizeof(char));
+    dohms[i].data = (u_int16_t *) calloc (dohms[i].size/2, sizeof(u_int16_t));
     memcpy(dohms[i].data, &(dohm_list[i]->data[40]), dohms[i].size);
   }
 

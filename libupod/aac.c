@@ -1,6 +1,6 @@
 /**
  *   (c) 2003 Nathan Hjelm <hjelmn@unm.edu>
- *   v0.2 aac.c
+ *   v0.3 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
  *
@@ -147,7 +147,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
       int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
       dohm_add(tihm, genre_table[genre_num],
-	       strlen(genre_table[genre_num]), data_type);
+	       strlen(genre_table[genre_num]), "UTF-8", data_type);
 
       continue;
     } else if (strncmp (meta.identifier, "cmt", 3) == 0) 
@@ -167,7 +167,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     } else
       continue;
 
-    dohm_add(tihm, buffer, meta.offset - sizeof(struct qt_meta), data_type);
+    dohm_add(tihm, buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
   }
 
   fseek (fd, atom.size - seeked - 8, SEEK_CUR);
@@ -205,19 +205,24 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     return -errno;
 
   fread (&atom, sizeof(atom), 1, fd);
-  /* XXX -- I dont know if iTunes supports it but it may be a good idea to look
-   for id3 tags if this conditional is true */
-  if (atom.type != type_int ("ftyp")) {
-    fprintf (stderr, "File does not begin with ftyp Quicktime atom\n");
 
+  /* Check for ID3 tags */
+  if (strncmp ((char *)&atom, "ID3", 3) == 0) {
+    fseek (fd, 0, SEEK_SET);
+    get_id3_info (fd, file_name, tihm);
+
+    fread (&atom, sizeof(atom), 1, fd);
+  } 
+
+  /* Some AAC files don't use a quicktime header. Does the iPod even support
+   them? For now upod only supports Quicktime AAC files */
+  if (atom.type != type_int ("ftyp")) {
     fclose (fd);
     return -1;
   }
 
   fread (buffer, 1, atom.size - sizeof(atom), fd);
   if (strncmp (buffer, "M4A", 3) != 0) {
-    fprintf (stderr, "File is not an MPEG4 file\n");
-
     fclose (fd);
 
     return -1;
@@ -283,7 +288,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     return -1;
   }
 
-  dohm_add (tihm, type_string, strlen (type_string), IPOD_TYPE);
+  dohm_add (tihm, type_string, strlen (type_string), "UTF-8", IPOD_TYPE);
   fclose (fd);
 
   return 0;

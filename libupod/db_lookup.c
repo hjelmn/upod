@@ -56,7 +56,7 @@ int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
   if (db_dshm_retrieve (itunesdb, &dshm, 0x1) != 0)
     return -1;
 
-  unicode_check_and_copy (&unicode_data, &unicode_data_len, data, data_len);
+  to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
 
   tlhm_data = (struct db_tlhm *)dshm->children[0]->data;
 
@@ -118,7 +118,7 @@ int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) != 0)
     return -1;
 
-  unicode_check_and_copy (&unicode_data, &unicode_data_len, data, data_len);
+  to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
 
   plhm_data = (struct db_plhm *)plhm_header->data;
 

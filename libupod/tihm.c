@@ -122,7 +122,8 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
      which */
 }
 
-int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len, int stars, int tihm_num) {
+int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len,
+			 int stars, int tihm_num) {
   if (tihm == NULL)
     return -1;
 
@@ -130,26 +131,27 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
 
   if (strcasecmp (path + (strlen(path) - 3), "mp3") == 0) {
     if (mp3_fill_tihm (path, tihm) < 0) {
-      fprintf (stderr, "Invalid MP3 file: %s\n", path);
+      tihm_free (tihm); /* structure may have been partially filled */
+      
       return -1;
     }
   } else if ( (strcasecmp (path + (strlen(path) - 3), "m4a") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "m4p") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "aac") == 0) ) {
     if (aac_fill_tihm (path, tihm) < 0) {
-      fprintf (stderr, "Invalid AAC file: %s\n", path);
+      tihm_free (tihm); /* structure may have been partially filled */
+
       return -1;
     }
-  } else {
-    fprintf (stderr, "Unrecognized file format (Using extension)\n");
+  } else
     return -1;
-  }
   
   tihm->num = tihm_num;
   tihm->stars = stars;
   
-  
-  dohm_add (tihm, ipod_path, path_len, IPOD_PATH);
+  dohm_add (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH);
+
+  return 0;
 }
 
 int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {

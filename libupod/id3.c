@@ -62,7 +62,7 @@
 #define ID3_DISKNUM           13
 
 static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
-		     int *major_version);
+		     int *id3_len, int *major_version);
 static void parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int version,
 		       int id3v2_majorversion, int field, tihm_t *tihm);
 
@@ -90,7 +90,7 @@ static int synchsafe_to_int (char *buf, int nbytes) {
   The file descriptor is reset to the start of the file on completion.
 */
 static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
-		     int *major_version) {
+		     int *id3_len, int *major_version) {
     int head;
     char data[10];
 
@@ -114,8 +114,11 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
 	
 	id3v2_flags = data[1];
 	
-	id3v2_len = synchsafe_to_int (&data[2], 4);
-	
+	id3v2_len = *id3_len = synchsafe_to_int (&data[2], 4);
+
+	*id3_len += 10; /* total length = id3v2len + 0x10 + footer (if present) */
+	*id3_len += (id3v2_flags & 0x10) ? 10 : 0; /* ID3v2 footer */
+
 	/* the 6th bit of the flag field being set indicates that an
 	   extended header is present */
 	if (id3v2_flags & 0x40) {
@@ -181,6 +184,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
     char *tag_temp;
     char *sizeloc;
     char genre_temp[4];
+    char encoding[11];
 
     for (i = 0 ; i < tag_datalen ; ) {
       int length = 0;
@@ -207,7 +211,6 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	    break;
 	  }
 
-
 	i += 10 + length;
       } else {
 	length = synchsafe_to_int (&tag_data[3], 3);
@@ -222,14 +225,15 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	i += 6 + length;
       }
 
-      length -= 1;
+      /* the string length will not include the encoding or the \0 */
+      length -= 2;
 
       if (tag_found == 0 || length < 1) {
-	fseek (fd, length+1, SEEK_CUR);
+	fseek (fd, length+2, SEEK_CUR);
 	continue;
       }
 
-      fread (tag_data, 1, (length < 128) ? length+1 : 128, fd);
+      fread (tag_data, 1, (length < 128) ? length+2 : 128, fd);
 
       if (length > 128)
 	fseek (fd, length - 128, SEEK_CUR);
@@ -245,7 +249,24 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       } else
 	j = 0;
 
-      for ( ; *tag_temp == '\0' && j < length ; j++, tag_temp++);
+      switch (*tag_temp) {
+      case 0x00:
+	sprintf (encoding, "ISO-8859-1");
+	break;
+      case 0x01:
+	sprintf (encoding, "UTF-16");
+	break;
+      case 0x03:
+	sprintf (encoding, "UTF-16BE");
+	break;
+      case 0x04:
+	sprintf (encoding, "UTF-8");
+	break;
+      default:
+	continue;
+      }
+
+      tag_temp++;
       
       if (*tag_temp == '\0')
 	continue;
@@ -253,16 +274,16 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       switch (field) {
       case ID3_TITLE:
       case ID3_TALT:
-	dohm_add (tihm, tag_temp, length, IPOD_TITLE);
+	dohm_add (tihm, tag_temp, length, encoding, IPOD_TITLE);
 	break;
       case ID3_ARTIST:
-	dohm_add (tihm, tag_temp, length, IPOD_ARTIST);
+	dohm_add (tihm, tag_temp, length, encoding, IPOD_ARTIST);
 	break;
       case ID3_ALBUM:
-	dohm_add (tihm, tag_temp, length, IPOD_ALBUM);
+	dohm_add (tihm, tag_temp, length, encoding, IPOD_ALBUM);
 	break;
       case ID3_COMMENT:
-	dohm_add (tihm, tag_temp, length, IPOD_COMMENT);
+	dohm_add (tihm, tag_temp, length, encoding, IPOD_COMMENT);
 	break;
       case ID3_TRACK:
 	/* some id3 tags have track/total tracks in the TRK field */
@@ -300,7 +321,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	break;
       case ID3_GENRE:
 	if (tag_temp[0] != '(') {
-	  dohm_add (tihm, tag_temp, length, IPOD_GENRE);
+	  dohm_add (tihm, tag_temp, length, encoding, IPOD_GENRE);
 	} else {
 	  /* 41 is right parenthesis */
 	  for (j = 0 ; (*(tag_temp + 1 + j) != 41) ; j++) {
@@ -313,7 +334,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	    continue;
 	  
 	  dohm_add (tihm, genre_table[atoi(genre_temp)],
-		    strlen (genre_table[atoi(genre_temp)]), IPOD_GENRE);
+		    strlen (genre_table[atoi(genre_temp)]), "ISO-8859-1", IPOD_GENRE);
 	  
 	  genre_temp[j] = 41;
 	}
@@ -372,24 +393,27 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	continue;
       
       i++;
-      dohm_add (tihm, copy_from, i, data_type);
+      dohm_add (tihm, copy_from, i, "ISO-8859-1", data_type);
     }
   }
 }
 
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
-  int tag_datalen = 0;
+  int tag_datalen = 0, id3_len = 0;
   char tag_data[128];
   int version;
   int id3v2_majorversion;
   
   /* built-in id3tag reading -- id3v2, id3v1 */
-  if ((version = find_id3(2, fd, tag_data, &tag_datalen, &id3v2_majorversion)) != 0)
+  if ((version = find_id3(2, fd, tag_data, &tag_datalen, &id3_len, &id3v2_majorversion)) != 0)
+    one_pass_parse_id3(fd, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
+
+  /* some mp3's have both tags so check v1 even if v2 is available */
+  if ((version = find_id3(1, fd, tag_data, &tag_datalen, NULL, &id3v2_majorversion)) != 0)
     one_pass_parse_id3(fd, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
   
-  /* some mp3's have both tags so check v1 even if v2 is available */
-  if ((version = find_id3(1, fd, tag_data, &tag_datalen, &id3v2_majorversion)) != 0)
-    one_pass_parse_id3(fd, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
+  /* Set the file descriptor at the end of the id3v2 header (if one exists) */
+  fseek (fd, id3_len, SEEK_SET);
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
     char *tmp = (char *)basename(file_name);
@@ -401,7 +425,7 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
 	break;
       }
     
-    dohm_add (tihm, tmp, strlen(tmp), IPOD_TITLE);
+    dohm_add (tihm, tmp, strlen(tmp), "ISO-8859-1", IPOD_TITLE);
   }
   
   return 0;

@@ -126,11 +126,10 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
 
     *current = calloc (1, sizeof (GList));
     pyhm     = calloc (1, sizeof (struct pyhm));
-    pyhm->name = calloc (1, dohm_data->len/2 + 1);
-    pyhm->name_len = dohm_data->len/2;
     pyhm->num = i - 1;
 
-    unicode_to_char (pyhm->name, (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
+    unicode_to_utf8 (&pyhm->name, &pyhm->name_len, 
+		     (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
 
     (*current)->data = (void *)pyhm;
     
@@ -258,7 +257,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
     return -1;
 
-  unicode_check_and_copy (&unicode_data, &unicode_len, name, name_len);
+  to_unicode (&unicode_data, &unicode_len, name, name_len, "UTF-8");
 
   plhm = (struct db_plhm *) plhm_header->data;
 
@@ -387,7 +386,7 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
 
   size = name_dohm->size;
 
-  unicode_check_and_copy (&unicode_data, &unicode_len, name, name_len);
+  to_unicode (&unicode_data, &unicode_len, name, name_len, "UTF-8");
 
   /* adjust the memory size for this node and copy new unicode string in */
   name_dohm->size = 0x28 + unicode_len;
@@ -802,7 +801,8 @@ int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **lis
   return num_shown;
 }
 
-int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
+int db_playlist_get_name (itunesdb_t *itunesdb, int playlist,
+			     u_int8_t **name) {
   tree_node_t *plhm_header, *pyhm_header, *dshm_header, *dohm_header;
   tree_node_t *pihm, *dohm;
 
@@ -811,6 +811,7 @@ int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
   struct db_pyhm *pyhm_data;
 
   int i;
+  size_t length;
 
   if (itunesdb == NULL) return -1;
   
@@ -833,9 +834,9 @@ int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
   }
 
   /* one extra byte is needed to hold the terminating \0 */
-  *name = calloc (1, dohm_data->len/2 + 1);
 
-  unicode_to_char (*name, (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
+  unicode_to_utf8 (name, &length, (u_int16_t *)&dohm_header->data[0x28],
+		   dohm_data->len);
 
-  return dohm_data->len/2;
+  return length;
 }

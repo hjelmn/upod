@@ -48,7 +48,7 @@ enum dohm_types_t {
   IPOD_GENRE,
   IPOD_TYPE, IPOD_EQ,
   IPOD_COMMENT,
-  IPOD_COMPOSER=12
+  IPOD_COMPOSER = 14
 };
 
 enum show_entries {
@@ -148,8 +148,8 @@ typedef tihm_t mhit_t;
 
 typedef struct pyhm {
   int num;
-  char *name;
-  int name_len;
+  u_int8_t *name;
+  size_t name_len;
 } pyhm_t;
 
 typedef pyhm_t mhyp_t;
@@ -179,7 +179,6 @@ int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
 int    db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm);
 
 /* returns the tihm number of the first match to data of dohm_type */
-int    db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len);
 int    db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len);
 /* returns the playlist number of first match */
 int    db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len);
@@ -195,14 +194,16 @@ int    db_modify_start_stop_time   (itunesdb_t *itunesdb, u_int32_t tihm_num,
 
 int db_playlist_number      (itunesdb_t *itunesdb);
 int db_playlist_create      (itunesdb_t *itunesdb, char *name, int name_len);
-int db_playlist_rename      (itunesdb_t *itunesdb, int playlist, char *name, int name_len);
+int db_playlist_rename      (itunesdb_t *itunesdb, int playlist, char *name,
+			     int name_len);
 int db_playlist_delete      (itunesdb_t *itunesdb, int playlist);
 int db_playlist_tihm_add    (itunesdb_t *itunesdb, int playlist, int tihm_num);
 int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist, int tihm_num);
 int db_playlist_clear       (itunesdb_t *itunesdb, int playlist);
 int db_playlist_fill        (itunesdb_t *itunesdb, int playlist);
 int db_playlist_remove_all  (itunesdb_t *itunesdb, int tihm_num);
-int db_playlist_get_name    (itunesdb_t *itunesdb, int playlist, char **name);
+int db_playlist_get_name    (itunesdb_t *itunesdb, int playlist,
+			     u_int8_t **name);
 
 /* this has to deal with the view in itunes, you can use them if you
    wish */
@@ -222,7 +223,8 @@ int    db_playlist_list_songs  (itunesdb_t *itunesdb, int playlist,
 				int **list);
 
 /* functions to help fill a tihm_t structure to add a song */
-int dohm_add (tihm_t *timh, char *data, int data_len, int data_type);
+/* encoding corresponds to those used in iconv */
+int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
 
 /* functions for cleaning up memory */
 void   tihm_free             (tihm_t *tihm);

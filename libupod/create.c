@@ -98,8 +98,6 @@ static int db_plhm_create (tree_node_t *entry) {
 **/
 int db_create (itunesdb_t *itunesdb, char *db_name, int name_len) {
   tree_node_t *root, *entry, *entry2;
-  int unicode_len;
-  char *unicode_data;
 
   if (itunesdb == NULL) return -1;
   root = itunesdb->tree_root;

@@ -68,12 +68,8 @@ static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
   if(!mp3.header_isvalid) {
     get_mp3_info (&mp3, SCAN_FULL, 1);
 
-    if (!mp3.header_isvalid) {
-      fprintf(stderr,"%s is corrupt or is not a standard MP3 file.\n",
-	      mp3.filename);
-      
+    if (!mp3.header_isvalid)
       return -1;
-    }
   }
   
   /* the ipod wants time in thousands of seconds */
@@ -117,10 +113,8 @@ int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
 
   tihm->size = statinfo.st_size;
 
-  if ((fd = fopen(file_name,"r")) == NULL ) {
-    fprintf(stderr,"Error opening MP3 file: %s\n", file_name);
-    return -1;
-  } 
+  if ((fd = fopen(file_name,"r")) == NULL )
+    return errno;
 
   if (get_mp3_header_info(fd, file_name, tihm) < 0) {
     fclose (fd);
@@ -133,10 +127,10 @@ int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
 
     return -1;
   }
-  
-  dohm_add (tihm, type_string, strlen (type_string), IPOD_TYPE);
-
+   
   fclose (fd);
+
+  dohm_add (tihm, type_string, strlen (type_string), "UTF-8", IPOD_TYPE);
 
   return 0;
 }

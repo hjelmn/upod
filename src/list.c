@@ -42,100 +42,102 @@ int main (int argc, char *argv[]) {
 
   tihm_t *tihm;
   pyhm_t *pyhm;
-  char buffer[1024];
+  char *buffer;
+  size_t buffer_len;
   int i, ret;
-
+  
   itunesdb_t itunesdb;
   int fd, result;
 
   if (argc != 2)
     usage();
 
-  db_set_debug (&itunesdb, 1, stderr);
+  db_set_debug (&itunesdb, 5, stderr);
 
   if (db_load (&itunesdb, argv[1]) < 0) {
     close (fd);
     exit(1);
   }
 
-  printf ("Checking the sanity of the database...\n");
+  fprintf (stderr, "Checking the sanity of the database...\n");
 
   ret = db_sanity_check(itunesdb);
 
   if (ret <= -20) {
-    printf ("There is somthing wrong with the loaded database!\n");
+    fprintf (stderr, "There is somthing wrong with the loaded database!\n");
     db_free (&itunesdb);
     exit(1);
   } else if (ret < 0) {
-    printf ("The database has small problems, continuing anyway. :: %i\n", ret);
+    fprintf (stderr, "The database has small problems, continuing anyway. :: %i\n", ret);
   } else
-    printf ("The database check out.\n");
+    fprintf (stderr, "The database checks out.\n");
 
   /* get song lists */
   songs = db_song_list (&itunesdb);
 
   if (songs == NULL)
-    printf("Could not get song list\n");
-
-  /* get playlists */
-  playlists = db_playlist_list (&itunesdb);
-
-  if (playlists == NULL) {
-    printf("Could not get playlist list\n");
-    db_free(&itunesdb);
-    close (fd);
-    exit(1);
-  }
+    fprintf (stderr, "Could not get song list\n");
 
   /* dump songlist contents */
   for (tmp = songs ; tmp ; tmp = tmp->next) {
     tihm = tmp->data;
 
-    printf("%04i |\n", tihm->num, buffer);
+    fprintf (stderr, "%04i |\n", tihm->num, buffer);
     
-    printf(" encoding: %d\n", tihm->bitrate);
-    printf(" type    : %d\n", tihm->type);
-    printf(" num dohm: %d\n", tihm->num_dohm);
-    printf(" samplert: %d\n", tihm->samplerate);
-    printf(" stars   : %d\n", tihm->stars);
-    printf(" year    : %d\n", tihm->year);
-    printf(" bpm     : %d\n", tihm->bpm);
-    printf(" played  : %d\n", tihm->times_played);
-    printf(" track   : %d/%d\n", tihm->track, tihm->album_tracks);
-    printf(" disk    : %d/%d\n", tihm->disk_num, tihm->disk_total);
+    fprintf (stderr, " encoding: %d\n", tihm->bitrate);
+    fprintf (stderr, " type    : %d\n", tihm->type);
+    fprintf (stderr, " num dohm: %d\n", tihm->num_dohm);
+    fprintf (stderr, " samplert: %d\n", tihm->samplerate);
+    fprintf (stderr, " stars   : %d\n", tihm->stars);
+    fprintf (stderr, " year    : %d\n", tihm->year);
+    fprintf (stderr, " bpm     : %d\n", tihm->bpm);
+    fprintf (stderr, " played  : %d\n", tihm->times_played);
+    fprintf (stderr, " track   : %d/%d\n", tihm->track, tihm->album_tracks);
+    fprintf (stderr, " disk    : %d/%d\n", tihm->disk_num, tihm->disk_total);
 
     for (i = 0 ; i < tihm->num_dohm ; i++) {
-      memset(buffer, 0, 1024);
-      unicode_to_char (buffer, tihm->dohms[i].data, tihm->dohms[i].size);
+      unicode_to_utf8 (&buffer, &buffer_len, tihm->dohms[i].data, tihm->dohms[i].size);
       if (tihm->dohms[i].type == IPOD_EQ)
-	printf (" %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
+	fprintf (stderr, " %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
       else
-	printf (" %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
+	fprintf (stderr, " %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
+
+      if (buffer)
+	free (buffer);
     }
 
-    printf("\n");
+    fprintf (stderr, "\n");
   }
   
   /* free the song list */
   db_song_list_free (songs);
   songs = NULL;
   
-  /* dump playlist contents */
+  /* get playlists */
+  playlists = db_playlist_list (&itunesdb);
+
+  if (playlists == NULL) {
+    fprintf (stderr, "Could not get playlist list\n");
+    db_free(&itunesdb);
+    close (fd);
+    exit(1);
+  }
   
+  /* dump playlist contents */
   for (tmp = playlists ; tmp ; tmp = tmp->next) {
     int num_ref;
     int *list = NULL;
     
     pyhm = (pyhm_t *)tmp->data;
     /* P(laylist) M(aster) */
-    printf ("playlist name: %s(%s) len=%i\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
+    fprintf (stderr, "playlist name: %s(%s) len=%i\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
     
     num_ref = db_playlist_list_songs (&itunesdb, pyhm->num, &list);
     
     for (i = 0 ; i < num_ref ; i++)
-      printf ("%i ", list[i]);
+      fprintf (stderr, "%i ", list[i]);
     
-    printf ("\n");
+    fprintf (stderr, "\n");
     free(list);
   }
   
