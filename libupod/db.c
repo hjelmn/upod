@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.1 db.c
+ *   v0.2.2 db.c
  *
  *   Routines for reading/writing the iPod's databases.
  *
@@ -121,6 +121,15 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   int current_bytes_read = *bytes_read;
   int entry_size, cell_size, copy_size;
 
+  /* swap the entry label, cell size and entry size */
+  bswap_block(*buffer, 4, 3);
+
+  if ((iptr[0] & 0x0000686d) != 0x0000686d) {
+    db_log (ipod_db, -1, "db_load: Database has a major error or is unsupported\n");
+
+    return NULL;
+  }
+
   tnode_0 = calloc (1, sizeof(tree_node_t));
 
   if (tnode_0 == NULL) {
@@ -130,8 +139,6 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   tnode_0->parent = parent;
 
-  /* swap the entry label, cell size and entry size */
-  bswap_block(*buffer, 4, 3);
 
   entry_size = iptr[2];
   cell_size  = iptr[1];
@@ -142,16 +149,18 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   if ( (iptr[0] == DOHM) && (cell_size != entry_size) ) {
     struct db_dohm *dohm_data = (struct db_dohm *)*buffer;
+    
+    bswap_block (&((*buffer)[0x18]), 4, 1);
 
     /* A dohm cell can hold a string, data, or a sub-tree. Process data/string
        dohm cells in a different way than those that have subtrees. */
-    if (!((iptr[6] & 0x6d680000) == 0x6d680000)) {
+    if ((iptr[6] & 0x0000686d) != 0x0000686d) {
       copy_size = entry_size;
 
       if (dohm_contains_string(dohm_data) == 0) {
 	/* Read a data dohm */
 	copy_size = entry_size;
-	bswap_block (&((*buffer)[0x18]), 4, entry_size/4 - 6);
+	bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
       } else {
 	/* Read a string dohm */
 	if (iptr[9] == 0)
@@ -161,20 +170,22 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 	     iTunesdb string dohm. */
 	  tnode_0->string_header_size = 12;
 
-	bswap_block (&((*buffer)[0x18]), 4, tnode_0->string_header_size/4);
+	bswap_block (&((*buffer)[0x1c]), 4, tnode_0->string_header_size/4 - 1);
 
 	/* Swap UTF-16 strings */
 	if (tnode_0->string_header_size == 16) {
 	  struct string_header_16 *string_header = (struct string_header_16 *)&((*buffer)[0x18]);
 	  if (string_header->format != 1)
-	    bswap_block (&((*buffer)[0x28]), 2, iptr[7]/2);
+	    bswap_block (&((*buffer)[0x28]), 2, string_header->string_length/2);
 	} else {
 	  struct string_header_12 *string_header = (struct string_header_12 *)&((*buffer)[0x18]);
 	  if (string_header->format != 1)
-	    bswap_block (&((*buffer)[0x24]), 2, iptr[7]/2);
+	    bswap_block (&((*buffer)[0x24]), 2, string_header->string_length/2);
 	}
       }
-    }
+    } else
+      bswap_block (&((*buffer)[0x18]), 4, 1);
+
   } else if (iptr[0] == TIHM) {
     struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
     
@@ -201,9 +212,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   memmove (tnode_0->data, *buffer, copy_size);
 
-#if DEBUG
-  fprintf (stderr, "New tree node, ** Size: %08x, type: %s\n", copy_size, iptr);
-#endif
+  /*  db_log (ipod_db, 0, "Loaded tree node: type: %s, size: %08x\n", iptr, copy_size); */
 
   *buffer     += copy_size;
   *bytes_read += copy_size;
