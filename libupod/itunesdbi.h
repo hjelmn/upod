@@ -138,6 +138,110 @@ struct db_tihm {
   u_int32_t unk12;
 };
 
+/* Photo Database */
+struct db_dfhm {
+  u_int32_t dfhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1[25];
+};
+
+struct db_inhm {
+  u_int32_t inhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t identifier;
+  u_int32_t unk1;
+  u_int32_t file_size;
+  u_int32_t unk2;
+
+  u_int16_t height;
+  u_int16_t width;
+  u_int32_t unk3[3];
+
+  u_int32_t unk4[7];
+};
+
+struct db_iihm {
+  u_int32_t iihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t num_inhm;
+
+  u_int32_t unk0[7];
+  u_int32_t modification_date; /* ?? */
+
+  u_int32_t unk1[26];
+};
+
+struct db_ilhm {
+  u_int32_t ilhm;
+  u_int32_t header_size;
+  u_int32_t num_images;
+
+  u_int32_t unk0[20];
+};
+
+struct db_alhm {
+  u_int32_t alhm;
+  u_int32_t header_size;
+  u_int32_t num_albums;
+  
+  u_int32_t unk0[20];
+};
+
+struct db_abhm {
+  u_int32_t abhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+  
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t unk3;
+  u_int32_t unk4;
+  
+  u_int32_t unk5[4];
+
+  u_int32_t unk6[3];
+  u_int32_t unk7;
+
+  u_int32_t unk8[21];
+};
+
+struct db_aihm {
+  u_int32_t aihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1;
+  u_int32_t unk2[3];
+
+  u_int32_t unk3[2];
+};
+
+struct db_flhm {
+  u_int32_t flhm;
+  u_int32_t header_size;
+  u_int32_t num_images;
+};
+
+struct db_fihm {
+  u_int32_t fihm;
+  u_int32_t header_size;
+  u_int32_t unk0;
+
+  u_int32_t inhm_reference;
+  u_int32_t unk1;
+  u_int32_t unk2[25];
+};
+
+/* DOHM */
 struct db_dohm {
   u_int32_t dohm;
   u_int32_t header_size;
@@ -194,13 +298,45 @@ struct db_wierd_dohm {
 static int string_to_int (char *string) {
   return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
 }
-#define DBHM string_to_int("dbhm")  /* 0x6462686d */
-#define DSHM string_to_int("dshm")  /* 0x6473686d */
-#define TLHM string_to_int("tlhm") /* 0x746c686d */
-#define TIHM string_to_int("tihm") /* 0x7469686d */
-#define DOHM string_to_int("dohm") /* 0x646f686d */
-#define PLHM string_to_int("plhm") /* 0x706c686d */
-#define PYHM string_to_int("pyhm") /* 0x7079686d */
+
+
+/* iTunesDB specific */
+#define DBHM string_to_int("dbhm")
+
+/* Songs */
+#define TLHM string_to_int("tlhm")
+#define TIHM string_to_int("tihm")
+
+/* Playlists */
+#define PLHM string_to_int("plhm")
+#define PIHM string_to_int("pihm")
+#define PYHM string_to_int("pyhm")
+
+
+
+/* iPod photo ArtworkDB specific */
+#define DFHM string_to_int("dfhm")
+
+/* Images */
+#define ILHM string_to_int("ilhm")
+#define IIHM string_to_int("iihm")
+#define INHM string_to_int("inhm")
+
+/* Albums */
+#define ALHM string_to_int("alhm")
+#define ABHM string_to_int("abhm")
+#define AIHM string_to_int("aihm")
+
+/* Files? */
+#define FLHM string_to_int("flhm")
+#define FIHM string_to_int("fihm")
+
+
+
+/* Common */
+#define DSHM string_to_int("dshm")
+#define DOHM string_to_int("dohm")
+
 
 
 #define UPOD_NOT_IMPL(s) do {\

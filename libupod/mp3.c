@@ -52,7 +52,7 @@
 #include <libgen.h>
 #endif
 
-/* #define MP3_DEBUG 1 */
+#define MP3_DEBUG 1
 
 #define MP3_PROTECTION_BIT 0x00010000
 #define MP3_PADDING_BIT    0x00000200
@@ -344,6 +344,8 @@ static int mp3_scan (struct mp3_file *mp3) {
       fread (&header, 4, 1, mp3->fh);
       
       if (check_mp3_header (header) != 0) {
+	fseek (mp3->fh, -4, SEEK_CUR);
+
 	mp3_debug ("mp3_scan: Invalid header %08x %08x Bytes into the file.\n", header, ftell(mp3->fh));
 	
 	if ((ret = find_first_frame (mp3)) == -1) {
@@ -358,8 +360,7 @@ static int mp3_scan (struct mp3_file *mp3) {
 	  mp3->data_size -= (mp3->file_size) - ftell (mp3->fh);
 	  
 	  break;
-	} else
-	  frames = 0;
+	}
 	
 	continue;
       }
@@ -378,7 +379,7 @@ static int mp3_scan (struct mp3_file *mp3) {
     }
     
     if (mp3->frames == 0)
-      mp3->frames = frames-1;
+      mp3->frames = frames;
 
     if (mp3->xdata_size == 0)
       mp3->xdata_size = total_framesize;

@@ -28,7 +28,7 @@
 
 #include <errno.h>
 
-#define TIHM_HEADER_SIZE   0x9c
+#define TIHM_HEADER_SIZE   0xf4
 
 int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
   int i;
@@ -71,6 +71,7 @@ int db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
 /* fills a tree_node with the data from a tihm_t structure */
 int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   struct db_tihm *tihm_data;
+  int *iptr;
 
   if (tihm_header->data)
     free (tihm_header->data);
@@ -79,6 +80,8 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_header->data = calloc (1, TIHM_HEADER_SIZE);
   memset (tihm_header->data, 0, TIHM_HEADER_SIZE);
   
+  iptr = (int *)tihm_header->data;
+
   tihm_data = (struct db_tihm *)tihm_header->data;
   tihm_data->tihm        = TIHM;
   tihm_data->header_size = TIHM_HEADER_SIZE;
@@ -146,11 +149,11 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
   } else
     return -1;
   
+  dohm_add_path (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH, ipod_use_unicode_hack);
+
   tihm->num = tihm_num;
   tihm->stars = stars;
   
-  dohm_add_path (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH, ipod_use_unicode_hack);
-
   return 0;
 }
 

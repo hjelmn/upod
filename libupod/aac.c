@@ -1,6 +1,6 @@
 /**
- *   (c) 2003-2004 Nathan Hjelm <hjelmn@unm.edu>
- *   v0.3 aac.c
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.4 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
  *
@@ -201,7 +201,7 @@ int m4a_bitrates[] = {
   28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
 };
 
-void parse_stsz (FILE *fh, double *bits) {
+void parse_stsz (FILE *fh, double *bits, int time_scale) {
   int current_loc = ftell (fh);
   int buffer[10];
   double avg = 0.0;
@@ -211,6 +211,7 @@ void parse_stsz (FILE *fh, double *bits) {
   int silence_frames = 0;
   double totalby;
   int num_samples;
+  long int bit_rate;
 
   mp3_debug ("Parsing stsz atom\n");
 
@@ -236,6 +237,14 @@ void parse_stsz (FILE *fh, double *bits) {
     bmin = ((double)sample_size < bmin) ? (double)sample_size : bmin;
   }
 
+  bit_rate = (long int)(((avg * 8.0/((double)(num_samples-silence_frames))) * (double)time_scale/1000.0)/1000.0);
+
+  mp3_debug ("Bit_rate is: %i\n", bit_rate);
+
+  /* No idea why this works (or if it works on all lossless cases) */
+  if ((bit_rate - 32) > m4a_bitrates[14])
+    avg /= 4.096;
+
   mp3_debug ("Total sample size = %f\n", totalby=avg);
 
   avg /= (double)num_samples;
@@ -255,8 +264,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   struct stat statinfo;
   int ret;
 
-  char type_string[] = "AAC audio file";
-
+  char aac_type_string[] = "AAC audio file";
+  char lossless_type_string[] = "Apple Lossless audio file";
   FILE *fd;
   int buffer_size = 2000;
   char buffer[buffer_size];
@@ -320,9 +329,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     if (atom.type == mdat || atom.size == 0)
       break;
 
-    if (atom.type == stsz) {
-      parse_stsz (fd, &bits);
-    }
+    if (atom.type == stsz)
+      parse_stsz (fd, &bits, time_scale);
 
     if (atom.size > sizeof(atom)) {
       if (atom.size - sizeof(atom) < 2001) {
@@ -356,17 +364,21 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   mp3_debug ("aac_fill_tihm: size = %i\n", atom.size);
 
-  for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
-    int temp = m4a_bitrates[i-1] - bit_rate;
-    int temp2 = m4a_bitrates[i] - bit_rate;
-    if (temp < 0 && (temp + temp2) > 0) {
-      bit_rate = m4a_bitrates[i-1];
-      break;
-    } else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
-      bit_rate = m4a_bitrates[i];
-      break;
+  if ((bit_rate - 32) <= m4a_bitrates[14]) {
+    for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
+      int temp = m4a_bitrates[i-1] - bit_rate;
+      int temp2 = m4a_bitrates[i] - bit_rate;
+      if (temp < 0 && (temp + temp2) > 0) {
+	bit_rate = m4a_bitrates[i-1];
+	break;
+      } else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
+	bit_rate = m4a_bitrates[i];
+	break;
+      }
     }
-  }
+    dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
+  } else
+    dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
 
   if (bit_rate == 0)
     return -1;
@@ -380,7 +392,6 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     return -1;
   }
 
-  dohm_add (tihm, type_string, strlen (type_string), "UTF-8", IPOD_TYPE);
   fclose (fd);
 
   return 0;

@@ -67,7 +67,7 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   else
     tihm->dohms = realloc(tihm->dohms, tihm->num_dohm * sizeof(dohm_t));
   
-  if (data_type == IPOD_TITLE) {
+  if (1 || data_type == IPOD_TITLE) {
     for (i = tihm->num_dohm - 1 ; i > 0 ; i--)
       memmove (&tihm->dohms[i], &tihm->dohms[i-1], sizeof (dohm_t));
 
@@ -84,7 +84,7 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
 int dohm_add (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
 
-  if (data_len <= 0)
+  if (data_len <= 0 || data_type < 1)
     return -1;
 
   if ((dohm = dohm_create (tihm, data_type)) == NULL)
