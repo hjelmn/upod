@@ -131,7 +131,9 @@ int ipod_add (ipod_t *ipod, char *filename, char *mac_path, int use_apple_path) 
   argv[2] = filename;
   argv[3] = dst_path;
 
-  execv (command, argv);
+  fork(); {
+    execv (command, argv);
+  }
 
   if (db_add (ipod, filename, final_mac_path) < 0) {
     printf("File copied to ipod, but not added to iTunesDB.\n");
@@ -155,7 +157,9 @@ int ipod_remove (ipod_t *ipod, char *mac_path, int remove_from_db, int remove_fi
     argv[1] = opt;
     argv[2] = path;
 
-    execv (command, argv);
+    fork(); {
+      execv (command, argv);
+    }
   }
 
   if (remove_from_db) {
@@ -190,7 +194,9 @@ int ipod_move (ipod_t *ipod, char *src, char *dst) {
   argv[1] = src_path;
   argv[2] = dst_path;
 
-  execv (command, argv);
+  fork(); {
+    execv (command, argv);
+  }
 
   return 0;
 }
@@ -219,7 +225,9 @@ int ipod_copy (ipod_t *ipod, char *src, char *dst) {
   argv[1] = src_path;
   argv[2] = dst_path;
 
-  execv (command, argv);
+  fork(); {
+    execv (command, argv);
+  }
 
   return 0;
 }

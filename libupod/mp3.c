@@ -136,20 +136,20 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
   
   switch (field) {
   case ID3_ARTIST:
-    dohm->type = ARTIST;
+    dohm->type = IPOD_ARTIST;
     break;
   case ID3_TALT:
   case ID3_TITLE:
-    dohm->type = TITLE;
+    dohm->type = IPOD_TITLE;
     break;
   case ID3_GENRE:
-    dohm->type = GENRE;
+    dohm->type = IPOD_GENRE;
     break;
   case ID3_ALBUM:
-    dohm->type = ALBUM;
+    dohm->type = IPOD_ALBUM;
     break;
   case ID3_COMMENT:
-    dohm->type = COMMENT;
+    dohm->type = IPOD_COMMENT;
     break;
   default:
     return;
@@ -276,7 +276,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     free(tag_data);
   }
   
-  if (tihm->num_dohm == 0 || tihm->dohms[0].type != TITLE) {
+  if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
     char *tmp = basename(file_name);
     dohm_t *dohm;
     int i;
@@ -285,7 +285,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     
     dohm = dohm_create(tihm);
 
-    dohm->type = TITLE;
+    dohm->type = IPOD_TITLE;
     dohm->size = 2 * (strlen(tmp) - (i - 1));
     dohm->data = calloc(1, dohm->size);
     char_to_unicode (dohm->data, tmp, dohm->size/2);
@@ -367,7 +367,7 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
 
   dohm = dohm_create(tihm);
 
-  dohm->type = TYPE;
+  dohm->type = IPOD_TYPE;
   dohm->size = 2 * strlen (type_string);
   dohm->data = calloc(1, dohm->size);
   char_to_unicode (dohm->data, type_string, strlen(type_string));

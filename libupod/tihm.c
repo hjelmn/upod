@@ -53,7 +53,7 @@ tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num) {
       mp3_fill_tihm (filename, tihm);
 
   dohm       = dohm_create(tihm);
-  dohm->type = PATH;
+  dohm->type = IPOD_PATH;
   dohm->size = 2 * strlen (path);
   dohm->data = calloc (1, dohm->size);
   char_to_unicode (dohm->data, path, strlen(path));

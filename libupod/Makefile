@@ -31,5 +31,5 @@ clean:
 	rm -f $(OBJS)
 
 clean_all:
-	rm -f $(OBJS) db_add db_remove db_hide db_unhide db_list add.o remove.o hide.o unhide.o list.o
+	rm -f $(OBJS) db_add db_remove db_hide db_unhide db_list db_lookup add.o remove.o hide.o unhide.o list.o lookup.o
 

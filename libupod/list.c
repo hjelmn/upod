@@ -12,19 +12,19 @@ void usage (void) {
 
 char *str_type(int file_type) {
   switch (file_type) {
-  case TITLE:
+  case IPOD_TITLE:
     return "Title";
-  case PATH:
+  case IPOD_PATH:
     return "Path";
-  case ALBUM:
+  case IPOD_ALBUM:
     return "Album";
-  case ARTIST:
+  case IPOD_ARTIST:
     return "Artist";
-  case GENRE:
+  case IPOD_GENRE:
     return "Genre";
-  case TYPE:
+  case IPOD_TYPE:
     return "Type";
-  case COMMENT:
+  case IPOD_COMMENT:
     return "Comment";
   default:
     return "Unknown";
