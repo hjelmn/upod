@@ -203,8 +203,8 @@ static int mp3_scan (struct mp3_file *mp3) {
   }
 
   mp3->samplerate = samplerate;
-  mp3->bitrate = (int)(total_bitrate/(double)frames * 1000.0);
-  mp3->length = (int)(1000.0 * (total_framesize)/(total_bitrate/frames * 125.0));
+  mp3->bitrate    = (int)(total_bitrate/(double)frames * 1000.0);
+  mp3->length     = (int)(1000.0 * (total_framesize)/(total_bitrate/frames * 125.0));
 
   if (mp3->samplerate <= 0 || mp3->bitrate <= 0 || mp3->length <= 0)
     return -1;

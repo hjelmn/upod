@@ -431,7 +431,8 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   fseek (fh, id3_len, SEEK_SET);
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
-    char *tmp = (char *)basename(file_name);
+    char *tfile_name = strdup (file_name);
+    char *tmp = (char *)basename(tfile_name);
     int i;
     
     for (i=strlen(tmp)-1; i > 0 ; i--)
@@ -441,6 +442,8 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
       }
     
     dohm_add (tihm, tmp, strlen(tmp), "ISO-8859-1", IPOD_TITLE);
+
+    free (tfile_name);
   }
   
   return 0;

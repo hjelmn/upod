@@ -47,10 +47,13 @@ int dir_add (itunesdb_t *ipod, char *dir) {
   struct stat statinfo;
   char path_temp[255];
   struct dirent *entry;
-  char *tmp;
+  char *tmp, *tdir;
+
+  int ret;
 
   DIR *dir_fd;
   
+  tdir = strdup (dir);
   tmp = basename (dir);
 
   /* no such file or dot file */
@@ -59,13 +62,14 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 
   /* regular files get inserted into the database */
   if (S_ISREG(statinfo.st_mode)) {
-    if (db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1) < 0)
+    ret = db_add (ipod, dir, tmp = path_unix_mac_root(dir), strlen(tmp), 0, 1);
+
+    free (tmp);
+    if (ret < 0)
       return 0;
     else
       return 1;
   }
-
-  tmp = basename (dir);
 
   if (tmp[0] == '.')
     return 0;
@@ -88,6 +92,8 @@ int dir_add (itunesdb_t *ipod, char *dir) {
 
     closedir (dir_fd);
   }
+
+  free (tmp);
 
   return added;
 }
