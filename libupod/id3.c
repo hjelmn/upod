@@ -236,7 +236,21 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       if (length > 128)
 	fseek (fd, length - 128, SEEK_CUR);
 
-      for ( ; *tag_temp == '\0' ; tag_temp++);
+      /* Scan past the language field in id3v2 */
+      if (field == ID3_COMMENT) {
+	tag_temp += 4;
+	j = 4;
+
+	if (id3v2_majorversion > 2) {
+	  tag_temp++; j++;
+	}
+      } else
+	j = 0;
+
+      for ( ; *tag_temp == '\0' && j < length ; j++, tag_temp++);
+      
+      if (*tag_temp == '\0')
+	continue;
 
       switch (field) {
       case ID3_TITLE:
