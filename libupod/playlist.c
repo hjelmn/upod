@@ -265,7 +265,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   new_pyhm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_pyhm == NULL) {
     perror ("db_create_new_playlist|calloc");
-    return errno;
+    return -errno;
   }
 
   if (db_pyhm_create (new_pyhm) < 0)
@@ -282,7 +282,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   new_dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_dohm == NULL) {
     perror ("db_create_new_playlist|calloc");
-    return errno;
+    return -errno;
   }
 
   if (db_dohm_create_generic (new_dohm, 0x288, 0x000) < 0)
@@ -313,7 +313,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   new_dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_dohm == NULL) {
     perror ("db_create_new_playlist|calloc");
-    return errno;
+    return -errno;
   }
   if (db_dohm_create_generic (new_dohm, 0x28 + unicode_len, 0) < 0)
     return -1;

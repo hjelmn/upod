@@ -39,7 +39,7 @@ int db_pyhm_create (tree_node_t *entry) {
   entry->data = calloc (PYHM_HEADER_SIZE, 1);
   if (entry->data == NULL) {
     perror ("db_pyhm_create|calloc");
-    return -1;
+    return -errno;
   }
 
   pyhm_data = (struct db_pyhm *)entry->data;

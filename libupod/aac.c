@@ -165,13 +165,13 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   ret = stat(file_name, &statinfo);
   if (ret < 0) {
     perror("aac_fill_tihm");
-    return -1;
+    return -errno;
   }
 
   tihm->size = statinfo.st_size;
 
   if ((fd = fopen (file_name, "r")) == NULL)
-    return -1;
+    return -errno;
 
   fread (&atom, sizeof(atom), 1, fd);
   if (atom.type != type_int ("ftyp")) {

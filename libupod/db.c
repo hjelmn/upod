@@ -255,7 +255,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   if ((iTunesDB_fd = open (path, O_RDONLY)) < 0) {
     db_log (itunesdb, errno, "db_load|open: %s\n", strerror(errno));
 
-    return errno;
+    return -errno;
   }
 
   /* read in the size of the database */
