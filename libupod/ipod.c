@@ -35,7 +35,10 @@
 
 #include <fcntl.h>
 
-#include "itunesdbi.h"
+#include "upod.h"
+
+int device_info_write (ipod_t *ipod);
+int sysinfo_read (ipod_t *, char *);
 
 static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   int test_fd;
@@ -44,8 +47,8 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   char testpath[512];
   char *dir = ipod->path;
 
-  /* try iPod_control/ */
-  sprintf (testpath, "%s/iPod_control", dir);
+  /* try iPod_Control/ */
+  sprintf (testpath, "%s/iPod_Control", dir);
   if ((test_fd = open (testpath, O_RDONLY)) < 0) {
     /* create iPod folder */
     fprintf(stderr, "Creating dir %s\n", testpath);
@@ -54,11 +57,11 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   } else
     close (test_fd);
 
-  sprintf (testpath, "%s/iPod_control/Device/SysInfo", dir);
+  sprintf (testpath, "%s/iPod_Control/Device/SysInfo", dir);
   sysinfo_read (ipod, testpath);
 
-  /* try iPod_control/iTunes/ */
-  sprintf (testpath, "%s/iPod_control/iTunes", dir);
+  /* try iPod_Control/iTunes/ */
+  sprintf (testpath, "%s/iPod_Control/iTunes", dir);
   if ((test_fd = open (testpath, O_RDONLY)) < 0) {
     /* create iPod/iTunes */
     fprintf(stderr, "Creating dir %s\n", testpath);
@@ -67,7 +70,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   } else
     close (test_fd);
 
-  /* try iPod_control/iTunes/iTunesDB */
+  /* try iPod_Control/iTunes/iTunesDB */
   memset (&(ipod->itunesdb), 0, sizeof (ipoddb_t));
   db_set_debug (&(ipod->itunesdb), debug_level, debug_out);
   sprintf (testpath, "%s/%s", dir, ITUNESDB);
@@ -84,7 +87,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   db_set_debug (&(ipod->photodb), debug_level, debug_out);
 
   if (ipod->supports_artwork == 1) {
-    sprintf (testpath, "%s/iPod_control/Artwork", dir);
+    sprintf (testpath, "%s/iPod_Control/Artwork", dir);
     if ((test_fd = open (testpath, O_RDONLY)) < 0) {
       fprintf(stderr, "Creating dir %s\n", testpath);
       if (mkdir (testpath, fold_perms) < 0)
@@ -172,6 +175,6 @@ int ipod_copy_to (ipod_t *ipod, char *topath, char *frompath) {
   return -1;
 }
 
-int ipod_rename (ipod_t *ipod, char *name, int name_len) {
+int ipod_rename (ipod_t *ipod, u_int8_t *name) {
   return db_playlist_rename (&(ipod->itunesdb), 0, name);
 }

@@ -34,6 +34,15 @@
 
 #include "itunesdbi.h"
 
+#define DEVICEINFO "/iPod_Control/iTunes/DeviceInfo"
+
+/*
+  DeviceInfo is a little-endian file containing:
+    u_int16_t   string_length (in characters)
+    u_int16_t[] ipod_name (UTF-16LE)
+    u_int16_t[] zeros (padding the file to 0x600 bytes)
+*/
+
 int device_info_write (ipod_t *ipod) {
   int fd, i;
 
@@ -47,6 +56,10 @@ int device_info_write (ipod_t *ipod) {
 
   unsigned short num_chars;
 
+  if (ipod == NULL)
+    return -EINVAL;
+
+  /* Get the iPod's name (Name of 0th playlist) */
   if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, &ipod_name)) < 0)
     return ret;
 
@@ -54,10 +67,11 @@ int device_info_write (ipod_t *ipod) {
 
   free (ipod_name);
 
-  sprintf (file_name, "%s/iPod_Control/iTunes/DeviceInfo", ipod->path);
+  sprintf (file_name, "%s%s", ipod->path, DEVICEINFO);
   
   if ((fd = open (file_name, O_WRONLY | O_CREAT | O_TRUNC, perms)) < 0) {
     perror ("device_info_write|open");
+    free (unicode_name);
 
     return -errno;
   }
@@ -65,17 +79,22 @@ int device_info_write (ipod_t *ipod) {
   num_chars = unicode_len / 2;
   num_chars = NXSwapShort(num_chars);
 
+  /* Change the endianness of the iPod's name if needbe. */
   bswap_block ((char *)unicode_name, 2, unicode_len / 2);
 
   fprintf (stderr, "num_chars = %04x\n", num_chars);
 
+  /* String length */
   write (fd, &num_chars, 2);
+
+  /* iPod Name */
   write (fd, unicode_name, unicode_len);
 
   free (unicode_name);
 
   num_chars = 0;
 
+  /* Pad the file with 0's */
   for (i = unicode_len + 2 ; i < 0x600 ; i += 2)
     write (fd, &num_chars, 2);
 

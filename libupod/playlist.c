@@ -324,7 +324,7 @@ int db_playlist_create (ipoddb_t *itunesdb, u_int8_t *name) {
    int         name_len - Lenth of name
 **/
 int db_playlist_rename (ipoddb_t *itunesdb, int playlist, u_int8_t *name) {
-  tree_node_t *dohm_header, *pyhm_header;
+  tree_node_t *dohm_header, *pyhm_header, *new_dohm_header;
 
   struct db_dohm *dohm_data;
   struct db_pyhm *pyhm_data;
@@ -358,16 +358,14 @@ int db_playlist_rename (ipoddb_t *itunesdb, int playlist, u_int8_t *name) {
   dohm.data = name;
   dohm.type = IPOD_TITLE;
 
-  if ((ret = db_dohm_create (&dohm_header, dohm, 16, 0)) < 0)
+  if ((ret = db_dohm_create (&new_dohm_header, dohm, 16, 0)) < 0)
     return ret;
 
   /* no need to worry about modifying the dohm count since it won't change */
   db_detach (pyhm_header, i, &dohm_header);
   db_free_tree (dohm_header);
 
-  db_attach_at (pyhm_header, dohm_header, i);
-
-  free (dohm.data);
+  db_attach_at (pyhm_header, new_dohm_header, i);
 
   db_log (itunesdb, 0, "db_playlist_rename: complete\n");
 
