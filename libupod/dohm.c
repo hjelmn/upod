@@ -72,7 +72,14 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   else
     tihm->dohms = realloc(tihm->dohms, tihm->num_dohm * sizeof(dohm_t));
   
-  dohm = &(tihm->dohms[tihm->num_dohm - 1]);
+  if (data_type == IPOD_TITLE) {
+    for (i = tihm->num_dohm - 1 ; i > 0 ; i--)
+      memmove (&tihm->dohms[i], &tihm->dohms[i-1], sizeof (dohm_t));
+
+    dohm = tihm->dohms;
+  } else
+    dohm = &(tihm->dohms[tihm->num_dohm - 1]);
+
   memset (dohm, 0, sizeof(dohm_t));
   dohm->type = data_type;
 

@@ -1,6 +1,6 @@
 /**
  *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a tihm.c
+ *   v0.1.1 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -25,6 +25,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <errno.h>
 
 #define TIHM_HEADER_SIZE   0x9c
 
@@ -120,25 +122,21 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
      which */
 }
 
-int db_tihm_create (tree_node_t *entry, char *path, u_int8_t *ipod_path, size_t path_len, int stars) {
-  tree_node_t *dohm;
-  dohm_t *dohm_data;
-  tihm_t tihm;
-  int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
-  int i;
+int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len, int stars, int tihm_num) {
+  if (tihm == NULL)
+    return -1;
 
-  memset (&tihm, 0, sizeof (tihm_t));
+  memset (tihm, 0, sizeof (tihm_t));
 
-  memset (entry, 0, sizeof (tree_node_t));
   if (strcasecmp (path + (strlen(path) - 3), "mp3") == 0) {
-    if (mp3_fill_tihm (path, &tihm) < 0) {
+    if (mp3_fill_tihm (path, tihm) < 0) {
       fprintf (stderr, "Invalid MP3 file: %s\n", path);
       return -1;
     }
   } else if ( (strcasecmp (path + (strlen(path) - 3), "m4a") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "m4p") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "aac") == 0) ) {
-    if (aac_fill_tihm (path, &tihm) < 0) {
+    if (aac_fill_tihm (path, tihm) < 0) {
       fprintf (stderr, "Invalid AAC file: %s\n", path);
       return -1;
     }
@@ -146,16 +144,24 @@ int db_tihm_create (tree_node_t *entry, char *path, u_int8_t *ipod_path, size_t 
     fprintf (stderr, "Unrecognized file format (Using extension)\n");
     return -1;
   }
-
-  tihm.num = tihm_num;
-  tihm.stars = stars;
-
   
-  dohm_add (&tihm, ipod_path, path_len, IPOD_PATH);
+  tihm->num = tihm_num;
+  tihm->stars = stars;
+  
+  
+  dohm_add (tihm, ipod_path, path_len, IPOD_PATH);
+}
 
-  tihm_db_fill (entry, &tihm);
-
-  for (i = 0 ; i < tihm.num_dohm ; i++) {
+int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
+  tree_node_t *dohm;
+  dohm_t *dohm_data;
+  int i;
+  
+  memset (entry, 0, sizeof (tree_node_t));
+  
+  tihm_db_fill (entry, tihm);
+  
+  for (i = 0 ; i < tihm->num_dohm ; i++) {
     dohm = (tree_node_t *) calloc (1, sizeof(tree_node_t));
 
     if (dohm == NULL) {
@@ -163,21 +169,18 @@ int db_tihm_create (tree_node_t *entry, char *path, u_int8_t *ipod_path, size_t 
       return -1;
     }
 
-    if (db_dohm_create (dohm, tihm.dohms[i]) < 0)
+    if (db_dohm_create (dohm, tihm->dohms[i]) < 0)
       return -1;
 
     db_attach (entry, dohm);
   }
-
-  return tihm_num;
+  
+  return 0;
 }
 
-tihm_t *db_tihm_fill (tree_node_t *entry) {
+static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
   int *iptr = (int *)entry->data;
   struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
-  tihm_t *tihm;
-
-  tihm = (tihm_t *) calloc (1, sizeof(tihm_t));
   
   tihm->num_dohm  = dbtihm->num_dohm;
   tihm->num       = dbtihm->identifier;
@@ -208,6 +211,28 @@ tihm_t *db_tihm_fill (tree_node_t *entry) {
   tihm->creation_date = dbtihm->creation_date;
 
   tihm->dohms     = db_dohm_fill (entry);
+
+  return 0;
+}
+
+
+tihm_t *db_tihm_fill (tree_node_t *entry) {
+  tihm_t *tihm;
+  int ret;
+
+  tihm = (tihm_t *) calloc (1, sizeof(tihm_t));
+  if (tihm == NULL) {
+    perror ("db_tihm_fill|calloc");
+
+    return NULL;
+  }
+
+  if ((ret = tihm_fill_from_database_entry (tihm, entry)) != 0) {
+    free (tihm);
+
+    return NULL;
+  }
+
   return tihm;
 }
 

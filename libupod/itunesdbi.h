@@ -1,6 +1,6 @@
 /**
  *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 itunesdbi.h
+ *   v0.0.3 itunesdbi.h
  *
  *   Internal functions. Do not include upodi.h in any end software.
  *
@@ -246,11 +246,13 @@ int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
 
 /* tihm.c */
 int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t *entry, char *path, u_int8_t *mac_path, size_t path_len, int stars);
+int     db_tihm_create   (tree_node_t *entry, tihm_t *tihm);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
 int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
 			  tree_node_t **parent, int tihm_num);
+int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
+			     size_t path_len, int stars, int tihm_num);
 void    tihm_free        (tihm_t *tihm);
 
 /* pihm.c */

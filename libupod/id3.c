@@ -38,6 +38,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define ID3_DEBUG 1
+
 #include "genre.h"
 
 #ifdef HAVE_LIBGEN_H
@@ -205,10 +207,6 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	    break;
 	  }
 
-#if defined(ID3_DEBUG)
-	if (length < 0x1000)
-	  pretty_print_block (tag_data, 10 + length);
-#endif
 
 	i += 10 + length;
       } else {

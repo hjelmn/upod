@@ -167,7 +167,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
   tnode_0->num_children = 0;
   tnode_0->size = copy_size;
   tnode_0->data = calloc (copy_size, 1);
-  memcpy (tnode_0->data, *buffer, copy_size);
+  memmove (tnode_0->data, *buffer, copy_size);
 
 #if defined(DEBUG)
   fprintf (stderr, "New tree node, size: %i\n", copy_size);
@@ -295,7 +295,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   db_log (itunesdb, 0, "Loaded... %i bytes\n", ibuffer[2]);
 
   bswap_block((char *)ibuffer, 4, 3);
-  memcpy (buffer, ibuffer, 12);
+  memmove (buffer, ibuffer, 12);
   
   close (iTunesDB_fd);
 
@@ -453,24 +453,43 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   tree_node_t *dshm_header, *new_tihm_header, *root;
 
   struct db_tlhm *tlhm_data;
-  int tihm_num;
+  int tihm_num, ret;
+
+  tihm_t tihm;
 
   /* find the song list */
   if (db_dshm_retrieve (itunesdb, &dshm_header, 1) < 0)
     return -1;
 
+  /* Set the new tihm entries number to 1 + the previous one */
+  tihm_num = ((int *)(dshm_header->children[dshm_header->num_children - 1]->data))[4] + 1;
+
+  if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len, stars, tihm_num)) < 0) {
+    db_log (itunesdb, ret, "Could not fill tihm structure from file.\n");
+    return ret;
+  }
+
   /* allocate memory for the new tree node */
   new_tihm_header = (tree_node_t *)calloc(1, sizeof(tree_node_t));
+  if (new_tihm_header == NULL) {
+    perror ("db_add|calloc");
+    tihm_free (&tihm);
+
+    return errno;
+  }
+
   new_tihm_header->parent = dshm_header;
 
   if (db_lookup (itunesdb, IPOD_PATH, mac_path, mac_path_len) > -1)
     return -1; /* A song already exists in the database with this path */
   
-  if ((tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars)) < 0) {
-    db_log (itunesdb, tihm_num, "Could not create tihm entry\n");
+  if ((ret = db_tihm_create (new_tihm_header, &tihm)) < 0) {
+    db_log (itunesdb, ret, "Could not create tihm entry\n");
     free (new_tihm_header);
-    return -1;
+    return ret;
   }
+
+  tihm_free (&tihm);
   
   db_attach (dshm_header, new_tihm_header);
 
@@ -607,7 +626,7 @@ void db_song_list_free (GList *head) {
 }
 
 int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
-  int size;
+  int size, i;
   tree_node_t *tmp;
 
   if (parent == NULL || new_child == NULL) return -1;
@@ -627,8 +646,8 @@ int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
   new_child->parent = parent;
 
   if (index < (parent->num_children - 1))
-    memcpy (&parent->children[index + 1], &parent->children[index],
-	    sizeof(tree_node_t *) * parent->num_children - 2 - index);
+    for (i = parent->num_children - 1 ; i > index ; i--)
+      parent->children[i] = parent->children[i-1];
 
   parent->children[index] = new_child;
 

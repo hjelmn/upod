@@ -26,6 +26,7 @@
 
 #include "hexdump.c"
 
+/* -- XXX -- Not used --- XXX --- */5C
 void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
   int i;
 
@@ -35,6 +36,7 @@ void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
     dst[i] = src[i];
 }
 
+/* -- XXX -- this will be changed to be Unicode -> UTF8 -- XXX -- */
 void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length) {
   int i;
   
