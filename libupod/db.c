@@ -677,17 +677,19 @@ int db_attach (tree_node_t *parent, tree_node_t *new_child) {
 int db_detach (tree_node_t *parent, int child_num, tree_node_t **entry) {
   int size;
   tree_node_t *tmp;
+  int i;
 
   if (entry == NULL) return -1;
   if (child_num >= parent->num_children) return -1;
 
   *entry = parent->children[child_num];
+  (*entry)->parent = NULL;
 
   parent->num_children -= 1;
 
   if (child_num != parent->num_children)
-    memcpy (&parent->children[child_num], &parent->children[child_num + 1],
-	    parent->num_children - child_num);
+    for (i = child_num ; i < parent->num_children ; i++)
+      parent->children[i] = parent->children[i+1];
 
   parent->children = realloc (parent->children, parent->num_children *
 			      sizeof(tree_node_t *));
