@@ -2,6 +2,8 @@
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.1.2a create.c
  *
+ *   Contains db_create and various node creation routines (that dont have another home).
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or

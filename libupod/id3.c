@@ -319,7 +319,6 @@ int get_id3_info (char *file_name, tihm_t *tihm) {
   
   /* built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(fd, &tag_data, &tag_datalen, &id3v2_majorversion)) != 0) {
-    fprintf (stderr, "id3v2.%i found\n", id3v2_majorversion);
     parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TITLE, tihm);
     
     /* Much of the time the title is in field TT2 not TT1 */

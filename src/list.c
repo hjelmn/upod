@@ -48,6 +48,8 @@ int main (int argc, char *argv[]) {
   if (argc != 2)
     usage();
 
+  db_set_debug (&itunesdb, 1, stderr);
+
   if (db_load (&itunesdb, argv[1]) < 0) {
     close (fd);
     exit(1);
