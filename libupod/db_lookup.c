@@ -45,7 +45,7 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
   int i, ret;
 
   /* simpifies code */
-  struct db_tlhm *tlhm_data;
+  db_tlhm_t *tlhm_data;
   struct db_tihm *tihm_data;
   dohm_t dohm;
 
@@ -59,11 +59,11 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
 
   db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
 
-  tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
+  tlhm_data = (db_tlhm_t *)dshm_header->children[0]->data;
 
   ret = -1;
 
-  for (i = 1 ; i <= tlhm_data->num_tihm ; i++) {
+  for (i = 1 ; i <= tlhm_data->list_entries ; i++) {
     tihm_header = dshm_header->children[i];
     tihm_data = (struct db_tihm *)tihm_header->data;
 
@@ -108,7 +108,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
   int i, ret;
 
   /* simpifies code */
-  struct db_plhm *plhm_data;
+  db_plhm_t *plhm_data;
 
   dohm_t dohm;
   
@@ -122,15 +122,16 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
 
   db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
 
-  db_log (itunesdb, 0, "db_lookup_playlist: number of playlists = %i\n", plhm_data->num_pyhm);
+  db_log (itunesdb, 0, "db_lookup_playlist: number of playlists = %i\n", plhm_data->list_entries);
 
   ret = -1;
 
-  for (i = 1 ; i <= plhm_data->num_pyhm ; i++) {
+  for (i = 1 ; i <= plhm_data->list_entries ; i++) {
     pyhm_header = dshm_header->children[i];
 
     db_dohm_retrieve (pyhm_header, &dohm_header, IPOD_TITLE);
 
+    /* it might be a good idea to start using playlist identifiers instead */
     if (db_dohm_compare (dohm_temp, dohm_header) == 0) {
       ret = i - 1;
 

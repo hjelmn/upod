@@ -150,7 +150,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 static int iihm_lookup (ipoddb_t *photodb, u_int64_t id) {
   tree_node_t *dshm_header;
   int i, ret;
-  struct db_ilhm *ilhm_data;
+  db_ilhm_t *ilhm_data;
 
   if (photodb == NULL)
     return -EINVAL;
@@ -163,9 +163,9 @@ static int iihm_lookup (ipoddb_t *photodb, u_int64_t id) {
     return ret;
   }
 
-  ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
+  ilhm_data = (db_ilhm_t *)dshm_header->children[0]->data;
 
-  for (i = 0 ; i < ilhm_data->num_images ; i++) {
+  for (i = 0 ; i < ilhm_data->list_entries ; i++) {
     struct db_iihm *iihm_data = (struct db_iihm *)dshm_header->children[i + 1]->data;
 
     if (iihm_data->id == id)
@@ -177,7 +177,7 @@ static int iihm_lookup (ipoddb_t *photodb, u_int64_t id) {
 
 int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_int64_t id) {
   tree_node_t *dshm_header, *new_iihm_header;
-  struct db_ilhm *ilhm_data;
+  db_ilhm_t *ilhm_data;
   struct db_dfhm *dfhm_data;
 
   int identifier, ret;
@@ -224,8 +224,8 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
   db_album_image_add (photodb, 0, identifier);
 
   /* everything was successfull, increase the image count in the ilhm header */
-  ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
-  ilhm_data->num_images += 1;
+  ilhm_data = (db_ilhm_t *)dshm_header->children[0]->data;
+  ilhm_data->list_entries += 1;
 
   dfhm_data->next_iihm++;
 
@@ -239,7 +239,7 @@ int db_photo_remove (ipoddb_t *photodb, u_int32_t identifier) {
 
 int db_photo_list (ipoddb_t *artworkdb, GList **head) {
   tree_node_t *dshm_header, *iihm_header, *ilhm_header;
-  struct db_ilhm *ilhm_data;
+  db_ilhm_t *ilhm_data;
 
   int i, ret, *iptr;
 
@@ -252,9 +252,9 @@ int db_photo_list (ipoddb_t *artworkdb, GList **head) {
     return ret;
 
   ilhm_header = dshm_header->children[0];
-  ilhm_data = (struct db_ilhm *)ilhm_header->data;
+  ilhm_data = (db_ilhm_t *)ilhm_header->data;
 
-  if (ilhm_data->num_images == 0)
+  if (ilhm_data->list_entries == 0)
     return -1;
 
   for (i = dshm_header->num_children - 1 ; i > 0 ; i--) {

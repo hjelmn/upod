@@ -29,6 +29,7 @@
 #include "itunesdbi.h"
 
 int otg_playlist_read (ipod_t *ipod) {
+  UPOD_NOT_IMPL("otg_playlist_read");
 }
 
 /*
@@ -37,4 +38,5 @@ int otg_playlist_read (ipod_t *ipod) {
   playlist from it, then delete the file.
 */
 int otg_playlist_delete (ipod_t *ipod) {
+  UPOD_NOT_IMPL("otg_playlist_delete");
 }

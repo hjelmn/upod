@@ -52,7 +52,7 @@
 **/
 int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
   tree_node_t *parent, *entry;
-  struct db_tlhm *tlhm;
+  db_tlhm_t *tlhm;
   int entry_num;
 
   if (itunesdb == NULL || itunesdb->tree_root == NULL || itunesdb->type != 0)
@@ -66,8 +66,8 @@ int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
     return entry_num;
   }
 
-  tlhm = (struct db_tlhm *)parent->children[0]->data;
-  tlhm->num_tihm -= 1;
+  tlhm = (db_tlhm_t *)parent->children[0]->data;
+  tlhm->list_entries -= 1;
 
   /* remove the entry */
   db_detach (parent, entry_num, &entry);
@@ -97,7 +97,7 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
 		 u_int8_t *mac_path, int stars, int show) {
   tree_node_t *dshm_header, *new_tihm_header;
 
-  struct db_tlhm *tlhm_data;
+  db_tlhm_t *tlhm_data;
   int tihm_num, ret;
 
   tihm_t tihm;
@@ -140,8 +140,8 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
     db_song_unhide(itunesdb, tihm_num);
 
   /* everything was successfull, increase the tihm count in the tlhm header */
-  tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
-  tlhm_data->num_tihm += 1;
+  tlhm_data = (db_tlhm_t *)dshm_header->children[0]->data;
+  tlhm_data->list_entries += 1;
 
   itunesdb->last_entry++;
 
@@ -250,7 +250,7 @@ int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num,
 **/
 int db_song_list (ipoddb_t *itunesdb, GList **head) {
   tree_node_t *dshm_header, *tihm_header, *tlhm_header;
-  struct db_tlhm *tlhm_data;
+  db_tlhm_t *tlhm_data;
   int i, *iptr;
   int ret;
   tihm_t *tihm;
@@ -265,10 +265,10 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
     return ret;
 
   tlhm_header = dshm_header->children[0];
-  tlhm_data   = (struct db_tlhm *)tlhm_header->data;
+  tlhm_data   = (db_tlhm_t *)tlhm_header->data;
 
   /* cant create a song list if there are no songs */
-  if (tlhm_data->num_tihm == 0)
+  if (tlhm_data->list_entries == 0)
     return -1;
 
   for (i = dshm_header->num_children - 1 ; i > 0 ; i--) {

@@ -104,7 +104,7 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
   tree_node_t *dshm_header;
   tree_node_t *tlhm_header;
 
-  struct db_tlhm *tlhm_data;
+  db_tlhm_t *tlhm_data;
   u_int32_t *tmp;
 
   int i, ret;
@@ -119,9 +119,9 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
   }
 
   tlhm_header = dshm_header->children[0];
-  tlhm_data = (struct db_tlhm *)tlhm_header->data;
+  tlhm_data = (db_tlhm_t *)tlhm_header->data;
 
-  *indices = (u_int32_t *) calloc (tlhm_data->num_tihm, 4);
+  *indices = (u_int32_t *) calloc (tlhm_data->list_entries, 4);
 
   if (*indices == NULL) {
     perror ("db_tihm_get_sorted_indices|calloc");
@@ -129,10 +129,10 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
     exit (EXIT_FAILURE);
   }
 
-  for (i = 0 ; i < tlhm_data->num_tihm ; i++)
+  for (i = 0 ; i < tlhm_data->list_entries ; i++)
     (*indices)[i] = i;
 
-  tmp = (u_int32_t *) calloc (tlhm_data->num_tihm, 4);
+  tmp = (u_int32_t *) calloc (tlhm_data->list_entries, 4);
 
   if (tmp == NULL) {
     perror ("db_tihm_get_sorted_indices|calloc");
@@ -140,9 +140,9 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
     exit (EXIT_FAILURE);
   }
 
-  db_sort (dshm_header, sort_by, *indices, tmp, tlhm_data->num_tihm);
+  db_sort (dshm_header, sort_by, *indices, tmp, tlhm_data->list_entries);
 
-  *num_indices = tlhm_data->num_tihm;
+  *num_indices = tlhm_data->list_entries;
 
   free (tmp);
 

@@ -79,7 +79,6 @@ int main(int argc, char *argv[]) {
       db_write (itunesdb, argv[1]);
     }
   } else {
-    int i;
     if ((ret = db_playlist_song_list (&itunesdb, atoi(argv[3]),
 				      &reflist)) > 0) {
       for (tmp = g_list_first (reflist) ; tmp ; tmp = g_list_next (tmp))

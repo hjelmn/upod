@@ -88,6 +88,16 @@ int glist_cmp (gpointer data1, gpointer data2) {
   return (strcasecmp ((char *)data1, (char *)data2) == 0) ? 1 : 0;
 }
 
+void print_parsed (void) {
+  static int parsed = 0;
+
+  parsed++;
+
+  printf ("Parsed %05i files.", parsed);
+  printf ("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
+  fflush (stdout);
+}
+
 int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidden,
 	       int playlist) {
   char scratch[1024];
@@ -131,6 +141,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
     if (!S_ISDIR (statinfo.st_mode)) {
       GList *tmp;
 
+      print_parsed ();
       mac_path = path_unix_mac_root (scratch);
       if ((tmp = g_list_find_custom (hidden, scratch,
 				     (GCompareFunc)glist_cmp)) != NULL) {
@@ -354,7 +365,7 @@ int main (int argc, char *argv[]) {
     }
 
     if (noartwork == 0) {
-      if ((ret = db_load (&artworkdb, ITUNESDB, flags)) < 0) {
+      if ((ret = db_load (&artworkdb, ARTWORKDB, flags)) < 0) {
 	if ((ret = db_photo_create (&artworkdb)) < 0) {
 	  fprintf (stderr, "Error creating ArtworkDB\n");
 	  
@@ -368,6 +379,7 @@ int main (int argc, char *argv[]) {
       
       exit (1);
     }
+
     if (noartwork == 0) {
       if ((ret = db_photo_create (&artworkdb)) < 0) {
 	fprintf (stderr, "Error creating ArtworkDB\n");

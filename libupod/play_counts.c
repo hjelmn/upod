@@ -26,7 +26,9 @@
 #include "itunesdbi.h"
 
 int play_counts_blank (ipod_t *ipod) {
+  UPOD_NOT_IMPL("play_counts_blank");
 }
 
 int play_counts_read (ipod_t *ipod) {
+  UPOD_NOT_IMPL("play_counts_read");
 }

@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 pyhm.c
+ *   v0.3.0 pyhm.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -19,15 +19,14 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdbi.h"
-
-
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <errno.h>
 
 #include <time.h>
+
+#include "itunesdbi.h"
 
 #define PYHM_HEADER_SIZE 0x6c
 
@@ -52,6 +51,13 @@ int db_pyhm_set_id (tree_node_t *entry, int id) {
   pyhm_data->playlist_id = id;
 
   return 0;
+}
+
+int db_pyhm_get_id (tree_node_t *entry) {
+  struct db_pyhm *pyhm_data;
+
+  pyhm_data = (struct db_pyhm *)entry->data;
+  return pyhm_data->playlist_id;
 }
 
 int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {

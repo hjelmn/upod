@@ -44,7 +44,7 @@ int db_fihm_create (tree_node_t **entry, unsigned int file_id) {
 
 int db_fihm_find (ipoddb_t *photodb, unsigned int file_id) {
   struct tree_node *dshm_header;
-  struct db_flhm *flhm_data;
+  db_flhm_t *flhm_data;
   int ret, i;
 
   /* find the file list */
@@ -53,9 +53,9 @@ int db_fihm_find (ipoddb_t *photodb, unsigned int file_id) {
     return ret;
   }
 
-  flhm_data = (struct db_flhm *)dshm_header->children[0]->data;
+  flhm_data = (db_flhm_t *)dshm_header->children[0]->data;
 
-  for (i = 0 ; i < flhm_data->num_files ; i++) {
+  for (i = 0 ; i < flhm_data->list_entries ; i++) {
     struct db_fihm *fihm_data = (struct db_fihm *)dshm_header->children[i+1]->data;
     
     if (fihm_data->file_id == file_id)
@@ -67,7 +67,7 @@ int db_fihm_find (ipoddb_t *photodb, unsigned int file_id) {
 
 int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id) {
   struct tree_node *dshm_header, *new_fihm_header;
-  struct db_flhm *flhm_data;
+  db_flhm_t *flhm_data;
   struct db_fihm *fihm_data;
   int ret;
   struct stat statinfo;
@@ -79,8 +79,8 @@ int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id)
   }
 
   if ((ret = db_fihm_find (photodb, file_id)) == 0) {
-    flhm_data = (struct db_flhm *)dshm_header->children[0]->data;
-    flhm_data->num_files++;
+    flhm_data = (db_flhm_t *)dshm_header->children[0]->data;
+    flhm_data->list_entries++;
     
     db_fihm_create (&new_fihm_header, file_id);
     db_attach (dshm_header, new_fihm_header);

@@ -69,9 +69,7 @@ int main (int argc, char *argv[]) {
   
   int j;
 
-  char *buffer;
-  size_t buffer_len;
-  int i, ret;
+  int i;
   
   ipoddb_t itunesdb;
 
@@ -85,17 +83,6 @@ int main (int argc, char *argv[]) {
   }
 
   fprintf (stdout, "Checking the sanity of the database...\n");
-
-  ret = db_sanity_check(itunesdb);
-
-  if (ret <= -20) {
-    fprintf (stdout, "There is somthing wrong with the loaded database!\n");
-    db_free (&itunesdb);
-    exit(1);
-  } else if (ret < 0) {
-    fprintf (stdout, "The database has small problems, continuing anyway. :: %i\n", ret);
-  } else
-    fprintf (stdout, "The database checks out.\n");
 
   /* get song lists */
   songs = NULL;

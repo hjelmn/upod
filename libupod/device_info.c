@@ -27,7 +27,9 @@
 #include "itunesdbi.h"
 
 int device_info_write (ipod_t *ipod) {
+  UPOD_NOT_IMPL("device_info_write");
 }
 
 int device_info_read (ipod_t *ipod) {
+  UPOD_NOT_IMPL("device_info_read");
 }

@@ -36,10 +36,11 @@
 int db_dohm_retrieve (tree_node_t *entry, tree_node_t **dohm_header, int dohm_type) {
   int i;
   int num_dohms;
+
   struct db_dohm *dohm_data;
   struct db_generic *data;
 
-  if (dohm_header == NULL || entry == NULL)
+  if (dohm_header == NULL || entry == NULL || dohm_type < 1)
     return -EINVAL;
   
   data = (struct db_generic *)entry->data;
