@@ -58,6 +58,10 @@ static int db_dfhm_create (tree_node_t **entry) {
 
   dfhm_data = (struct db_dfhm *) (*entry)->data;
 
+  dfhm_data->unk1 = 0x00000001;
+  dfhm_data->unk2 = 0x00000003;
+  dfhm_data->next_iihm = 0x00000064;
+
   return 0;
 }
 
@@ -124,7 +128,6 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   itunesdb->tree_root = root;
   itunesdb->flags = flags;
-  itunesdb->last_tihm = 0;
 
   ret = db_playlist_create (itunesdb, db_name, name_len);
 
@@ -135,7 +138,6 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
 
 int db_photo_create (ipoddb_t *photodb) {
   tree_node_t *root, *entry, *entry2;
-  int ret;
 
   if (photodb == NULL)
     return -EINVAL;

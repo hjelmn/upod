@@ -25,7 +25,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <string.h>
 #include <errno.h>
 
 #define TIHM_HEADER_SIZE   0xf4
@@ -42,20 +42,14 @@ int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
 
 int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 		      tree_node_t **parent, int tihm_num) {
-  tree_node_t *root, *dshm_header;
-  struct db_dshm *dshm_data;
-  int i, entry_num;
-
-  if (itunesdb->tree_root == NULL) return -1;
-  root = itunesdb->tree_root;
+  tree_node_t *dshm_header;
+  int entry_num;
+  int ret;
 
   /* find the song list */
-  for (i = 0 ; i < root->num_children ; i++) {
-    dshm_header = (tree_node_t *)root->children[i];
-    dshm_data = (struct db_dshm *) dshm_header->data;
-    
-    if (dshm_data->dshm == DSHM && dshm_data->type == 0x1)
-      break;
+  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
+    db_log (itunesdb, ret, "Could not get song list header\n");
+    return ret;
   }
 
   entry_num = db_tihm_search (dshm_header, tihm_num);
@@ -110,6 +104,8 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
   /* it may be useful to set other values in the tihm structure but many
      have still not been deciphered */
+
+  return 0;
 }
 
 int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len,
@@ -152,7 +148,6 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
 */
 int db_tihm_create (tree_node_t **entry, tihm_t *tihm) {
   tree_node_t *dohm;
-  dohm_t *dohm_data;
   int i, ret;
 
   if ((ret = db_node_allocate (entry, TIHM, TIHM_HEADER_SIZE, TIHM_HEADER_SIZE)) < 0)
@@ -161,7 +156,7 @@ int db_tihm_create (tree_node_t **entry, tihm_t *tihm) {
   tihm_db_fill (*entry, tihm);
   
   for (i = 0 ; i < tihm->num_dohm ; i++) {
-    if (db_dohm_create (&dohm, tihm->dohms[i]) < 0)
+    if (db_dohm_create (&dohm, tihm->dohms[i], 16) < 0)
       return -1;
 
     db_attach (*entry, dohm);

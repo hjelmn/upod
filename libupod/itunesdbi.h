@@ -24,9 +24,10 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
+#include <stdlib.h>
+#include <stdio.h>
 #include <sys/types.h>
-
+#include <wand/magick_wand.h>
 #include "itunesdb.h"
 
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
@@ -132,8 +133,8 @@ struct db_tihm {
   u_int32_t modification_date;
   u_int32_t unk7;
 
-  u_int32_t unk8;
-  u_int32_t unk9;
+  u_int32_t iihm_id1;
+  u_int32_t iihm_id2;
   u_int32_t unk11; /* including bpm */
   u_int32_t unk12;
 };
@@ -145,7 +146,12 @@ struct db_dfhm {
   u_int32_t record_size;
   u_int32_t unk0;
 
-  u_int32_t unk1[25];
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t next_iihm;
+  u_int32_t unk3;
+
+  u_int32_t unk4[21];
 };
 
 struct db_inhm {
@@ -170,10 +176,14 @@ struct db_iihm {
   u_int32_t iihm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t num_inhm;
+  u_int32_t num_thumbs;
 
   u_int32_t identifier;
-  u_int32_t unk0[33];
+  u_int32_t id1;
+  u_int32_t id2;
+  u_int32_t unk0;
+
+  u_int32_t unk1[30];
 };
 
 struct db_ilhm {
@@ -226,7 +236,7 @@ struct db_aihm {
 struct db_flhm {
   u_int32_t flhm;
   u_int32_t header_size;
-  u_int32_t num_images;
+  u_int32_t num_files;
 };
 
 struct db_fihm {
@@ -234,9 +244,12 @@ struct db_fihm {
   u_int32_t header_size;
   u_int32_t unk0;
 
-  u_int32_t inhm_reference;
   u_int32_t unk1;
-  u_int32_t unk2[25];
+  u_int32_t file_id;
+  u_int32_t file_size;
+  u_int32_t unk2;
+
+  u_int32_t unk3[24];
 };
 
 /* DOHM */
@@ -405,7 +418,7 @@ dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
 int     db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
 int     db_dohm_create_eq (tree_node_t **entry, int eq);
-int     db_dohm_create (tree_node_t **entry, dohm_t dohm);
+int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size);
 dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
 
@@ -434,4 +447,17 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 /* playlist.c */
 int db_playlist_retrieve_header (ipoddb_t *, tree_node_t **, tree_node_t **);
 
+/* inhm.c */
+int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
+		    char *rel_mac_path, MagickWand *magick_wand);
+
+/* iihm.c */
+int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2);
+int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier);
+int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
+                      tree_node_t **parent, int iihm_identifier);
+
+/* fihm.c */
+int db_fihm_create (tree_node_t **entry, unsigned int file_id);
+int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id);
 #endif /* __ITUNESDBI_H */

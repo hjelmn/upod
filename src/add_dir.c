@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
   int db, i;
   
   memset (&itunesdb, 0, sizeof  (ipoddb_t));
-  db_set_debug (&itunesdb, 0, stderr);
+  db_set_debug (&itunesdb, 5, stderr);
 
   if (strcmp (argv[1], "-create") == 0) {
     if (argc < 4) usage();

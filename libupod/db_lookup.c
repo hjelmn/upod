@@ -88,7 +88,7 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
       }
     }
   }
- notfound:
+
   db_log (itunesdb, 0, "db_lookup: not found\n");
 
   ret = -1;
@@ -166,7 +166,6 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
     }
   }
 
- notfound_playlist:
   db_log (itunesdb, 0, "db_lookup_playlist: not found\n");
 
   ret = -1;

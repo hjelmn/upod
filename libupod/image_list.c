@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.1alpha artworkdb.c
+ *   v0.0.1beta1 image_list.c
  *
  *   Functions to manipulate the list of artwork in an ArtworkDB.
  *   
@@ -41,27 +41,91 @@
 static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 
 int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifier) {
+  tree_node_t *dshm_header;
+  tree_node_t *dohm_header, *inhm_header, *iihm_header;
+  tree_node_t *path_header;
 
-  return -1;
+  struct db_iihm *iihm_data;
+  struct db_inhm *inhm_data;
+  
+  char file_name[255];
+  char file_name_mac[255];
+  unsigned long file_id;
+
+  dohm_t dohm;
+
+  int ret;
+
+  if ((photodb == NULL) || (magick_wand == NULL) || (iihm_identifier < 1))
+    return -EINVAL;
+
+  db_log (photodb, 0, "db_thumb_add: entering...\n");
+
+  /* find the image list */
+  if ((ret = db_iihm_retrieve (photodb, &iihm_header, &dshm_header, iihm_identifier)) < 0) {
+    db_log (photodb, ret, "db_thumb_add: could not retrieve iihm header\n");
+
+    return ret;
+  }
+
+  if (MagickGetImageWidth(magick_wand) == 56)
+    file_id = 1017;
+  else if (MagickGetImageWidth(magick_wand) == 140)
+    file_id = 1016;
+   
+  sprintf (file_name, "F%lu_1.ithmb", file_id);
+
+  sprintf (file_name_mac, ":F%lu_1.ithmb", file_id);
+
+  to_unicode (&(dohm.data), &(dohm.size), file_name_mac, strlen(file_name_mac), "ASCII");
+
+  dohm.type = 3;
+
+  db_dohm_create_generic (&dohm_header, 0x18, 0x02);
+  db_inhm_create (&inhm_header, file_id, file_name, file_name_mac, magick_wand);
+  db_dohm_create (&path_header, dohm, 12);
+
+  db_fihm_register (photodb, file_name, file_id);
+
+  free (dohm.data);
+
+  db_attach (inhm_header, path_header);
+  db_attach (dohm_header, inhm_header);
+  db_attach (iihm_header, dohm_header);
+
+  iihm_data = (struct db_iihm *)iihm_header->data;
+  iihm_data->num_thumbs++;
+
+  inhm_data = (struct db_inhm *)inhm_header->data;
+  inhm_data->num_dohm++;
+
+  return 0;
 }
 
 int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_size) {
   tree_node_t *dshm_header, *new_iihm_header;
   struct db_ilhm *ilhm_data;
+  struct db_dfhm *dfhm_data;
 
   MagickWand *magick_wand;
-  int identifier, ret;
+  int identifier, id1, id2, ret;
 
   if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
     return -EINVAL;
 
+  db_log (photodb, 0, "db_photo_add: entering...\n");
+
   /* find the image list */
-  if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0)
+  if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
+    db_log (photodb, ret, "Could not get image list header\n");
     return ret;
+  }
 
-  identifier = photodb->last_tihm + 1;
+  dfhm_data = (struct db_dfhm *)photodb->tree_root->data;
 
-  if ((ret = db_iihm_create (&new_iihm_header, identifier)) < 0) {
+  id1 = id2 = identifier = dfhm_data->next_iihm;
+
+  if ((ret = db_iihm_create (&new_iihm_header, identifier, id1, id2)) < 0) {
     db_log (photodb, ret, "Could not create iihm entry\n");
     return ret;
   }
@@ -73,6 +137,9 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
   ilhm_data->num_images += 1;
 
+  dfhm_data->next_iihm++;
+
+  db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
 
   /* Make thumbnails and add them to the database */
   magick_wand = NewMagickWand();
@@ -195,7 +262,7 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
   iihm_data = (struct db_iihm *)iihm_header->data;
 
   iihm->identifier = iihm_data->identifier;
-  iihm->num_inhm   = iihm_data->num_inhm;
+  iihm->num_inhm  = iihm_data->num_thumbs;
 
   iihm->inhms      = (inhm_t *) calloc (iihm->num_inhm, sizeof (inhm_t));
 

@@ -330,11 +330,9 @@ static int mp3_scan (struct mp3_file *mp3) {
   int ret;
   int frames = 0;
   int last_bitrate = -1;
-  int total_bitrate = 0;
   int total_framesize = 0;
-  float avg_framesize = 0.0;
 
-  size_t bitrate, samplerate = 0;
+  size_t bitrate;
   int frame_size;
 
   mp3_debug ("mp3_scan: Entering...\n");

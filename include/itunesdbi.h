@@ -1,8 +1,8 @@
 /**
- *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.3 itunesdbi.h
+ *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 itunesdbi.h
  *
- *   Internal functions. Do not include upodi.h in any end software.
+ *   Internal functions. Do not include ipoddbi.h in any end software.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -24,12 +24,13 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
+#include <stdlib.h>
+#include <stdio.h>
 #include <sys/types.h>
-
+#include <wand/magick_wand.h>
 #include "itunesdb.h"
 
-void db_log (itunesdb_t *itunesdb, int error, char *format, ...);
+void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
 #define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
@@ -121,7 +122,7 @@ struct db_tihm {
   /* in millisecs */
   u_int32_t start_time;
   u_int32_t stop_time;
-  u_int32_t unk3; /**/
+  u_int32_t unk3;
 
   u_int32_t num_played[2]; /* no idea why there are two of these */
   u_int32_t last_played_date;
@@ -132,12 +133,121 @@ struct db_tihm {
   u_int32_t modification_date;
   u_int32_t unk7;
 
-  u_int32_t unk8;
-  u_int32_t unk9;
+  u_int32_t iihm_id1;
+  u_int32_t iihm_id2;
   u_int32_t unk11; /* including bpm */
   u_int32_t unk12;
 };
 
+/* Photo Database */
+struct db_dfhm {
+  u_int32_t dfhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1[25];
+};
+
+struct db_inhm {
+  u_int32_t inhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t num_dohm;
+
+  u_int32_t file_id;
+  u_int32_t file_offset;
+  u_int32_t image_size;
+  u_int32_t unk2;
+
+  u_int16_t height;
+  u_int16_t width;
+  u_int32_t unk3[3];
+
+  u_int32_t unk4[7];
+};
+
+struct db_iihm {
+  u_int32_t iihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t num_thumbs;
+
+  u_int32_t identifier;
+  u_int32_t id1;
+  u_int32_t id2;
+  u_int32_t unk0;
+
+  u_int32_t unk1[30];
+};
+
+struct db_ilhm {
+  u_int32_t ilhm;
+  u_int32_t header_size;
+  u_int32_t num_images;
+
+  u_int32_t unk0[20];
+};
+
+struct db_alhm {
+  u_int32_t alhm;
+  u_int32_t header_size;
+  u_int32_t num_albums;
+  
+  u_int32_t unk0[20];
+};
+
+struct db_abhm {
+  u_int32_t abhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+  
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t unk3;
+  u_int32_t unk4;
+  
+  u_int32_t unk5[4];
+
+  u_int32_t unk6[3];
+  u_int32_t unk7;
+
+  u_int32_t unk8[21];
+};
+
+struct db_aihm {
+  u_int32_t aihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1;
+  u_int32_t unk2[3];
+
+  u_int32_t unk3[2];
+};
+
+struct db_flhm {
+  u_int32_t flhm;
+  u_int32_t header_size;
+  u_int32_t num_files;
+};
+
+struct db_fihm {
+  u_int32_t fihm;
+  u_int32_t header_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1;
+  u_int32_t file_id;
+  u_int32_t file_size;
+  u_int32_t unk2;
+
+  u_int32_t unk3[24];
+};
+
+/* DOHM */
 struct db_dohm {
   u_int32_t dohm;
   u_int32_t header_size;
@@ -146,8 +256,6 @@ struct db_dohm {
 
   u_int32_t unk0;
   u_int32_t unk1;
-  u_int32_t unk2;
-  u_int32_t len;
 };
 
 struct db_wierd_dohm {
@@ -194,13 +302,45 @@ struct db_wierd_dohm {
 static int string_to_int (char *string) {
   return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
 }
-#define DBHM string_to_int("dbhm")  /* 0x6462686d */
-#define DSHM string_to_int("dshm")  /* 0x6473686d */
-#define TLHM string_to_int("tlhm") /* 0x746c686d */
-#define TIHM string_to_int("tihm") /* 0x7469686d */
-#define DOHM string_to_int("dohm") /* 0x646f686d */
-#define PLHM string_to_int("plhm") /* 0x706c686d */
-#define PYHM string_to_int("pyhm") /* 0x7079686d */
+
+
+/* iTunesDB specific */
+#define DBHM string_to_int("dbhm")
+
+/* Songs */
+#define TLHM string_to_int("tlhm")
+#define TIHM string_to_int("tihm")
+
+/* Playlists */
+#define PLHM string_to_int("plhm")
+#define PIHM string_to_int("pihm")
+#define PYHM string_to_int("pyhm")
+
+
+
+/* iPod photo ArtworkDB specific */
+#define DFHM string_to_int("dfhm")
+
+/* Images */
+#define ILHM string_to_int("ilhm")
+#define IIHM string_to_int("iihm")
+#define INHM string_to_int("inhm")
+
+/* Albums */
+#define ALHM string_to_int("alhm")
+#define ABHM string_to_int("abhm")
+#define AIHM string_to_int("aihm")
+
+/* Files? */
+#define FLHM string_to_int("flhm")
+#define FIHM string_to_int("fihm")
+
+
+
+/* Common */
+#define DSHM string_to_int("dshm")
+#define DOHM string_to_int("dohm")
+
 
 
 #define UPOD_NOT_IMPL(s) do {\
@@ -243,13 +383,15 @@ void    db_free_tree (tree_node_t *ptr);
 int     db_attach    (tree_node_t *parent, tree_node_t *new_child);
 int     db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);
 int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
+int     db_node_allocate (tree_node_t **entry, unsigned long type,
+			  size_t size, int subtree);
 
 /* tihm.c */
 int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t *entry, tihm_t *tihm);
+int     db_tihm_create   (tree_node_t **entry, tihm_t *tihm);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
-int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
+int     db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 			  tree_node_t **parent, int tihm_num);
 int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
 			     size_t path_len, int stars, int tihm_num,
@@ -258,27 +400,27 @@ void    tihm_free        (tihm_t *tihm);
 
 /* pihm.c */
 int     db_pihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_pihm_create   (tree_node_t *entry, u_int32_t tihm_num,
+int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
 			  u_int32_t junk);
 
 /* pyhm.c */
-int     db_pyhm_create   (tree_node_t *entry);
+int     db_pyhm_create   (tree_node_t **entry);
 
 /* dohm.c */
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
                       int dohm_type);
 dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
-int     db_dohm_create_generic (tree_node_t *entry, size_t size, int type);
-int     db_dohm_create_eq (tree_node_t *entry, int eq);
-int     db_dohm_create (tree_node_t *entry, dohm_t dohm);
+int     db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
+int     db_dohm_create_eq (tree_node_t **entry, int eq);
+int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size);
 dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
 
 /* dshm.c */
-int db_dshm_retrieve (itunesdb_t *itunesdb, tree_node_t **dshm_header,
+int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
 		      int type);
-int db_dshm_create (tree_node_t *entry, int type);
+int db_dshm_create (tree_node_t **entry, int type);
 
 /* unicode.c */
 void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length);
@@ -298,6 +440,15 @@ int aac_fill_tihm (char *, tihm_t *);
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
-int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
+int db_playlist_retrieve_header (ipoddb_t *, tree_node_t **, tree_node_t **);
 
+/* inhm.c */
+int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
+		    char *rel_mac_path, MagickWand *magick_wand);
+
+/* iihm.c */
+int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2);
+int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier);
+int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
+                      tree_node_t **parent, int iihm_identifier);
 #endif /* __ITUNESDBI_H */

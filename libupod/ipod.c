@@ -23,15 +23,17 @@
 #include "config.h"
 #endif
 
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include <fcntl.h>
+
+#include "itunesdbi.h"
 
 #define ITUNESDB_PATH "iPod_control/iTunes/iTunesDB"
 

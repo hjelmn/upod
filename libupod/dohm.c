@@ -138,6 +138,7 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
     return ret;
 
   (*entry)->data = realloc ((*entry)->data, size);
+  memset (&((*entry)->data[DOHM_HEADER_SIZE]), 0, size - DOHM_HEADER_SIZE);
   (*entry)->size = size;
 
   dohm_data = (struct db_dohm *)(*entry)->data;
@@ -146,19 +147,45 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
   return 0;
 }
 
-int db_dohm_create (tree_node_t **entry, dohm_t dohm) {
-  int *iptr;
+struct string_header_12 {
+  u_int32_t string_length;
+  u_int32_t unk0;
+  u_int32_t unk1;
+};
+
+struct string_header_16 {
+  u_int32_t unk0;
+  u_int32_t string_length;
+  u_int32_t unk1;
+  u_int32_t unk2;
+};
+
+int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
   int entry_size;
 
-  entry_size   = DOHM_HEADER_SIZE + STRING_HEADER_SIZE + dohm.size;
+  entry_size   = DOHM_HEADER_SIZE + string_header_size + dohm.size;
 
   db_dohm_create_generic (entry, entry_size, dohm.type);
 
-  iptr = (int *)(*entry)->data;
-  iptr[DOHM_HEADER_SIZE/4]     = 1;
-  iptr[DOHM_HEADER_SIZE/4 + 1] = dohm.size;
+  if (string_header_size == 12) {
+    struct string_header_12 *string_header;
+    
+    string_header = (struct string_header_12 *)&((*entry)->data[DOHM_HEADER_SIZE]);
 
-  memcpy(&(*entry)->data[DOHM_HEADER_SIZE + STRING_HEADER_SIZE], dohm.data,
+    string_header->string_length = dohm.size;
+    string_header->unk0 = 0x00000002;
+  } else {
+    struct string_header_16 *string_header;
+    
+    string_header = (struct string_header_16 *)&((*entry)->data[DOHM_HEADER_SIZE]);
+
+    string_header->string_length = dohm.size;
+    string_header->unk0 = 0x00000001;
+  }
+
+  (*entry)->string_header_size = string_header_size;
+
+  memcpy(&(*entry)->data[DOHM_HEADER_SIZE + string_header_size], dohm.data,
 	 dohm.size);
   
   return 0;
@@ -260,7 +287,7 @@ int db_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm) {
     free (dohm_header);
   }
 
-  db_dohm_create (&dohm_header, *dohm);
+  db_dohm_create (&dohm_header, *dohm, 16);
   db_attach (tihm_header, dohm_header);
 
   return 0;

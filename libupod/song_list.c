@@ -109,7 +109,7 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
     return -1; /* A song already exists in the database with this path */
   
   /* Set the new tihm entry's number to 1 + the previous one */
-  tihm_num = itunesdb->last_tihm + 1;
+  tihm_num = itunesdb->last_entry + 1;
 
   if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len,
 				  stars, tihm_num, itunesdb->flags & 0x1)) < 0) {
@@ -135,7 +135,7 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
   tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
   tlhm_data->num_tihm += 1;
 
-  itunesdb->last_tihm++;
+  itunesdb->last_entry++;
 
   return tihm_num;
 }
@@ -204,6 +204,23 @@ int db_song_modify_eq (ipoddb_t *itunesdb, u_int32_t tihm_num, int eq) {
     return ret;
 
   db_attach (tihm_header, dohm_header);
+
+  return 0;
+}
+
+int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num, unsigned long iihm_identifier) {
+  tree_node_t *tihm_header;
+  struct db_tihm *tihm_data;
+  int ret;
+
+  if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0) {
+    db_log (itunesdb, ret, "db_song_set_artwork %i: no song found\n", tihm_num);
+
+    return ret;
+  }
+
+  tihm_data->iihm_id1 = iihm_identifier;
+  tihm_data->iihm_id2 = iihm_identifier;
 
   return 0;
 }

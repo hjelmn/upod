@@ -33,13 +33,13 @@ static u_int16_t host16_to_little (u_int16_t x) {
   return (x & 0x00ff) << 8 | (x & 0xff00) >> 8;
 }
 
-int db_inhm_create (tree_node_t **entry, int file_id, char *file_name, MagickWand *magick_wand) {
+int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
+		    char *rel_mac_path, MagickWand *magick_wand) {
   struct db_inhm *inhm_data;
   int ret;
-  struct stat statinfo;
-  int fd;
+  FILE *fh;
   unsigned long num_wands;
-  int r, g, b, i;
+  int r, g, b, i, j;
 
   PixelIterator *pixel_iterator;
   PixelWand **pixel_wands;
@@ -55,34 +55,40 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name, MagickWan
 
   /* Thumbnails are 16 bit rgb images (2 Bpp) */
   inhm_data->image_size = inhm_data->height * inhm_data->width * 2;
-  
-  if (stat (file_name, &statinfo) < 0) {
-    fd = open (file_name, O_WRONLY | O_CREAT | O_TRUNC);
-    inhm_data->file_offset = 0;
-  } else {
-    fd = open (file_name, O_WRONLY | O_APPEND);
-    inhm_data->file_offset = statinfo.st_size;
-  }
+  fh = fopen (file_name, "a");
+  inhm_data->file_offset = ftell (fh);
 
+  /* Write the thumbnail to the thumbnail file */
+  MagickResetIterator(magick_wand);
   pixel_iterator = NewPixelIterator (magick_wand);
 
-  while (pixel_wands = PixelGetNextIteratorRow (pixel_iterator, &num_wands)) {
+  j = 0;
+
+  while (1) {
     u_int16_t pixel;
 
-    for (i = 0 ; i < num_wands ; i++) {
-      r = (int)(PixelGetRed (pixel_wands[i]) * 15.0);
-      g = (int)(PixelGetGreen (pixel_wands[i]) * 15.0);
-      b = (int)(PixelGetBlue (pixel_wands[i]) * 255.0);
-      pixel = (r << 12) | (g << 8) | b;
+    pixel_wands = PixelGetNextIteratorRow (pixel_iterator, &num_wands);
 
+    if (num_wands == 0)
+      break;
+    
+    for (i = 0 ; i < num_wands ; i++) {
+      r = (int)(PixelGetRed (pixel_wands[i]) * 31.0);
+      g = (int)(PixelGetGreen (pixel_wands[i]) * 63.0);
+      b = (int)(PixelGetBlue (pixel_wands[i]) * 31.0);
+      
+      pixel = 0x07c0;
+      pixel = b | (g << 5) | (r << 11);
       pixel = host16_to_little (pixel);
 
-      write (fd, &pixel, 2);
+      fwrite (&pixel, 2, 1, fh);
     }
-    
-    DestroyPixelWands (pixel_wands, num_wands);
-  }
 
+    j++;
+  }
+  
+  fclose (fh);
+  
   DestroyPixelIterator (pixel_iterator);
 
   return 0;

@@ -35,7 +35,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include "hexdump.c"
+#include <math.h>
+#include <string.h>
 
 void mp3_debug (char *, ...);
 
@@ -86,18 +87,14 @@ struct qt_meta {
   u_int16_t data[4];
 };
 
-int type_int (char type[4]) {
-  return (((int)type[0] << 24) + ((int)type[1] << 16) + ((int)type[2] << 8) + (int)type[3]);
-}
-
 int is_container (int type) {
-  if (type == type_int ("trak") ||
-      type == type_int ("mdia") ||
-      type == type_int ("moov") ||
-      type == type_int ("stbl") ||
-      type == type_int ("minf") ||
-      type == type_int ("dinf") ||
-      type == type_int ("udta"))
+  if (type == string_to_int ("trak") ||
+      type == string_to_int ("mdia") ||
+      type == string_to_int ("moov") ||
+      type == string_to_int ("stbl") ||
+      type == string_to_int ("minf") ||
+      type == string_to_int ("dinf") ||
+      type == string_to_int ("udta"))
     return 1;
 
   return 0;
@@ -115,7 +112,7 @@ struct mdhd {
 };
 
 int is_media_header (int type) {
-  if (type == type_int ("mdhd"))
+  if (type == string_to_int ("mdhd"))
     return 1;
 
   return 0;
@@ -276,9 +273,9 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   double duration;
 
-  int meta = type_int ("meta");
-  int mdat = type_int ("mdat");
-  int stsz = type_int ("stsz");
+  int meta = string_to_int ("meta");
+  int mdat = string_to_int ("mdat");
+  int stsz = string_to_int ("stsz");
 
   double bits;
 
@@ -308,7 +305,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   /* Some AAC files don't use a quicktime header. Does the iPod even support
    them? For now upod only supports Quicktime AAC files */
-  if (atom.type != type_int ("ftyp")) {
+  if (atom.type != string_to_int ("ftyp")) {
     fclose (fd);
     return -1;
   }

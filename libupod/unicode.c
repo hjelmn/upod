@@ -30,8 +30,6 @@
 #endif
 #include <iconv.h>
 
-#include "hexdump.c"
-
 /* -- XXX -- Not used --- XXX --- */
 void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
   int i;
@@ -90,7 +88,7 @@ void path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
   int i, j;
   u_int8_t *src8 = (u_int8_t *)src;
 
-  if (dst == NULL | dst_len == NULL | src == NULL | src_len < 1)
+  if ((dst == NULL) | (dst_len == NULL) | (src == NULL) | (src_len < 1))
     return;
 
   *dst = calloc (src_len + 1, 1);

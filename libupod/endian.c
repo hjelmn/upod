@@ -21,10 +21,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdbi.h"
-
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "itunesdbi.h"
 
 void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
   int i;

@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <fcntl.h>
+
 void usage (void) {
   printf("Usgae:\n");
   printf(" db_list <database>\n");
@@ -60,6 +62,11 @@ int main (int argc, char *argv[]) {
 
   tihm_t *tihm;
   pyhm_t *pyhm;
+  iihm_t *iihm;
+  inhm_t *inhm;
+  
+  int j;
+
   char *buffer;
   size_t buffer_len;
   int i, ret;
@@ -93,9 +100,43 @@ int main (int argc, char *argv[]) {
   /* get song lists */
   db_song_list (&itunesdb, &songs);
 
-  if (songs == NULL)
+  if (songs == NULL) {
     fprintf (stdout, "Could not get song list\n");
-  else
+    
+    db_photo_list (&itunesdb, &songs);
+
+    if (songs != NULL) { 
+      for (tmp = g_list_first (songs) ; tmp ; tmp = g_list_next (tmp)) {
+	iihm = tmp->data;
+
+	fprintf (stdout, "%04x | \n", iihm->identifier);
+	fprintf (stdout, " num_thumbs: %i\n", iihm->num_inhm);
+
+	for (j = 0 ; j < iihm->num_inhm ; j++) {
+	  inhm = &iihm->inhms[j];
+	  
+	  fprintf (stdout, "   Thumb  : %i\n", j);
+	  fprintf (stdout, "     offset     : %08x\n", inhm->file_offset);
+	  fprintf (stdout, "     size       : %08x\n", inhm->image_size);
+	  fprintf (stdout, "     dimensions : %ix%i\n", inhm->height, inhm->width);
+
+	  for (i = 0 ; i < inhm->num_dohm ; i++) {
+	    unicode_to_utf8 (&buffer, &buffer_len, inhm->dohms[i].data, inhm->dohms[i].size);
+	    fprintf (stdout, "     %-10s : %s\n", "Filename", buffer);
+	    
+	    if (buffer)
+	      free (buffer);
+	  }
+	  
+	  fprintf (stdout, "\n");
+	}
+      }
+      
+      db_photo_list_free (&songs);
+    } else
+      fprintf (stdout, "Could not get image list\n");
+
+  } else
     /* dump songlist contents */
     for (tmp = g_list_first (songs) ; tmp ; tmp = g_list_next (tmp)) {
       tihm = tmp->data;
