@@ -264,7 +264,7 @@ int     db_pyhm_create   (tree_node_t *entry);
 /* dohm.c */
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
                       int dohm_type);
-dohm_t *dohm_create     (tihm_t *tihm);
+dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
 int     db_dohm_create_generic (tree_node_t *entry, size_t size, int type);
 int     db_dohm_create_eq (tree_node_t *entry, int eq);

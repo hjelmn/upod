@@ -54,11 +54,18 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
    it creates a new tree leaf and appends it to the dohm list in the tihm
    structure
 */
-dohm_t *dohm_create (tihm_t *tihm) {
+dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   dohm_t *dohm;
+  int i;
 
   if (tihm == NULL)
     return NULL;
+
+  /* Do not allow more than one dohm entry with the same type */
+  if (data_type > 0)
+    for (i = 0 ; i < tihm->num_dohm ; i++)
+      if (tihm->dohms[i].type == data_type)
+	return NULL;
 
   if (tihm->num_dohm++ == 0)
     tihm->dohms = (dohm_t *) calloc(1, sizeof(dohm_t));
@@ -67,6 +74,7 @@ dohm_t *dohm_create (tihm_t *tihm) {
   
   dohm = &(tihm->dohms[tihm->num_dohm - 1]);
   memset (dohm, 0, sizeof(dohm_t));
+  dohm->type = data_type;
 
   return dohm;
 }
@@ -74,10 +82,9 @@ dohm_t *dohm_create (tihm_t *tihm) {
 int dohm_add (tihm_t *timh, char *data, int data_len, int data_type) {
   dohm_t *dohm;
 
-  if ((dohm = dohm_create (timh)) == NULL)
+  if ((dohm = dohm_create (timh, data_type)) == NULL)
     return -1;
 
-  dohm->type = data_type;
   unicode_check_and_copy (&(dohm->data), &(dohm->size), data, data_len);
 
   return 0;

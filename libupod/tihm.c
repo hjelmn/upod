@@ -150,9 +150,8 @@ int db_tihm_create (tree_node_t *entry, char *path, u_int8_t *ipod_path, size_t 
   tihm.num = tihm_num;
   tihm.stars = stars;
 
-  dohm_data = dohm_create (&tihm);
-  dohm_data->type = IPOD_PATH;
-  unicode_check_and_copy (&(dohm_data->data), &dohm_data->size, ipod_path, path_len);
+  
+  dohm_add (&tihm, ipod_path, path_len, IPOD_PATH);
 
   tihm_db_fill (entry, &tihm);
 
