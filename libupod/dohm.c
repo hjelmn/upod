@@ -70,6 +70,7 @@ int db_dohm_create_generic (struct tree_node *entry, size_t size, int junk) {
   
   entry->size         = size;
   entry->data         = malloc(size);
+  memset (entry->data, 0, size);
   entry->num_children = 0;
   entry->children     = NULL;
 

@@ -56,7 +56,7 @@ int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk)
   iptr[3] = 1;
   iptr[5] = junk + 1;
   iptr[6] = tihm_num;
-  iptr[7] = 0xb864adba;
+  //  iptr[7] = 0xb864adba;
 
   return 0;
 }

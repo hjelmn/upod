@@ -193,7 +193,7 @@ int db_load (ipod_t *ipod, char *path) {
 
   free(tmp);
 
-  return 0;
+  return bytes_read;
 }
 
 static int db_write_tree (int fd, struct tree_node *entry) {
@@ -302,7 +302,7 @@ int db_hide (ipod_t *ipod, u_int32_t tihm_num) {
 int db_unhide (ipod_t *ipod, u_int32_t tihm_num) {
   struct tree_node **master, *entry, *root;
   struct db_pyhm *pyhm;
-  int entry_num, size, junk = 0;
+  int entry_num, size, junk = 0, i;
 
   if (ipod == NULL || ipod->iTunesDB.tree_root == NULL) return -1;
 
@@ -314,24 +314,42 @@ int db_unhide (ipod_t *ipod, u_int32_t tihm_num) {
   for (master = &((*master)->children[0]) ;
        !strstr((*master)->data, "pyhm") ; master++);
 
-  pyhm = (struct db_pyhm *)(*master)->data;
+  pyhm = (struct db_pyhm *)((*master)->data);
   pyhm->num_pihm++;
 
   (*master)->num_children += 2;
 
-  (*master)->children = realloc ((*master)->children, (*master)->num_children);
+  (*master)->children = realloc ((*master)->children, (*master)->num_children * sizeof(struct tree_node *));
+
+  if ((*master)->children == NULL) {
+    perror("db_unhide|realloc");
+    exit(1);
+  }
 
   junk = tihm_num;
 
   entry = (struct tree_node *)malloc(sizeof(struct tree_node));
+
+  if (entry == NULL) {
+    perror("db_unhide|malloc");
+    exit(1);
+  }
+
   entry->parent = *master;
-  (*master)->children[(*master)->num_children - 2] = entry;
   db_pihm_create(entry, tihm_num, junk);
+  (*master)->children[(*master)->num_children - 2] = entry;
 
   entry = (struct tree_node *)malloc(sizeof(struct tree_node));
+
+  if (entry == NULL) {
+    perror("db_unhide|malloc");
+    exit(1);
+  }
+
   entry->parent = *master;
-  (*master)->children[(*master)->num_children - 1] = entry;
   db_dohm_create_generic (entry, 0x2c, junk);
+
+  (*master)->children[(*master)->num_children - 1] = entry;
 
   size = entry->size + (*master)->children[(*master)->num_children-2]->size;
 

@@ -16,10 +16,12 @@ int main(int argc, char *argv[]) {
   if (argc != 5)
     usage();
 
-  if (db_load (&ipod, argv[1]) != 0) {
+  if ((ret = db_load (&ipod, argv[1])) < 0) {
     printf("Could not load database.\n");
     exit(2);
   }
+
+  printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
 
   if (db_add (&ipod, argv[3], argv[4]) != 0) {
     printf("Song could not be added.\n");

@@ -104,6 +104,7 @@ int db_tihm_create (struct tree_node *entry, char *filename, char *path) {
 
   entry->size = TIHM_HEADER_SIZE;
   entry->data = calloc (1, TIHM_HEADER_SIZE);
+  memset (entry->data, 0, TIHM_HEADER_SIZE);
   
   iptr = (int *)entry->data;
   iptr[0] = TIHM;

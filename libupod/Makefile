@@ -1,8 +1,8 @@
 OBJS = db.o tihm.o endian.o dohm.o mp3.o mp3tech.o unicode.o pihm.o non-posix.o
 SRCS = db.c tihm.c endian.c dohm.c mp3.c mp3tech.c unicode.c pihm.c non-posix.c
 
-CFLAGS = -g3 -I../include `glib-config --cflags` #-D__darwin__
-GCC = gcc-3.0
+CFLAGS = -g3 -I../include -traditional-cpp -D__darwin__
+GCC = gcc
 .c.o: ../include/upodi.h
 	$(GCC) -c $(CFLAGS) $*.c
 

@@ -41,7 +41,7 @@ int main (int argc, char *argv[]) {
   if (argc != 2)
     usage();
 
-  if (db_load (&ipod, argv[1])) {
+  if (db_load (&ipod, argv[1]) < 0) {
     printf("Could not load database\n");
 
     exit(2);
@@ -60,7 +60,7 @@ int main (int argc, char *argv[]) {
 
     printf("%04i |\n", tihm->num, buffer);
     
-    printf(" encoding: %d\n", tihm->encoding);
+    printf(" encoding: %08x\n", tihm->encoding);
     printf(" type    : %d\n", tihm->type);
     printf(" num dohm: %d\n", tihm->num_dohm);
 
