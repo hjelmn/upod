@@ -262,8 +262,10 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   char buffer[buffer_size];
 
   int i;
-  long int duration = 0, time_scale = 0, bit_rate;
+  long int time_scale = 0, bit_rate;
   struct qt_atom atom;
+
+  double duration;
 
   int meta = type_int ("meta");
   int mdat = type_int ("mdat");
@@ -330,9 +332,9 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 	  fread (buffer, atom.size - sizeof(atom), 1, fd);
 
 	  time_scale = mdhd->time_scale;
-	  duration = mdhd->duration/time_scale;
+	  duration = (double)mdhd->duration/(double)time_scale;
 
-	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %i\n", time_scale, duration);
+	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %fsecs\n", time_scale, duration);
 	} else if (atom.type == meta)
 	  parse_meta (buffer, buffer_size, fd, atom, tihm);
 	else if (!is_container(atom.type))
@@ -369,7 +371,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   if (bit_rate == 0)
     return -1;
 
-  tihm->time = duration * 1000;
+  tihm->time = lround (duration * 1000.0);
   tihm->samplerate = time_scale;
   tihm->bitrate = bit_rate;
 

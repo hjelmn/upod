@@ -86,10 +86,10 @@ int main (int argc, char *argv[]) {
     for (tmp = g_list_first (songs) ; tmp ; tmp = g_list_next (tmp)) {
       tihm = tmp->data;
       
-      fprintf (stdout, "%04i |\n", tihm->num, buffer);
+      fprintf (stdout, "%04i |\n", tihm->num);
       
       fprintf (stdout, " encoding: %d\n", tihm->bitrate);
-      fprintf (stdout, " length  : %03.2f\n", (double)tihm->time/60000.0);
+      fprintf (stdout, " length  : %03i:%02.3f\n", tihm->time/60000, (double)(tihm->time % 60000)/1000.0);
       fprintf (stdout, " type    : %d\n", tihm->type);
       fprintf (stdout, " num dohm: %d\n", tihm->num_dohm);
       fprintf (stdout, " samplert: %d\n", tihm->samplerate);
