@@ -37,9 +37,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <ctype.h>
 #include <string.h>
 #include "mp3tech.h"
+
+#if !defined(uint)
+#define uint u_int32_t
+#endif
 
 #define TEXT_FIELD_LEN	30
 #define INT_FIELD_LEN	4

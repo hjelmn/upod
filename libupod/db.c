@@ -154,6 +154,10 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
   tnode_0->size = copy_size;
   tnode_0->data = calloc (copy_size, 1);
   memcpy (tnode_0->data, *buffer, copy_size);
+
+#if defined(DEBUG)
+  fprintf (stderr, "New tree node, size: %i\n", copy_size);
+#endif
   
   *buffer     += copy_size;
   *bytes_read += copy_size;
@@ -218,6 +222,8 @@ int db_load (itunesdb_t *itunesdb, char *path) {
 
   if (path == NULL || strlen(path) == 0) return -1;
 
+  UPOD_DEBUG(0, "Attempting to load an iTunesDB\n");
+
   if ((iTunesDB_fd = open (path, O_RDONLY)) < 0) {
     perror ("db_load|open");
     return -1;
@@ -225,6 +231,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
 
   /* read in the size of the database */
   read (iTunesDB_fd, ibuffer, 12);
+
   bswap_block((char *)ibuffer, 4, 3);
 
   if (ibuffer[0] != DBHM) {
@@ -250,6 +257,8 @@ int db_load (itunesdb_t *itunesdb, char *path) {
     close(iTunesDB_fd);
     return -1;
   }
+
+  UPOD_DEBUG(0, "Loaded... %i bytes\n", ibuffer[2]);
 
   bswap_block((char *)ibuffer, 4, 3);
   memcpy (buffer, ibuffer, 12);
@@ -554,6 +563,7 @@ void db_song_list_free (GList *head) {
     tmp = head->next;
 
     tihm_free ((tihm_t *)head->data);
+    free (head->data);
 
     free(head);
     head = tmp;

@@ -121,7 +121,7 @@ int ipod_open (ipod_t *ipod, char *dir, char *dev, char *fstype) {
 
 int ipod_close (ipod_t *ipod) {
   /* if (mounted by upod) */
-  //umount (ipod->dir);
+  /* umount (ipod->dir); */
 
   if (db_write (ipod->itunesdb, ipod->itunesdb_path) < 0)
     printf ("DB: Not written\n");

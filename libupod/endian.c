@@ -27,11 +27,14 @@
 #include <stdlib.h>
 #include <endian.h>
 
+#include <endian.h>
+
 void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
   int i;
 
-#if __BYTE_ORDER == __BIG_ENDIAN
-  switch (membsize) {
+#if __BYTE_ORDER != __LITTLE_ENDIAN
+  for (i = 0 ; i < nmemb ; i++)
+    switch (membsize) {
     case 2:
       {
         u_int16_t *r = (u_int16_t *)ptr;

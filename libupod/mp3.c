@@ -300,7 +300,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     dohm_add (tihm, tmp, strlen(tmp), IPOD_TITLE);
   }
   
-  if (0) //tag_data)
+  if (tag_data)
     free(tag_data);
 
   close(fd);
