@@ -134,7 +134,6 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
   parse_id3
 */
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, tihm_t *tihm) {
-  char tmpc[255];
   int data_type;
 
   switch (field) {
@@ -187,7 +186,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 
 	if (length < 1)
 	  return;
-	
+
 	dohm_add (tihm, tag_temp, length, data_type);
       } else if (field == ID3_TRACK) {
 	char *slash;
@@ -290,7 +289,6 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
     char *tmp = (char *)basename(file_name);
-    dohm_t *dohm;
     int i;
     
     for (i=strlen(tmp)-1; i > 0 ; i--)
@@ -360,7 +358,6 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
   struct stat statinfo;
   int ret;
 
-  dohm_t *dohm;
   char type_string[] = "MPEG audio file";
 
   /* zero the structure to avoid getting any weird values for

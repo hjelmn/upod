@@ -51,10 +51,6 @@ void unicode_check_and_copy (char **dst, int *dst_len, char *src,
 #else
   if (src[1] != '\0') {
 #endif
-    /* this shouldn't happen */
-    if (src_len != strlen(src))
-      src_len = strlen(src);
-
     *dst_len = 2 * src_len;
     *dst     = (char *) calloc (src_len, sizeof(u_int16_t));
     char_to_unicode (*dst, src, src_len);
