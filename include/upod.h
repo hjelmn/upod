@@ -74,6 +74,11 @@ typedef struct tihm {
   dohm_t *dohms;
 } tihm_t;
 
+typedef struct pyhm {
+  int num;
+  char *name;
+} pyhm_t;
+
 /* libupod/ipod.c */
 int ipod_open   (ipod_t *ipod, char *path);
 int ipod_close  (ipod_t *ipod);
@@ -100,12 +105,37 @@ int    db_unhide(ipod_t *ipod, u_int32_t tihm_num); /* called by db_add */
 
 int    db_lookup(ipod_t ipod, int dohm_type, char *data, int data_len);
 
+/* eq is an integer specifier from TunesEQPresets */
 int    db_modify_eq(ipod_t *ipod, u_int32_t tihm_num, int eq);
 
+/* volume adjustment is an integer between -100 and +100 */
+int    db_modify_volume_adjustment (ipod_t *ipod, u_int32_t tihm_num, int volume_adjustment) ;
+
+/* start and stop times are in seconds */
+int    db_modify_start_stop_time   (ipod_t *ipod, u_int32_t tihm_num, int start_time, int stop_time);
+
 typedef struct glist {
-  struct glist *next;
+  struct glist *prev, *next;
   void *data;
 } GList;
 
-GList *db_song_list (ipod_t ipod);
+GList *db_song_list      (ipod_t ipod);
 void   db_song_list_free (GList *head);
+
+int db_return_num_playlists (ipod_t *ipod);
+
+/* returns a list of the playlists on the ipod. The data field is of
+   type struct pyhm */
+GList *db_return_playlist_list (ipod_t *ipod);
+void   db_playlist_list_free (GList *head);
+
+int db_playlist_list_songs  (ipod_t *ipod, int playlist, int **list);
+
+int db_create_new_playlist  (ipod_t *ipod, char *name);
+int db_remove_playlist      (ipod_t *ipod, int playlist);
+
+int db_add_to_playlist      (ipod_t *ipod, int playlist, int tihm_num);
+int db_remove_from_playlist (ipod_t *ipod, int playlist, int tihm_num);
+
+int db_playlist_clear       (ipod_t *ipod, int playlist);
+int db_playlist_fill        (ipod_t *ipod, int playlist);

@@ -33,6 +33,10 @@
 #define UPOD_DEBUG
 #endif
 
+#if defined (DEBUG_MEMORY)
+#define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
+#endif
+ 
 /* this definition will not be static in non-alpha release */
 #define EMPTYDB "/home/neo/cvs/upod/share/emptydb"
 
@@ -79,11 +83,19 @@ struct db_tihm {
   u_int32_t unk1;
   u_int32_t date;
   u_int32_t file_size;
+
+  /* in millisecs */
   u_int32_t duration;
+
   u_int32_t order;
   u_int32_t encoding;
   u_int32_t unk[2];
   u_int32_t sample_rate;
+  u_int32_t volume_adjustment;
+
+  /* in millisecs */
+  u_int32_t start_time;
+  u_int32_t stop_time;
 };
 
 struct db_dohm {
@@ -141,6 +153,9 @@ tihm_t *tihm_create(tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill (struct tree_node *entry);
 void tihm_free (tihm_t *tihm);
 
+int db_tihm_retrieve (struct tree iTunesDB, struct tree_node **entry,
+		      struct tree_node **parent, int tihm_num);
+
 /* libupod/pihm.c */
 int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num);
 int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk);
@@ -172,5 +187,7 @@ int path_mac_to_unix (char *mac_path, char *unix_dst);
 
 char *basename(char *);
 void *memmem(void *haystack, size_t haystack_size, void *needle, size_t needle_size);
+
+void db_free_tree (struct tree_node *ptr);
 
 #endif /* __UPODI_H */
