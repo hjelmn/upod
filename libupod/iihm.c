@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 iihm.c
+ *   v0.3.0 iihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -18,6 +18,8 @@
  **/
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <errno.h>
 
 #include "itunesdbi.h"
 
@@ -37,6 +39,14 @@ int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id) {
   return 0;
 }
 
+/*
+  db_iihm_search:
+
+  Searches for an image item with identifier == iihm_identifier.
+
+  If the image item is found the index where it is located is returned.
+  Otherwise -1 is returned.
+*/
 int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier) {
   int i;
 
@@ -57,17 +67,31 @@ int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
 
   int ret;
 
+  db_log (photodb, 0, "db_iihm_retrieve: entering...\n");
+
   if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
-    db_log (photodb, ret, "Could not get image list header\n");
+    db_log (photodb, ret, "db_iihm_retrieve: Could not get image list header\n");
+
     return ret;
+  }
+
+  if (photodb->type != 1) {
+    db_log (photodb, -EINVAL, "db_iihm_retrieve: Called on an iTunesDB.\n");
+
+    return -EINVAL;
   }
 
   entry_num = db_iihm_search (dshm_header, iihm_identifier);
 
-  if (entry_num < 0) return entry_num;
+  if (entry_num != -1) {
+    if (entry)
+      *entry = dshm_header->children[entry_num];
+    
+    if (parent)
+      *parent= dshm_header;
+  }
 
-  if (entry) *entry = dshm_header->children[entry_num];
-  if (parent)*parent= dshm_header;
+  db_log (photodb, 0, "db_iihm_retrieve: complete\n");
 
   return entry_num;
 }

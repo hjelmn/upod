@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 dshm.c
+ *   v0.3.0 dshm.c
  *
  *   Contains functions for getting and creating a dshm node.
  *
@@ -19,12 +19,12 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <errno.h>
+
+#include "itunesdbi.h"
 
 #define DSHM_HEADER_SIZE 0x60
 

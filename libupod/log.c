@@ -45,16 +45,25 @@ int db_set_debug (ipoddb_t *db, int level, FILE *out) {
 }
 
 void db_log (ipoddb_t *db, int error, char *format, ...) {
-  if ( (db->log_level > 0) && (db->log != NULL) ) {
+  FILE *log_out;
+  int log_level = 5;
+
+  if (db != NULL) {
+    log_out = db->log;
+    log_level = db->log_level;
+  } else
+    log_out = stderr;
+
+  if ( (log_level > 0) && (log_out != NULL) ) {
     va_list arg;
 
     if (error != 0)
-      fprintf  (db->log, "error %i: ", error);
+      fprintf  (log_out, "error %i: ", error);
 
     va_start (arg, format);
-    vfprintf (db->log, format, arg);
+    vfprintf (log_out, format, arg);
     va_end (arg);
 
-    fflush (db->log);
+    fflush (log_out);
   }
 }
