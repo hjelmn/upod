@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.5.0 aac.c
+ *   v0.5.1 aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
  *
@@ -396,7 +396,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
       fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
   }
 
-  fseek (fd, 16, SEEK_CUR);
+  fclose(fd);
 
   bit_rate = (long int)((bits * (double)time_scale/1000.0)/1000.0);
   mp3_debug ("Best guess is     : %i kbps\n", bit_rate);
@@ -421,19 +421,12 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
       dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
   }
 
-  if (bit_rate == 0)
-    return -1;
-
   tihm->time = lround (duration * 1000.0);
   tihm->samplerate = time_scale;
   tihm->bitrate = bit_rate;
 
-  if (tihm->bitrate == 0) {
-    fclose(fd);
+  if (tihm->bitrate == 0)
     return -1;
-  }
-
-  fclose (fd);
 
   return 0;
 }
