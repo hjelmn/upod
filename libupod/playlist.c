@@ -434,6 +434,7 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
 
   if (itunesdb == NULL) return -1;
   
+  /* make sure the tihm exists in the database before continuing */
   if (db_tihm_retrieve (itunesdb, NULL, NULL, tihm_num) < 0)
     return -1;
     

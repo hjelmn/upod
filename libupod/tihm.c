@@ -117,9 +117,10 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_le
   int i;
 
   memset (entry, 0, sizeof (tree_node_t));
+  mp3_fill_tihm (path, &tihm);
+
   tihm.num = tihm_num;
   tihm.stars = stars;
-  mp3_fill_tihm (path, &tihm);
 
   dohm_data = dohm_create (&tihm);
   dohm_data->type = IPOD_PATH;

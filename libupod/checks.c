@@ -14,8 +14,13 @@ int db_sanity_tree (tree_node_t *node) {
   if ( (iptr[0] == PLHM || iptr[0] == TLHM) && 
        iptr[2] != node->parent->num_children - 1)
     return -1;
-  else if (iptr[0] == PYHM && iptr[4] != node->parent->num_children - 2)
+  else if (iptr[0] == PYHM && iptr[4] != (node->num_children - 2)/2) {
+    printf ("check: incorrect playlist entry or pyhm child count\n");
+    printf (" data involved:\n");
+    printf ("  num_children = %i\n", node->num_children - 2);
+    printf ("  num_entries  = %i\n", iptr[4]);
     return -3;
+  }
   
   if (node->num_children)
     for (i = 0 ; i < node->num_children ; i++) {

@@ -102,6 +102,10 @@ int main(int argc, char *argv[]) {
 
   dir_add (&itunesdb, argv[2]);
 
+  if ((ret = db_sanity_check (itunesdb)) < 0) {
+    printf ("There is an error in the tree: %i\n", ret);
+  }
+
   if (c == 0) {
     if ((ret = db_write (itunesdb, argv[1])) < 0) {
       printf("Database could not be written to file.\n");

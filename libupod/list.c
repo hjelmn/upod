@@ -5,7 +5,7 @@
 
 void usage (void) {
   printf("Usgae:\n");
-  printf(" db_list\n");
+  printf(" db_list <database>\n");
 
   exit(1);
 }
@@ -45,7 +45,10 @@ int main (int argc, char *argv[]) {
   itunesdb_t itunesdb;
   int fd, result;
 
-  if (db_load (&itunesdb, "iTunesDB") < 0) {
+  if (argc != 2)
+    usage();
+
+  if (db_load (&itunesdb, argv[1]) < 0) {
     close (fd);
     exit(1);
   }
