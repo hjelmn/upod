@@ -2,6 +2,8 @@
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.0.1 database.c
  *
+ *   Routines for accessing the iPod's iTunesDB
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -36,39 +38,47 @@
 #include "upodi.h"
 #include "endian.c"
 
-/* this function corrects the endianness of the data in memory */
+typedef union _superptr {
+  char      *ptr;
+  u_int32_t *iptr;
+} superptr_t;
+
+/* this function corrects the endianness of the data in memory (if needbe) */
 int db_swapints (ipod_t *ipod) {
-  //#if defined (__powerpc__)
-  char *ptr = ipod->itunesdb;
-  u_int32_t *iptr = (u_int32_t *)ptr;
+#if defined (__powerpc__)
+  superptr_t location;
   int i, j;
 
+  location.ptr = ipod->itunesdb;
+
   for (i = 0 ; i < ipod->db_size_current ; ) {
+    swap32(&(location.iptr[0]));
+    swap32(&(location.iptr[1]));
+    swap32(&(location.iptr[2]));
 
     /* just correct the data in the cell header */
-    for (j = 0 ; j < (iptr[1] - 12) ; j += 4)
-      swap32(&iptr[3 + j/4]);
+    for (j = 0 ; j < (location.iptr[1] - 12) ; j += 4)
+      swap32(&(location.iptr[3 + j/4]));
 
-    if (!strstr(ptr, "mhod")) {
-      /* not an mhod, just add header size */
-      i += iptr[1];
-      ptr += iptr[1];
+    if (!strstr(location.ptr, "dohm")) {
+      /* not an dohm, just add header size */
+      i += location.iptr[1];
+      location.ptr += location.iptr[1];
     } else {
-      /* an mhod, we don't want to swap long chars so skip rest of cell */
-      i += iptr[2];
-      ptr += iptr[2];
+      /* for some reason this is not included in the header size */
+      /* swap next 7 bytes */
+      for (j = (location.iptr[1] - 12) ; j < 28 ; j += 4)
+	swap32(&(location.iptr[3 + j/4]));
+
+      /* an dohm, we don't want to swap long chars so skip rest of cell */
+      i += location.iptr[2];
+      location.ptr += location.iptr[2];
     }
-
-    /* finally fix these pointers */
-    swap32(&iptr[1]);
-    swap32(&iptr[2]);
-
-    iptr = (u_int32_t *)ptr;
   }
-  //#endif
 
   if (ipod->debug)
     printf("do_swapints: memory ready for use on ppc\n");
+#endif
 
   return 0;
 }
@@ -94,8 +104,7 @@ int db_to_memory (ipod_t *ipod) {
     
     return errno;
   } else {
-    if (ipod->debug)
-      printf("db_to_memory: memory successfully malloced or realloced\n");
+      UPOD_DEBUG("db_to_memory: memory successfully malloced or realloced (0x%08x Bytes\n", ipod->db_size_current);
   }
 
   lseek(ipod->db_fd, 0, SEEK_SET);
@@ -106,8 +115,7 @@ int db_to_memory (ipod_t *ipod) {
 
     return errno;
   } else {
-    if (ipod->debug)
-      printf("db_to_memory: db successfully loaded into memory\n");
+    UPOD_DEBUG("db_to_memory: db successfully loaded into memory\n");
   }
 
   db_swapints (ipod);
@@ -115,6 +123,7 @@ int db_to_memory (ipod_t *ipod) {
   return 0;
 }
 
+/* writing db is a future feature */
 /*
 int memory_to_db (struct ipod_instance prt_ipod) {
   ipod_t ipod = (ipod_t *)ptr_ipod;
@@ -123,8 +132,183 @@ int memory_to_db (struct ipod_instance prt_ipod) {
 }
 */
 
+int db_add (ipod_t *ipod, char *dst) {
+}
+
+int db_remove (ipod_t *ipod, song_ref_t *ref) {
+  u_int32_t *iptr = (u_int32_t *)ref->db_location;
+  int remainder = ipod->db_size_current - 
+    (ref->db_location - ipod->itunesdb) - iptr[2];
+  int i;
+
+  ipod->db_size_current -= iptr[2];
+
+  ref->prev->next = ref->next;
+  ref->next->prev = ref->prev;
+
+  memcpy(ref->db_location, ref->db_location + iptr[2], remainder);
+
+  realloc (ipod->itunesdb, ipod->db_size_current);
+
+  for (i = 0 ; i < ref->dohm_num ; i++)
+    free(ref->dohm_entries[i].data);
+
+  free(ref->dohm_entries);
+  free(ref);
+
+  UPOD_DEBUG("db_remove: successfull\n");
+}
+
+#define TYPE_MHIT 0x6d686974
+#define TYPE_MHOD 0x6d687164
+#define TYPE_MHBD 0x6d686264
+#define TYPE_MHSD 0x6d687364
+#define TYPE_MHLT 0x6d686c74
+#define TYPE_MHLP 0x6d686c70
+
+#define TYPE_TIHM 0x7469686d
+#define TYPE_DOHM 0x6471686d
+#define TYPE_DBHM 0x6462686d
+#define TYPE_DSHM 0x6473686d
+#define TYPE_TLHM 0x746c686d
+#define TYPE_PLHM 0x706c686d
+
+/*
+  lc_to_char:
+
+    Copies a long char from ptr of length length
+  and prints the 8 bit char to dst. It also changes
+  any occurance of the character ':' to '/' in dst.
+ */
+void lc_to_char (char *ptr, int length, char *dst) {
+  int i;
+
+  for (i = 0 ; i < (length/2) ; i++)
+    if (ptr[2 * i] == ':')
+      dst[i] = '/';
+    else
+      dst[i] = ptr[2 * i];
+
+  dst[length/2 + 1] = 0;
+}
+
+song_ref_t *build_ref_list (ipod_t *ipod) {
+  song_ref_t *head, **current, *prev;
+  int i,j;
+  superptr_t location;
+
+  location.ptr = ipod->itunesdb;
+
+  UPOD_DEBUG("Entering build_ref_list\n");
+
+  if ((head = calloc(sizeof(song_ref_t), 1)) == NULL) {
+    perror("build_ref_list");
+    return NULL;
+  }
+
+  current = &(head->next);
+  prev = head;
+
+  for (i = 0 ; location.iptr[0] != TYPE_PLHM ; i += location.ptr[2]) {
+    if (location.iptr[0] == TYPE_TIHM) {
+      superptr_t dohm;
+
+      (*current) = calloc(sizeof(song_ref_t), 1);
+      
+      (*current)->prev = prev;
+      (*current)->next = head;
+
+      (*current)->db_location = location.ptr;
+
+      (*current)->size       = location.iptr[9];
+      (*current)->time       = location.iptr[10];
+      (*current)->bitrate    = location.iptr[14];
+      (*current)->samplerate = location.iptr[15] >> 16;
+
+      (*current)->dohm_num = location.iptr[3];
+      (*current)->dohm_entries = calloc(sizeof(struct dohm), 
+					(*current)->dohm_num);
+
+      // iterate through dohm entries
+      dohm.ptr = location.ptr + location.iptr[1];
+      for (j = 0 ; j < (*current)->dohm_num ; j++) {
+	int length = dohm.iptr[dohm.iptr[1]/4 + 1];
+
+	(*current)->dohm_entries[j].type = dohm.iptr[3];
+	(*current)->dohm_entries[j].data = calloc(1, length + 1);
+
+	lc_to_char(dohm.ptr + dohm.iptr[1] + 16, length, 
+		   (*current)->dohm_entries[j].data);
+
+	dohm.ptr += dohm.iptr[2];
+      }
+            
+      prev = *current;
+      current = &(prev->next);
+    }
+
+    if ((location.iptr[0] != TYPE_DBHM) && (location.iptr[0] != TYPE_DSHM)
+	&& (location.iptr[0] != TYPE_TLHM) )
+      location.ptr += location.iptr[2];
+    else
+      location.ptr += location.iptr[1];
+  }
+
+  head->prev = prev;
+
+  UPOD_DEBUG("finished building reference list.\n");
+
+  return head;
+}
+
+void free_ref_list(song_ref_t *ref) {
+  int i;
+  while (ref) {
+    song_ref_t *tmp = ref->next;
+
+    for (i = 0 ; i < ref->dohm_num ; i++)
+      free(ref->dohm_entries[i].data);
+
+    free(ref->dohm_entries);
+
+    if (ref->next)
+      ref->next->prev = NULL;
+
+    if (ref->prev)
+      ref->prev->next = NULL;
+
+
+    free(ref);
+
+    ref = tmp;
+  }
+}
+
+char *str_type(int file_type) {
+  switch (file_type) {
+  case 1:
+    return "Title";
+  case 2:
+    return "Path";
+  case 3:
+    return "Album";
+  case 4:
+    return "Artist";
+  case 5:
+    return "Genre";
+  case 6:
+    return "Type";
+  case 8:
+    return "Comment";
+  default:
+    return "Unknown";
+  }
+}
+
 int main(int argc, char *argv[]) {
   ipod_t ipod;
+  song_ref_t *head;
+  int i, j, fd;
 
   if (argc != 2)
     return -1;
@@ -135,6 +319,27 @@ int main(int argc, char *argv[]) {
 
   db_to_memory(&ipod);
 
+  head = build_ref_list(&ipod);
+  for (head = head->next ; head->db_location != NULL ; head = head->next) {
+    for (j = 0 ; j < head->dohm_num ; j++) {
+      if (head->dohm_entries[j].type == 1)
+	if (strstr(head->dohm_entries[j].data, "Sober")) {
+	  printf("timh! (track information)\n");
+	  printf("samplerate: %i   bitrate: %i\n", head->samplerate, head->bitrate);
+	  printf("time: %i microseconds   size: %i Bytes\n", head->time, head->size);
+	  for (i = 0 ; i < head->dohm_num ; i++)
+	    printf("type: %-32s data: %-64s\n", str_type(head->dohm_entries[i].type),
+		   head->dohm_entries[i].data);
+	  db_remove(&ipod, head);
+	}
+    }
+  }
+
+  free_ref_list(head);
+  
+  fd = creat ("file2", O_RDWR);
+  write(fd, ipod.itunesdb, ipod.db_size_current);
+  close(fd);
   free(ipod.itunesdb);
   close(ipod.db_fd);
 
