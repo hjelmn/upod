@@ -71,6 +71,18 @@ dohm_t *dohm_create (tihm_t *tihm) {
   return dohm;
 }
 
+int dohm_add (tihm_t *timh, char *data, int data_len, int data_type) {
+  dohm_t *dohm;
+
+  if ((dohm = dohm_create (timh)) == NULL)
+    return -1;
+
+  dohm->type = data_type;
+  unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), data, data_len);
+
+  return 0;
+}
+
 /* removes the last dohm from the list in the tihm structure */
 void dohm_destroy (tihm_t *tihm) {
   dohm_t *dohm;

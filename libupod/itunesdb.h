@@ -204,6 +204,8 @@ GList *db_song_list            (itunesdb_t *itunesdb);
 int    db_playlist_list_songs  (itunesdb_t *itunesdb, int playlist,
 				int **list);
 
+/* functions to help fill a tihm_t structure to add a song */
+int dohm_add (tihm_t *timh, char *data, int data_len, int data_type);
 
 /* functions for cleaning up memory */
 void   tihm_free             (tihm_t *tihm);

@@ -135,27 +135,24 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
 */
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, tihm_t *tihm) {
   char tmpc[255];
-  dohm_t *dohm;
+  int data_type;
 
-  if (field != ID3_TRACK)
-    dohm = dohm_create(tihm);
-  
   switch (field) {
   case ID3_ARTIST:
-    dohm->type = IPOD_ARTIST;
+    data_type = IPOD_ARTIST;
     break;
   case ID3_TALT:
   case ID3_TITLE:
-    dohm->type = IPOD_TITLE;
+    data_type = IPOD_TITLE;
     break;
   case ID3_GENRE:
-    dohm->type = IPOD_GENRE;
+    data_type = IPOD_GENRE;
     break;
   case ID3_ALBUM:
-    dohm->type = IPOD_ALBUM;
+    data_type = IPOD_ALBUM;
     break;
   case ID3_COMMENT:
-    dohm->type = IPOD_COMMENT;
+    data_type = IPOD_COMMENT;
     break;
   case ID3_TRACK:
     break;
@@ -189,11 +186,9 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	length = *(sizeloc) - 1;
 
 	if (length < 1)
-	  goto id3_error;
+	  return;
 	
-	memset (tmpc, 0, length+1);
-	memcpy (tmpc, tag_temp, length - 1);
-	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmpc, length - 1);
+	dohm_add (tihm, tag_temp, length, data_type);
       } else if (field == ID3_TRACK) {
 	char *slash;
 
@@ -216,13 +211,12 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	genre_temp[i] = 0;
 
 	if (atoi (genre_temp) > 147)
-	  goto id3_error;
+	  return;
 
-	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), genre_table[atoi(genre_temp)],
-				 strlen (genre_table[atoi(genre_temp)]));
+	dohm_add (tihm, genre_table[atoi(genre_temp)], strlen (genre_table[atoi(genre_temp)]), data_type);
       }   
     } else {
-      goto id3_not_found;
+      return;
     }
   } else if (version == 1) {
     int i = 29;
@@ -242,36 +236,31 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
       copy_from = &tag_data[93];
       break;
     case ID3_GENRE:
-      if (tag_data[127] >= genre_count || tag_data[127] < 0)
-	goto id3_error;
+      if (tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
+	return;
 
       copy_from = genre_table[tag_data[127]];
       i = strlen (copy_from - 1);
       break;
     default:
-      goto id3_not_found;
+      return;
     }
 
-    if (copy_from[0] == 0xff) goto id3_not_found;
+    if ((signed char) copy_from[0] == -1)
+      return;
 
     if (field != ID3_GENRE)
-      for (tmp = copy_from + i ; (*tmp == ' ' || *tmp == 0xff) && i >= 0; tmp--, i--)
+      for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1) && i >= 0; tmp--, i--)
 	*tmp = 0;
     else
       i = strlen(copy_from) - 1;
 
     if (i < 0)
-      goto id3_not_found;
+      return;
     
     i++;
-    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), copy_from, i);
+    dohm_add (tihm, copy_from, i, data_type);
   }
-
-  return;
- id3_not_found:
- id3_error:
-  if (field != ID3_TRACK)
-    dohm_destroy(tihm);
 }
 
 static int get_id3_info (char *file_name, tihm_t *tihm) {
@@ -300,7 +289,7 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
   }
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
-    char *tmp = basename(file_name);
+    char *tmp = (char *)basename(file_name);
     dohm_t *dohm;
     int i;
     
@@ -310,13 +299,10 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
 	break;
       }
     
-    dohm = dohm_create(tihm);
-
-    dohm->type = IPOD_TITLE;
-    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmp, strlen(tmp));
+    dohm_add (tihm, tmp, strlen(tmp), IPOD_TITLE);
   }
   
-  if (0)//tag_data)
+  if (tag_data)
     free(tag_data);
 
   close(fd);
@@ -398,10 +384,7 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
     return -1;
   }
 
-  dohm = dohm_create(tihm);
-
-  dohm->type = IPOD_TYPE;
-  unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), type_string, strlen (type_string));
+  dohm_add (tihm, type_string, strlen (type_string), IPOD_TYPE);
 
   return 0;
 }
