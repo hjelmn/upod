@@ -140,8 +140,13 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
     dohm_data = (struct db_dohm *)*buffer;
     
     /* swap the header then the data (if needed) */
-    bswap_block(&((*buffer)[0xc]), 4, 7);
-    bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);
+    if (entry_size == 0x288) {
+      /* "Wierd" dohm entry */
+      bswap_block(&(*buffer)[0xc], 4, 0x288/4 - 3);
+    } else {
+      bswap_block(&((*buffer)[0xc]), 4, 7);
+      bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);
+    }
 
     copy_size = entry_size;
   } else {
@@ -215,18 +220,33 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   char *buffer;
   int ibuffer[3];
   int ret;
+  struct stat statinfo;
 
   int *tmp;
 
   size_t bytes_read  = 0;
 
-  if (path == NULL || strlen(path) == 0) return -1;
+  if (path == NULL || strlen(path) == 0)
+    return -1;
+
+  if (stat(path, &statinfo) < 0) {
+    db_log (itunesdb, errno, "db_load|stat: %s\n", strerror(errno));
+
+    return -1;
+  }
+
+  if (!S_ISREG(statinfo.st_mode)) {
+    db_log (itunesdb, -1, "db_load: Not a regular file\n");
+
+    return -1;
+  }
 
   UPOD_DEBUG(0, "Attempting to load an iTunesDB\n");
 
   if ((iTunesDB_fd = open (path, O_RDONLY)) < 0) {
-    perror ("db_load|open");
-    return -1;
+    db_log (itunesdb, errno, "db_load|open: %s\n", strerror(errno));
+
+    return errno;
   }
 
   /* read in the size of the database */
@@ -235,7 +255,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   bswap_block((char *)ibuffer, 4, 3);
 
   if (ibuffer[0] != DBHM) {
-    db_log (itunesdb, errno, "%s does not look like an iTunesDB. exiting.\n", path);
+    db_log (itunesdb, errno, "%s does not appear to be an iTunesDB. exiting.\n", path);
     close (iTunesDB_fd);
 
     return -1;
@@ -285,6 +305,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 
   if (dohm_data->dohm == DOHM) {
     if (entry->size == 0x288) {
+      /* "weird" dohm entry */
       swap = 0x288/4;
       length = 0;
     } else {
@@ -322,8 +343,9 @@ int db_write (itunesdb_t itunesdb, char *path) {
   if (itunesdb.tree_root == NULL) return -1;
 
   if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, perms)) < 0) {
+    printf ("error writing %s\n", path);
     perror("db_write_unix");
-    return errno;
+    return -1;
   }
 
   ret = db_write_tree (fd, itunesdb.tree_root);

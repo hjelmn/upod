@@ -129,7 +129,9 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
 	       strlen(genre_table[*(short *)buffer - 1]), data_type);
 
       break;
-    } else if (strncmp (meta.identifier, "gen", 3) == 0)
+    } else if (strncmp (meta.identifier, "cmt", 3) == 0) 
+      data_type = IPOD_COMMENT;
+    else if (strncmp (meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
     else
       continue;
