@@ -48,6 +48,7 @@ struct qt_atom {
 struct qt_meta {
   u_int32_t offset;
 
+  /* flag is sometimes the first character of the identifier */
   u_int8_t  flag;
   u_int8_t  identifier[3];
 
@@ -88,7 +89,7 @@ int is_media_header (int type) {
   return 0;
 }
 
-int parse_covr (char *buffer, int buffer_size, FILE *fd, struct qt_meta meta, tihm_t *tihm) {
+int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
   unsigned char *image_data;
   u_int64_t cksum;
 
@@ -116,7 +117,7 @@ int parse_covr (char *buffer, int buffer_size, FILE *fd, struct qt_meta meta, ti
 }
 
 /* Parse user data's (udat) meta data (meta) section */
-int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
+int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
   
   /* skip 46 bytes of meta section (bytes before start of data -- I think) */
@@ -135,7 +136,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
 
     memset (buffer, 0, buffer_size);
     
-    if (size > buffer_size || strncmp(meta.identifier, "ree",3) == 0)
+    if (size > buffer_size || strncmp(&meta.flag, "free",4) == 0)
       /* it is unlikely that any data we want will be larger than the buffer */
       fseek (fd, size, SEEK_CUR);
     else {
@@ -147,7 +148,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     /* some of the tag markers are 4 characters... i dont know how to correctly
      parse the meta data to check which (3 or 4 chars) we are encontering so
      handle all tag markers like they are only 3 chars (last 3 chars of 4 ones) */
-    if (strncmp (meta.identifier, "ree", 3) == 0)
+    if (strncmp (&meta.flag, "free", 4) == 0)
       /* catch the free atom to exit */
       break;
     else if (strncmp (meta.identifier, "nam", 3) == 0)
@@ -156,7 +157,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
       data_type = IPOD_ARTIST;
     else if (strncmp (meta.identifier, "alb", 3) == 0)
       data_type = IPOD_ALBUM;
-    else if (strncmp (meta.identifier, "nre", 3) == 0) {
+    else if (strncmp (&meta.flag, "gnre", 4) == 0) {
       int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
 
@@ -168,20 +169,20 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
       data_type = IPOD_COMMENT;
     else if (strncmp (meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
-    else if (strncmp (meta.identifier, "rkn", 3) == 0) {
+    else if (strncmp (&meta.flag, "trkn", 4) == 0) {
       tihm->track        = big16_2_arch16( ((short *)buffer)[1] );
       tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
       continue;
-    } else if (strncmp (meta.identifier, "isk", 3) == 0) {
+    } else if (strncmp (&meta.flag, "disk", 4) == 0) {
       tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
       tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
     } else if (strncmp (meta.identifier, "day", 3) == 0) {
       tihm->year = strtol (buffer, NULL, 10);
       continue;
-    } else if (strncmp (meta.identifier, "ovr", 3) == 0) {
-      parse_covr (buffer, buffer_size, fd, meta, tihm);
+    } else if (strncmp (&meta.flag, "covr", 4) == 0) {
+      parse_covr (fd, meta, tihm);
       continue;
-    } else if (strncmp (meta.identifier, "mpo", 3) == 0) {
+    } else if (strncmp (&meta.flag, "tmpo", 4) == 0) {
       tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
       continue;
     } else
@@ -199,17 +200,19 @@ int m4a_bitrates[] = {
   28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
 };
 
-void parse_stsz (FILE *fh, double *bits, int time_scale, int faac) {
+#define BITRATE(sample_size, num_samples, time_scale) ((sample_size * 8.0)/(double)(num_samples) * (double)time_scale/1000.0)/1000.0
+
+/* stsz atoms contain a table of sample sizes */
+static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int time_scale) {
   int current_loc = ftell (fh);
-  int buffer[10];
+  unsigned int buffer[3];
   double avg = 0.0;
-  int i;
   double bmax = 0.0;
   double bmin = 10000.0;
-  int silence_frames = 0;
-  double totalby;
+  int silent_samples = 0;
   int num_samples = 0;
-  long int bit_rate;
+
+  int i;
 
   mp3_debug ("Parsing stsz atom\n");
 
@@ -226,51 +229,54 @@ void parse_stsz (FILE *fh, double *bits, int time_scale, int faac) {
 
     sample_size = big32_2_arch32 (buffer[0]);
 
-    if (sample_size > 7)
-      avg += (double)sample_size;
+    /* Silent samples are 7 bytes in size */
+    if (sample_size == 7)
+      silent_samples++;
     else
-      silence_frames++;
+      avg += (double)sample_size;
 
-    bmax = ((double)sample_size > bmax) ? (double)sample_size : bmax;
-    bmin = ((double)sample_size < bmin) ? (double)sample_size : bmin;
+    bmax = fmax ((double)sample_size, bmax);
+    bmin = fmin ((double)sample_size, bmin);
+  }
+  
+  /* Silent frames throw off the calculation of bitrates for iTunes-created AAC files.
+     Do not use them in the calculation of the bitrate. */
+  *bit_rate = (unsigned int)BITRATE(avg, num_samples-silent_samples, time_scale);
+  
+  /* I have no idea why this works for apple lossless (or if it works in all cases) */
+  if ((*bit_rate - 32) > m4a_bitrates[14]) {
+    bmin *= 1000.0/4096.0;
+    avg  *= 1000.0/4096.0;
+    bmax *= 1000.0/4096.0;
+
+    *lossless = 1;
+    *bit_rate = (unsigned int)BITRATE(avg, num_samples-silent_samples, time_scale);
   }
 
-  bit_rate = (long int)(((avg * 8.0/((double)(num_samples-silence_frames))) * time_scale/1000.0)/1000.0);
-
-  mp3_debug ("Bit_rate is: %i\n", bit_rate);
-
-  /* I have no idea why this works for apple lossless (or if it works in all cases) */
-  if ((bit_rate - 32) > m4a_bitrates[14])
-    avg /= 4.096;
-
-
-  mp3_debug ("Total sample size = %f\n", totalby=avg);
-
-  avg /= (double)num_samples;
-
-  mp3_debug ("Average sample is %f bits\n", avg);
+  avg /= (double)(num_samples-silent_samples);
   
-  mp3_debug ("Minimum bitrate is: %f bps\n", bmin * 44.10 * 8.0);
-  mp3_debug ("Agerage bitrate is: %f bps\n", avg * 44.10 * 8.0);
-  mp3_debug ("Maximum bitrate is: %f bps\n", bmax * 44.10 * 8.0);
-
-  *bits = totalby/((double)(num_samples-silence_frames)) * 8.0;
+  mp3_debug ("Minimum bitrate is: %f kbps\n", BITRATE(bmin, 1, time_scale));
+  mp3_debug ("Agerage bitrate is: %f kbps\n", BITRATE(avg, 1, time_scale));
+  mp3_debug ("Maximum bitrate is: %f kbps\n", BITRATE(bmax, 1, time_scale));
 
   fseek (fh, current_loc, SEEK_SET);
 }
 
 int aac_fill_tihm (char *file_name, tihm_t *tihm) {
+  FILE *fh;
   struct stat statinfo;
-  int ret;
 
   char aac_type_string[] = "AAC audio file";
   char lossless_type_string[] = "Apple Lossless audio file";
-  FILE *fd;
-  int buffer_size = 2000;
-  char buffer[buffer_size];
+
+  int buffer_size = 512;
+  unsigned char buffer[buffer_size];
 
   int i;
-  long int time_scale = 0, bit_rate;
+
+  unsigned int time_scale = 0;
+  unsigned int bit_rate = 0;
+  
   struct qt_atom atom;
 
   double duration = 0.0;
@@ -279,45 +285,44 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   int mdat = string_to_int ("mdat");
   int stsz = string_to_int ("stsz");
   int faac = 0;
-  double bits;
+  int lossless = 0;
 
   memset (tihm, 0, sizeof(tihm_t));
 
-  ret = stat(file_name, &statinfo);
+  if (stat(file_name, &statinfo) < 0) {
+    perror("aac_fill_tihm|stat");
 
-  if (ret < 0) {
-    perror("aac_fill_tihm");
     return -errno;
   }
 
-  tihm->size     = statinfo.st_size;
-  tihm->mod_date = statinfo.st_mtimespec.tv_sec;
+  tihm->size		  = statinfo.st_size;
+  tihm->mod_date      = statinfo.st_mtimespec.tv_sec;
   tihm->creation_date = statinfo.st_mtimespec.tv_sec;
 
-  if ((fd = fopen (file_name, "r")) == NULL)
+  if ((fh = fopen (file_name, "r")) == NULL)
     return -errno;
 
-  fread (&atom, sizeof(atom), 1, fd);
+  fread (&atom, sizeof(atom), 1, fh);
 
   /* Check for ID3 tags */
   if (strncmp ((char *)&atom, "ID3", 3) == 0) {
-    fseek (fd, 0, SEEK_SET);
-    get_id3_info (fd, file_name, tihm);
+    fseek (fh, 0, SEEK_SET);
+    get_id3_info (fh, file_name, tihm);
 
-    fread (&atom, sizeof(atom), 1, fd);
+    fread (&atom, sizeof(atom), 1, fh);
   } 
 
   /* Some AAC files don't use a quicktime header. Does the iPod even support
    them? For now upod only supports Quicktime AAC files */
   if (atom.type != string_to_int ("ftyp")) {
-    fclose (fd);
+    fclose (fh);
     return -1;
   }
 
-  fread (buffer, 1, atom.size - sizeof(atom), fd);
+  fread (buffer, 1, atom.size - sizeof(atom), fh);
   if (strncmp (buffer, "M4A", 3) != 0 &&
       strncmp (buffer, "mp42", 4) != 0) {
-    fclose (fd);
+    fclose (fh);
 
     return -1;
   }
@@ -326,67 +331,72 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     faac = 1;
 
   while (1) {
-    if (fread (&atom, sizeof(atom), 1, fd) != 1) {
-      fclose (fd);
+    if (fread (&atom, sizeof(atom), 1, fh) != 1) {
+      fclose (fh);
       return -errno;
     }
 
+    /* Stop parsing on media data atom (audio data follows) */
     if (atom.type == mdat || atom.size == 0)
       break;
 
-    if (atom.type == stsz && atom.size > 0x14)
-      parse_stsz (fd, &bits, time_scale, faac);
+    /* I don't know what it means when an AAC has multiple stsz atoms, so
+       only use the first encountered that has a bit_rate average over 0. */
+    if (atom.type == stsz && atom.size > 0x14 && bit_rate == 0)
+      parse_stsz (fh, &bit_rate, &lossless, time_scale);
 
     if (atom.size > sizeof(atom)) {
       if (atom.size - sizeof(atom) < 2001) {
+	/* I have also found AAC files with multiple media header atoms. Ignore all but the first
+	   with a non-zero time_scale. */
 	if (is_media_header (atom.type) && time_scale == 0) {
 	  struct mdhd *mdhd = (struct mdhd *)buffer;
 	  
-	  fread (buffer, atom.size - sizeof(atom), 1, fd);
+	  fread (buffer, atom.size - sizeof(atom), 1, fh);
 
 	  time_scale = mdhd->time_scale;
 
 	  duration = (double)mdhd->duration/(double)time_scale;
 
-	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %fsecs\n", time_scale, duration);
+	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %f seconds.\n", time_scale, duration);
 	} else if (atom.type == meta)
-	  parse_meta (buffer, buffer_size, fd, atom, tihm);
+	  parse_meta (buffer, buffer_size, fh, atom, tihm);
 	else if (!is_container(atom.type))
-	  fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
+	  fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
       } else {
 	if (atom.type == meta)
-	  parse_meta (buffer, buffer_size, fd, atom, tihm);
+	  parse_meta (buffer, buffer_size, fh, atom, tihm);
 	else if (!is_container(atom.type))
-	  fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
+	  fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
       }
     } else
-      fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
+      fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
   }
 
-  fclose(fd);
+  fclose(fh);
 
-  bit_rate = (long int)((bits * (double)time_scale/1000.0)/1000.0);
-  mp3_debug ("Best guess is     : %i kbps\n", bit_rate);
+  /* iTunes expects AAC files created with iTunes to have a bit rate from
+     the m4a_bitrates table. This is not true with either lossless or
+     non-iTunes created AACs. */
+  if (!faac && !lossless) {
+    for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
+      int temp = m4a_bitrates[i-1] - bit_rate;
+      int temp2 = m4a_bitrates[i] - bit_rate;
 
-  mp3_debug ("aac_fill_tihm: size = %i\n", atom.size);
-
-  if (!faac) {
-    if ((bit_rate - 32) <= m4a_bitrates[14]) {
-      for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
-	int temp = m4a_bitrates[i-1] - bit_rate;
-	int temp2 = m4a_bitrates[i] - bit_rate;
-	if (temp < 0 && (temp + temp2) > 0) {
-	  bit_rate = m4a_bitrates[i-1];
-	  break;
-	} else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
-	  bit_rate = m4a_bitrates[i];
-	  break;
-	}
+      if (temp < 0 && (temp + temp2) > 0) {
+	bit_rate = m4a_bitrates[i-1];
+	break;
+      } else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
+	bit_rate = m4a_bitrates[i];
+	break;
       }
-      dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
-    } else
-      dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
+    }
   }
+
+  if (!lossless)
+    dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
+  else
+    dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
 
   tihm->time = lround (duration * 1000.0);
   tihm->samplerate = time_scale;

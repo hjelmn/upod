@@ -49,7 +49,7 @@
 #include <libgen.h>
 #endif
 
-#define MP3_DEBUG 0
+#define MP3_DEBUG 1
 
 #define MP3_PROTECTION_BIT 0x00010000
 #define MP3_PADDING_BIT    0x00000200

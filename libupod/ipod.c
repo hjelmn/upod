@@ -139,10 +139,9 @@ int ipod_open (ipod_t *ipod, char *dir, int debug_level, FILE *debug_out) {
 int ipod_close (ipod_t *ipod) {
   int ret = 0;
 
-  device_info_write (ipod);
+  ret = device_info_write (ipod);
 
   ret = db_write (ipod->itunesdb, ipod->itunesdb.path);
-
   db_free (&ipod->itunesdb);
 
   if (ipod->supports_artwork == 1) {
