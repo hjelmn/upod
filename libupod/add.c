@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 
   printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
 
-  if (db_add (&ipod, argv[3], argv[4]) != 0) {
+  if (db_add (&ipod, argv[3], argv[4], strlen(argv[4]), 0) != 0) {
     printf("Song could not be added.\n");
     exit(2);
   }

@@ -109,7 +109,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
      which */
 }
 
-int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path) {
+int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_len, int stars) {
   tree_node_t *dohm;
   dohm_t *dohm_data;
   tihm_t tihm;
@@ -118,11 +118,12 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path) {
 
   memset (entry, 0, sizeof (tree_node_t));
   tihm.num = tihm_num;
+  tihm.stars = stars;
   mp3_fill_tihm (path, &tihm);
 
   dohm_data = dohm_create (&tihm);
   dohm_data->type = IPOD_PATH;
-  unicode_check_and_copy ((char **)&(dohm_data->data), &dohm_data->size, ipod_path, strlen(ipod_path));
+  unicode_check_and_copy ((char **)&(dohm_data->data), &dohm_data->size, ipod_path, path_len);
 
   tihm_db_fill (entry, &tihm);
 

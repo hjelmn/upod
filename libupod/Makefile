@@ -39,5 +39,5 @@ clean:
 	rm -f $(OBJS)
 
 clean_all:
-	rm -f $(OBJS) libipod.a db_add db_remove db_hide db_unhide db_list db_lookup db_pl pl.o add.o remove.o hide.o unhide.o list.o lookup.o
+	rm -f $(OBJS) libipod.a db_adddir db_add db_remove db_hide db_unhide db_list db_lookup db_pl add_dir.o pl.o add.o remove.o hide.o unhide.o list.o lookup.o
 

@@ -407,7 +407,7 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
    < 0 on error
      0 on success
 */
-int db_add (itunesdb_t *itunesdb, char *path, char *mac_path) {
+int db_add (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, int stars) {
   tree_node_t *dshm_header, *new_tihm_header, *root;
 
   struct db_tlhm *tlhm_data;
@@ -421,7 +421,7 @@ int db_add (itunesdb_t *itunesdb, char *path, char *mac_path) {
   new_tihm_header = (tree_node_t *)malloc(sizeof(tree_node_t));
   new_tihm_header->parent = dshm_header;
   
-  tihm_num = db_tihm_create (new_tihm_header, path, mac_path);
+  tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars);
   db_attach (dshm_header, new_tihm_header);
 
   db_unhide(itunesdb, tihm_num);

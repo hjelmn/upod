@@ -154,7 +154,7 @@ int    db_load  (itunesdb_t *itunesdb, char *path);
 int    db_write (itunesdb_t itunesdb, char *path);
 int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
-int    db_add   (itunesdb_t *itunesdb, char *path, char *mac_path);
+int    db_add   (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, int stars);
 int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
 
 /* make sure all the values contained in the tihm are correct, there is currently no
