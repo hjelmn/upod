@@ -141,6 +141,7 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
   }
 
   db_sort (dshm_header, sort_by, *indices, tmp, tlhm_data->num_tihm);
+
   *num_indices = tlhm_data->num_tihm;
 
   free (tmp);

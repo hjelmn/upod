@@ -22,6 +22,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <ctype.h>
+
 #include "itunesdbi.h"
 
 #define DOHM_HEADER_SIZE   0x018
@@ -80,9 +82,9 @@ int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2) {
   shortest_string = ((length_1 < length_2) ? length_1 :length_2) + 1;
 
   for (i = 0 ; !cmp && i < shortest_string ; i++)
-    if (utf8_1[i] > utf8_2[i])
+    if (tolower (utf8_1[i]) > tolower (utf8_2[i]))
       cmp = 1;
-    else if (utf8_1[i] < utf8_2[i])
+    else if (tolower(utf8_1[i]) < tolower(utf8_2[i]))
       cmp = -1;
 
   free (utf8_1);
@@ -189,17 +191,17 @@ int db_dohm_index_create (tree_node_t **entry, int sort_by, int num_tracks, u_in
   iptr = (int *)&((*entry)->data[0x18]);
 
   if (sort_by == IPOD_TITLE)
-    dohm_data->unk1 = 0x00000003;
+    iptr[0] = 0x00000003;
   else if (sort_by == IPOD_ALBUM)
-    dohm_data->unk1 = 0x00000004;
+    iptr[0] = 0x00000004;
   else if (sort_by == IPOD_ARTIST)
-    dohm_data->unk1 = 0x00000005;
+    iptr[0] = 0x00000005;
   else if (sort_by == IPOD_GENRE)
-    dohm_data->unk1 = 0x00000007;
+    iptr[0] = 0x00000007;
   else if (sort_by == IPOD_COMPOSER)
-    dohm_data->unk1 = 0x00000012;
+    iptr[0] = 0x00000012;
 
-  iptr[0] = num_tracks;
+  iptr[1] = num_tracks;
 
   iptr += 10;
 
