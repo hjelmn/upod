@@ -245,7 +245,7 @@ int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
 
 /* tihm.c */
 int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t *entry, tihm_t *tihm);
+int     db_tihm_create   (tree_node_t *entry, char *path, char *mac_path);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
 int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,

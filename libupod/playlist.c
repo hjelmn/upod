@@ -110,18 +110,16 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
   plhm_data = (struct db_plhm *) plhm_header->data;
 
   current = &head;
-  for ( i = 1 ; i <= plhm_data->num_pyhm ; i++ ) {
+  for ( i = 1 ; i < dshm_header->num_children ; i++ ) {
     pyhm_header = dshm_header->children[i];
     dohm_header = pyhm_header->children[1];
     dohm_data   = (struct db_dohm *)dohm_header->data;
 
-    *current = malloc (sizeof (GList));
-    pyhm     = malloc (sizeof (struct pyhm));
-    memset (pyhm, 0, sizeof (struct pyhm));
-
+    *current = calloc (1, sizeof (GList));
+    pyhm     = calloc (1, sizeof (struct pyhm));
+    pyhm->name = calloc (1, dohm_data->len/2 + 1);
+    pyhm->name_len = dohm_data->len/2;
     pyhm->num = i - 1;
-    pyhm->name= malloc (dohm_data->len / 2);
-    memset (pyhm->name, 0, dohm_data->len / 2);
 
     unicode_to_char (pyhm->name, &dohm_header->data[0x28], dohm_data->len);
 
@@ -203,12 +201,12 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
 
   *list = malloc (sizeof (int) * pyhm_data->num_pihm);
 
-  for (i = 0 ; i < pyhm_data->num_pihm ; i++) {
+  for (i = 0 ; i < (pyhm_header->num_children - 2)/2 ; i++) {
     pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
     (*list)[i] = pihm_data->reference;
   }
 
-  return pyhm_data->num_pihm;
+  return (pyhm_header->num_children - 2)/2;
 }
 
 /**
@@ -238,7 +236,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   int i;
 
-  if (name == NULL) return -1;
+  if (name == NULL || name_len == 0) return -1;
   if (itunesdb == NULL) return -1;
 
   if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
@@ -248,7 +246,7 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   plhm = (struct db_plhm *) plhm_header->data;
 
-  new_pyhm = (tree_node_t *) malloc (sizeof (tree_node_t));
+  new_pyhm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_pyhm == NULL) {
     perror ("db_create_new_playlist|malloc");
     return errno;
@@ -265,15 +263,17 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   }
 
   /* I dont know what this dohm entry does */
-  new_dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
+  new_dohm = (tree_node_t *) calloc (1, sizeof (tree_node_t));
   if (new_dohm == NULL) {
     perror ("db_create_new_playlist|malloc");
     return errno;
   }
-  if (db_dohm_create_generic (new_dohm, 0x288, 0x64) < 0)
+  if (db_dohm_create_generic (new_dohm, 0x288, 0x000) < 0)
     return -1;
 
   wierd_dohm_data = (struct db_wierd_dohm *)new_dohm->data;
+  wierd_dohm_data->unk2 = 0;
+  wierd_dohm_data->type = 0x64;
 
   /* i dont know what these two are about, but they need to be set like this */
   wierd_dohm_data->unk6 = 0x00010000;
@@ -298,10 +298,11 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
     perror ("db_create_new_playlist|malloc");
     return errno;
   }
-  if (db_dohm_create_generic (new_dohm, 0x28 + unicode_len, IPOD_TITLE) < 0)
+  if (db_dohm_create_generic (new_dohm, 0x28 + unicode_len, 0) < 0)
     return -1;
 
   dohm       = (struct db_dohm *)new_dohm->data;
+  dohm->type = IPOD_TITLE;
   dohm->unk2 = 1;
   dohm->len  = unicode_len;
 
@@ -314,6 +315,68 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
 
   free (unicode_data);
   return plhm->num_pyhm++;
+}
+
+/**
+  db_playlist_rename:
+
+   Rename a playlist in the itunesdb.
+
+  Arguments:
+   itunesdb_t *itunesdb - Opened itunesdb
+   int         playlist - Playlist index (0 is master)
+   char       *name     - New playlist name
+   int         name_len - Lenth of name
+**/
+int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name_len) {
+  tree_node_t *plhm_header, *name_dohm, *dshm_header, *entry;
+  struct db_plhm *plhm;
+  struct db_dohm *dohm;
+
+  int ds;
+
+  int unicode_len;
+  char *unicode_data;
+
+  if (name == NULL || name_len == 0) return -1;
+  if (itunesdb == NULL) return -1;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
+    return -1;
+
+  plhm = (struct db_plhm *) plhm_header->data;
+  if (plhm->num_pyhm <= playlist || playlist < 0) {
+    UPOD_DEBUG(0, "Invalid playlist number\n");
+    return -1;
+  }
+
+  db_detach (dshm_header->children[playlist + 1], 1, &name_dohm);
+
+  unicode_check_and_copy (&unicode_data, &unicode_len, name, name_len);
+
+  /* adjust the memory size for this node and copy new unicode string in */
+
+  /* writing the tree out correctly will depend on this having the correct value */
+  name_dohm->size = 0x28 + unicode_len;
+  name_dohm->data = realloc (name_dohm->data, 0x28 + unicode_len);
+  
+  if (name_dohm->data == NULL) {
+    perror ("db_playlist_rename|realloc");
+    free (unicode_data);
+    return -1;
+  }
+
+  dohm       = (struct db_dohm *)name_dohm->data;
+  ds = unicode_len - dohm->len;
+  dohm->record_size += ds;
+  dohm->len  = unicode_len;
+
+  memcpy (&name_dohm->data[0x28], unicode_data, unicode_len);
+
+  db_attach (dshm_header->children[playlist + 1], name_dohm);
+
+  free (unicode_data);
+  return 0;
 }
 
 /**
@@ -399,7 +462,7 @@ int db_playlist_tihm_add (itunesdb_t *itunesdb, int playlist, int tihm_num) {
   }
 
   db_pihm_create (pihm, tihm_num, tihm_num);
-  db_dohm_create_generic (dohm, 0x2c, 0x64);
+  db_dohm_create_generic (dohm, 0x2c, tihm_num);
 
   db_attach (pyhm_header, pihm);
   db_attach (pyhm_header, dohm);
@@ -571,7 +634,7 @@ int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column, u_i
   if (playlist >= plhm_data->num_pyhm)
     return -1;
 
-  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
   wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
   num_shown = wierd_dohm_data->shows[0].unk10[0];
 
@@ -602,7 +665,7 @@ int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column) {
   if (playlist >= plhm_data->num_pyhm)
     return -1;
 
-  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
   wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
   num_shown = wierd_dohm_data->shows[0].unk10[0];
 
@@ -649,7 +712,7 @@ int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola, int p
   if (playlist >= plhm_data->num_pyhm)
     return -1;
 
-  wierd_dohm_header = dshm_header->children[playlist + 1];
+  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
   wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
   num_shown = wierd_dohm_data->shows[0].unk10[0];
 
@@ -666,4 +729,67 @@ int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola, int p
   }
 
   return 0;
+}
+
+int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **list) {
+  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
+  int j;
+  int finish;
+
+  int num_shown;
+
+  struct db_wierd_dohm *wierd_dohm_data;
+  struct db_plhm *plhm_data;
+
+  if (list == NULL)
+    return -1;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0) {
+    return -1;
+  }
+
+  plhm_data = (struct db_plhm *) plhm_header->data;
+
+  if (playlist >= plhm_data->num_pyhm)
+    return -1;
+
+  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
+  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  *list = calloc (sizeof (int), num_shown);
+
+  for (j = 0 ; j < num_shown ; j++)
+    (*list)[j] = wierd_dohm_data->shows[j].show;
+
+  return num_shown;
+}
+
+int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
+  tree_node_t *plhm_header, *pyhm_header, *dshm_header, *dohm_header;
+  tree_node_t *pihm, *dohm;
+
+  struct db_plhm *plhm_data;
+  struct db_dohm *dohm_data;
+
+  if (itunesdb == NULL) return -1;
+  
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) < 0)
+    return -1;
+
+  plhm_data = (struct db_plhm *) plhm_header->data;
+
+  if (playlist >= plhm_data->num_pyhm)
+    return -1;
+
+  pyhm_header = dshm_header->children[playlist + 1];
+  dohm_header = pyhm_header->children[1];
+  dohm_data   = (struct db_dohm *)dohm_header->data;
+
+  /* one extra byte is needed to hold the terminating \0 */
+  *name = malloc (dohm_data->len/2 + 1);
+
+  unicode_to_char (*name, &dohm_header->data[0x28], dohm_data->len);
+
+  return dohm_data->len/2;
 }

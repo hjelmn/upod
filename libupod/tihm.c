@@ -109,17 +109,24 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
      which */
 }
 
-int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
+int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path) {
   tree_node_t *dohm;
+  dohm_t *dohm_data;
+  tihm_t tihm;
   int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
   int i;
 
   memset (entry, 0, sizeof (tree_node_t));
-  tihm->num = tihm_num;
+  tihm.num = tihm_num;
+  mp3_fill_tihm (path, &tihm);
 
-  tihm_db_fill (entry, tihm);
+  dohm_data = dohm_create (&tihm);
+  dohm_data->type = IPOD_PATH;
+  unicode_check_and_copy ((char **)&(dohm_data->data), &dohm_data->size, ipod_path, strlen(ipod_path));
 
-  for (i = 0 ; i < tihm->num_dohm ; i++) {
+  tihm_db_fill (entry, &tihm);
+
+  for (i = 0 ; i < tihm.num_dohm ; i++) {
     dohm = (tree_node_t *) malloc (sizeof (tree_node_t));
 
     if (dohm == NULL) {
@@ -127,7 +134,7 @@ int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
       return -1;
     }
 
-    if (db_dohm_create (dohm, tihm->dohms[i]) < 0)
+    if (db_dohm_create (dohm, tihm.dohms[i]) < 0)
       return -1;
 
     db_attach (entry, dohm);

@@ -1,22 +1,8 @@
 /**
  *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a ipod.c
+ *   v0.1.3 ipod.c
  *
- *   Routines for copying the file to the ipod (if not already on it and
- *  calling the functions to manipulate the iTunesDB (contained in db.c).
- *
- *  (6-14-2002):
- *    - With a sudden burst of inpiration (and alot of caffene) ipod.c is
- *     started. Initial implementations include:
- *      * ipod_open
- *      * ipod_close
- *      * ipod_add
- *      * ipod_remove
- *      * ipod_move
- *      * ipod_copy
- *    All the above funtions require that the ipod is mounted read write.
- *   future versions will be based off of hfsplus utils until the hfs+
- *   kernel module's completion.
+ *   Routines for working with the ipod the iPod's.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -37,197 +23,129 @@
 #include "config.h"
 #endif
 
-#include "upodi.h"
+#include "itunesdbi.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 
 #include <fcntl.h>
 
-#include <errno.h>
+#define ITUNESDB_PATH "iPod_control/iTunes/iTunesDB"
 
-static int ipod_debug = 1;
+static int ipod_init_files (ipod_t *ipod, char *dir) {
+  int test_fd;
+  /* 0755 */
+  int fold_perms = S_IXUSR | S_IRUSR | S_IWUSR | S_IRGRP | S_IXGRP | S_IXOTH | S_IROTH;
+  char testpath[512];
 
-#define PATH_MAX         255
+  /* try iPod_control/ */
+  sprintf (testpath, "%s/iPod_control", dir);
+  if ((test_fd = open (testpath, O_RDONLY)) < 0) {
+    /* create iPod folder */
+    UPOD_DEBUG(0, "Creating dir %s\n", testpath);
+    if (mkdir (testpath, fold_perms) < 0)
+      perror("mkdir");
+  } else
+    close (test_fd);
 
-/* some default defines for working with the directory structure of the ipod */
-#define DB_PATH          "/iPod_control/iTunes/iTunesDB"
-#define DEFAULT_ADD_PATH "/Music"
+  /* try iPod_control/iTunes/ */
+  sprintf (testpath, "%s/iPod_control/iTunes", dir);
+  if ((test_fd = open (testpath, O_RDONLY)) < 0) {
+    /* create iPod/iTunes */
+    UPOD_DEBUG(0, "Creating dir %s\n", testpath);
+    if (mkdir (testpath, fold_perms) < 0)
+      perror("mkdir");
+  } else
+    close (test_fd);
 
-/* dont normally want to add here as it is hidden by default */
-#define APPLE_ADD_PATH   "/iPod_control/Music" /* followed by F[01][0-9] */
+  /* try iPod_control/iTunes/iTunesDB */
+  sprintf (testpath, "%s/%s", dir, ITUNESDB_PATH);
+  if (db_load (&(ipod->itunesdb), testpath) < 0) {
+    UPOD_DEBUG(0, "iTunesDB not found, creating one\n");
+    db_create (&(ipod->itunesdb), "iPod", 4);
+  }
 
-/*
-  ipod_open: Opens an ipod's db and sets up the ipod_t structure
+  /* try iPod/iPodPrefs */
 
-  Under darwin the path should be somthing like:
-  /Volumes/<name of ipod>
-*/
-int ipod_open (ipod_t *ipod, char *path) {
-  char db_path[PATH_MAX];
+  return 0;
+}
 
-  if (ipod == NULL) return -1; /* cant do anything if there is no place to put it */
-
-  memset (ipod, 0, sizeof(ipod_t));
-
-  /* i want these to be snprintf, but macosx says it is undefined */
-  snprintf (db_path, PATH_MAX, "%s/%s\0", path, DB_PATH);
-  snprintf (ipod->path, PATH_MAX, "%s/%s\0", path, DB_PATH);
-  snprintf (ipod->prefix, PATH_MAX, "%s", path);
-
-  if (db_load (ipod, db_path) < 0) {
-    UPOD_ERROR (-1, "ipod_open\n");
+static int ipod_mount (char *dev, char *fstype, char *dir) {
+  /* -- XXX -- check if the ipod is already mounted */
+  /*
+  if (mount (dev, dir, fstype, 0xC0ED0000, NULL) < 0) {
+    perror ("ipod_mount");
     return -1;
   }
+  */
+  /* -- XXX -- There may be other mount-time stuff that needs
+     to be done here */
+
+  return 0;
+}
+
+int ipod_open (ipod_t *ipod, char *dir, char *dev, char *fstype) {
+  if (ipod == NULL || dir == NULL)
+    return -1;
+
+  /*
+  if (dev != NULL && fstype != NULL)
+    if (ipod_mount(dev, fstype, dir) < 0)
+      return -1;
+  */
+  /* copy path argument into ipod structure */
+  if (ipod->dir)
+    free (ipod->dir);
+
+  ipod->dir = calloc (strlen (dir) + 1, 1);
+  memcpy (ipod->dir, dir, strlen (dir));
+
+  /* copy itunedb location into ipod structure */
+  if (ipod->itunesdb_path)
+    free (ipod->itunesdb_path);
+
+  ipod->itunesdb_path = calloc (strlen (dir) + strlen (ITUNESDB_PATH) + 2, 1);
+  sprintf (ipod->itunesdb_path, "%s/%s", dir, ITUNESDB_PATH);
+  printf ("DB: %s\n", ipod->itunesdb_path);
+  /* memset (itunedb, 0); */
+
+  /* open the itunesdb or possibly create it */
+  ipod_init_files (ipod, dir);
 
   return 0;
 }
 
 int ipod_close (ipod_t *ipod) {
-  if (db_write(*ipod, ipod->path) < 0) {
-    UPOD_ERROR (-1, "ipod_close\n");
-    return -1;
-  }
+  /* if (mounted by upod) */
+  //umount (ipod->dir);
 
-  return 0;
-}
-
-int my_hash (char *ptr) {
-  int len = strlen(ptr);
-  int ret = 0;
-  int i;
-
-  for (i = 0 ; i < len ; i++)
-    ret = ret<< 8 + ptr[i];
-
-  return ret%20;
-}
-
-int ipod_add (ipod_t *ipod, char *filename, char *mac_path, int use_apple_path) {
-  char final_mac_path[PATH_MAX];
-  char dst_path[PATH_MAX];
-  char *argv[4];
-  char command[] = "/bin/cp";
-  char force[] = "-r";
-  
-  if (ipod == NULL) return -1;
-  if (filename == NULL) return -2;
-
-  if (use_apple_path)
-    snprintf (final_mac_path, PATH_MAX, ":%s:F%02i:%s\0", APPLE_ADD_PATH, my_hash(basename(filename)), basename(filename));
-  else if (mac_path == NULL)
-    snprintf (final_mac_path, PATH_MAX, ":%s:%s\0", DEFAULT_ADD_PATH, basename(filename));
+  if (db_write (ipod->itunesdb, ipod->itunesdb_path) < 0)
+    printf ("DB: Not written\n");
   else
-    snprintf (final_mac_path, PATH_MAX, "%s\0", mac_path);
+    printf ("DB: Written to file %s\n", ipod->itunesdb_path);
 
-  snprintf (dst_path, PATH_MAX, "%s/\0", ipod->prefix);
-  path_mac_to_unix (final_mac_path, &dst_path[strlen(dst_path) - 1]);
 
-  argv[0] = command;
-  argv[1] = force;
-  argv[2] = filename;
-  argv[3] = dst_path;
-
-  fork(); {
-    execv (command, argv);
-  }
-
-  if (db_add (ipod, filename, final_mac_path) < 0) {
-    printf("File copied to ipod, but not added to iTunesDB.\n");
-
-    return 1;
-  }
-
-  return 0;
+  /* -- XXX -- free all allocated memory */
+  free (ipod->dir);
+  free (ipod->itunesdb_path);
+  
+  return -1;
 }
 
-int ipod_remove (ipod_t *ipod, char *mac_path, int remove_from_db, int remove_file) {
-  char path[PATH_MAX];
-  char *argv[3];
-  char command[] = "/bin/rm";
-  char opt[] = "-f";
-
-  if (remove_file) {
-    snprintf (path, PATH_MAX, "%s/\0", ipod->prefix);
-    path_mac_to_unix (mac_path, &path[strlen(path) - 1]);
-    argv[0] = command;
-    argv[1] = opt;
-    argv[2] = path;
-
-    fork(); {
-      execv (command, argv);
-    }
-  }
-
-  if (remove_from_db) {
-    if (db_remove(ipod, db_lookup(*ipod, IPOD_PATH, mac_path, strlen(mac_path))) < 0)
-      return -1;
-  }
-
-  return 0;
+int ipod_copy_from (ipod_t *ipod, char *topath, char *frompath) {
+  return -1;
 }
 
-int ipod_move (ipod_t *ipod, char *src, char *dst) {
-  char *argv[3];
-  char command[] = "/bin/mv";
-  char src_path[PATH_MAX];
-  char dst_path[PATH_MAX];
-
-  if (strchr(dst, ':')) {
-    snprintf (dst_path, PATH_MAX, "%s/\0", ipod->prefix);
-    path_mac_to_unix (dst, &dst_path[strlen(dst_path) - 1]);
-  } else {
-    snprintf (dst_path, PATH_MAX, "%s\0", dst);
-  }
-
-  if (strchr(src, ':')) {
-    snprintf (src_path, PATH_MAX, "%s/\0", ipod->prefix);
-    path_mac_to_unix (src, &src_path[strlen(src_path) - 1]);
-  } else {
-    snprintf (src_path, PATH_MAX, "%s\0", src);
-  }
-
-  argv[0] = command;
-  argv[1] = src_path;
-  argv[2] = dst_path;
-
-  fork(); {
-    execv (command, argv);
-  }
-
-  return 0;
+int ipod_copy_to (ipod_t *ipod, char *topath, char *frompath) {
+  return -1;
 }
 
-int ipod_copy (ipod_t *ipod, char *src, char *dst) {
-  char *argv[3];
-  char command[] = "/bin/cp";
-  char src_path[PATH_MAX];
-  char dst_path[PATH_MAX];
-
-  if (strchr(dst, ':')) {
-    snprintf (dst_path, PATH_MAX, "%s/\0", ipod->prefix);
-    path_mac_to_unix (dst, &dst_path[strlen(dst_path) - 1]);
-  } else {
-    snprintf (dst_path, PATH_MAX, "%s\0", dst);
-  }
-
-  if (strchr(src, ':')) {
-    snprintf (src_path, PATH_MAX, "%s/\0", ipod->prefix);
-    path_mac_to_unix (src, &src_path[strlen(src_path) - 1]);
-  } else {
-    snprintf (src_path, PATH_MAX, "%s\0", src);
-  }
-
-  argv[0] = command;
-  argv[1] = src_path;
-  argv[2] = dst_path;
-
-  fork(); {
-    execv (command, argv);
-  }
-
-  return 0;
+int ipod_rename (ipod_t *ipod, char *name, int name_len) {
+  return db_playlist_rename (&(ipod->itunesdb), 0, name, name_len);
 }
+
+/*** NTH_87Xz10102 ***/

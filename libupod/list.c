@@ -1,11 +1,11 @@
-#include "upodi.h"
+#include "itunesdb.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 void usage (void) {
   printf("Usgae:\n");
-  printf(" db_list <database>\n");
+  printf(" db_list\n");
 
   exit(1);
 }
@@ -26,56 +26,106 @@ char *str_type(int file_type) {
     return "Type";
   case IPOD_COMMENT:
     return "Comment";
+  case IPOD_EQ:
+    return "Equilizer";
   default:
     return "Unknown";
   }
 }
 
 int main (int argc, char *argv[]) {
-  ipod_t ipod;
   GList *songs, *tmp;
+  GList *playlists;
+
   tihm_t *tihm;
+  pyhm_t *pyhm;
   char buffer[1024];
-  int i;
+  int i, ret;
 
-  if (argc != 2)
-    usage();
+  itunesdb_t itunesdb;
+  int fd, result;
 
-  if (db_load (&ipod, argv[1]) < 0) {
-    printf("Could not load database\n");
-
-    exit(2);
-  }
-
-  songs = db_song_list (ipod);
-
-  if (songs == NULL) {
-    printf("Could not get song list\n");
-    db_free(&ipod);
+  if (db_load (&itunesdb, "iTunesDB") < 0) {
+    close (fd);
     exit(1);
   }
 
-  for (tmp = songs->next ; tmp ; tmp = tmp->next) {
+  printf ("Checking the sanity of the database...\n");
+
+  ret = db_sanity_check(itunesdb);
+
+  if (ret <= -20) {
+    printf ("There is somthing wrong with the loaded database!\n");
+    db_free (&itunesdb);
+    exit(1);
+  } else if (ret < 0) {
+    printf ("The database has small problems, continuing anyway. :: %i\n", ret);
+  } else
+    printf ("The database check out.\n");
+
+  /* get song lists */
+  songs = db_song_list (&itunesdb);
+
+  if (songs == NULL)
+    printf("Could not get song list\n");
+
+  /* get playlists */
+  playlists = db_playlist_list (&itunesdb);
+
+  if (playlists == NULL) {
+    printf("Could not get playlist list\n");
+    db_free(&itunesdb);
+    close (fd);
+    exit(1);
+  }
+
+  /* dump songlist contents */
+  for (tmp = songs ; tmp ; tmp = tmp->next) {
     tihm = tmp->data;
 
     printf("%04i |\n", tihm->num, buffer);
     
-    printf(" encoding: %08x\n", tihm->encoding);
+    printf(" encoding: %d\n", tihm->bitrate);
     printf(" type    : %d\n", tihm->type);
     printf(" num dohm: %d\n", tihm->num_dohm);
     printf(" samplert: %d\n", tihm->samplerate);
+    printf(" stars   : %d\n", tihm->stars);
+    printf(" played  : %d\n", tihm->times_played);
 
     for (i = 0 ; i < tihm->num_dohm ; i++) {
       memset(buffer, 0, 1024);
       unicode_to_char (buffer, tihm->dohms[i].data, tihm->dohms[i].size);
-      printf(" %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
+      if (tihm->dohms[i].type == IPOD_EQ)
+	printf (" %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
+      else
+	printf (" %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
     }
 
     printf("\n");
   }
 
-  db_free(&ipod);
+  /* dump playlist contents */
+  for (tmp = playlists ; tmp ; tmp = tmp->next) {
+    int num_ref;
+    int *list = NULL;
+
+    pyhm = (pyhm_t *)tmp->data;
+    /* P(laylist) M(aster) */
+    printf ("playlist name: %s(%s) len=%i\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
+
+    num_ref = db_playlist_list_songs (&itunesdb, pyhm->num, &list);
+
+    for (i = 0 ; i < num_ref ; i++)
+      printf ("%i ", list[i]);
+
+    printf ("\n");
+    free(list);
+  }
+
+  db_free(&itunesdb);
   db_song_list_free (songs);
+  db_playlist_list_free (playlists);
+  close(fd);
 
   return 0;
 }

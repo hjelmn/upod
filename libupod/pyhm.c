@@ -36,12 +36,12 @@ int db_pyhm_create (tree_node_t *entry) {
   memset (entry, 0, sizeof(tree_node_t));
 
   entry->size = PYHM_HEADER_SIZE;
-  entry->data = malloc (PYHM_HEADER_SIZE);
+  entry->data = calloc (PYHM_HEADER_SIZE, 1);
   if (entry->data == NULL) {
-    perror ("db_pyhm_create|malloc");
+    perror ("db_pyhm_create|calloc");
     return -1;
   }
-  memset (entry->data, 0, PYHM_HEADER_SIZE);
+
   pyhm_data = (struct db_pyhm *)entry->data;
   pyhm_data->pyhm        = PYHM;
   pyhm_data->header_size = PYHM_HEADER_SIZE;

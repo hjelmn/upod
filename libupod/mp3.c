@@ -134,7 +134,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
   parse_id3
 */
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, tihm_t *tihm) {
-  char *tmpc;
+  char tmpc[255];
   dohm_t *dohm;
 
   if (field != ID3_TRACK)
@@ -191,7 +191,9 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	if (length < 1)
 	  goto id3_error;
 	
-	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tag_temp, length - 1);
+	memset (tmpc, 0, length+1);
+	memcpy (tmpc, tag_temp, length - 1);
+	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmpc, length - 1);
       } else if (field == ID3_TRACK) {
 	char *slash;
 
@@ -212,6 +214,9 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int field, 
 	}
 	
 	genre_temp[i] = 0;
+
+	if (atoi (genre_temp) > 147)
+	  goto id3_error;
 
 	unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), genre_table[atoi(genre_temp)],
 				 strlen (genre_table[atoi(genre_temp)]));
@@ -280,7 +285,6 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
   
   /* ** NEW ** built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(fd, &tag_data, &tag_datalen)) != 0) {
-    printf ("version = %d.\n", version);
     parse_id3(tag_data, tag_datalen, version, ID3_TITLE, tihm);
     
     /* Much of the time the title is in field TT2 not TT1 */
@@ -300,12 +304,16 @@ static int get_id3_info (char *file_name, tihm_t *tihm) {
     dohm_t *dohm;
     int i;
     
-    for (i=strlen(tmp)-1; (tmp[i] != '.') && i > 0 ; i--);
+    for (i=strlen(tmp)-1; i > 0 ; i--)
+      if (tmp[i] == '.') {
+	tmp[i] = 0;
+	break;
+      }
     
     dohm = dohm_create(tihm);
 
     dohm->type = IPOD_TITLE;
-    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmp, i);
+    unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), tmp, strlen(tmp));
   }
   
   if (0)//tag_data)

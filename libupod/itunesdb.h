@@ -22,12 +22,18 @@
 
 #include <sys/types.h>
 
-struct _glist {
+#if defined(HAVE_GLIB)
+#include <glib.h>
+#else
+typedef struct _glist {
   struct _glist *next, *prev;
   void *data;
-};
+} GList;
+#endif
 
-typedef struct _glist GList;
+#if defined (USE_HFSPLUS)
+#include <HFSPlus.h>
+#endif
 
 enum dohm_types_t {
   IPOD_TITLE=1,
@@ -79,6 +85,12 @@ struct tree {
 
 typedef struct tree itunesdb_t;
 typedef struct tree_node tree_node_t;
+
+typedef struct _ipod {
+  itunesdb_t itunesdb;
+  char *dir;
+  char *itunesdb_path;
+} ipod_t;
  
 typedef struct dohm {
   u_int32_t type;
@@ -122,18 +134,27 @@ typedef tihm_t mhit_t;
 typedef struct pyhm {
   int num;
   char *name;
+  int name_len;
 } pyhm_t;
 
 typedef pyhm_t mhyp_t;
 
 /* all strings passed to the below functions are ascii not unicode */
+/* itunesdb2/ipod.c */
+/* valid fstypes are "hfsplus" and "fat32" */
+int    ipod_open      (ipod_t *ipod, char *dir, char *dev, char *fstype);
+int    ipod_close     (ipod_t *ipod);
+int    ipod_copy_from (ipod_t *ipod, char *topath, char *frompath);
+int    ipod_copy_to   (ipod_t *ipod, char *topath, char *frompath);
+int    ipod_rename    (ipod_t *ipod, char *name, int name_len);
 
-/* libupod/db.c */
+/* itunesdb2/db.c */
 int    db_create(itunesdb_t *itunesdb, char *db_name, int name_len);
 int    db_load  (itunesdb_t *itunesdb, char *path);
 int    db_write (itunesdb_t itunesdb, char *path);
+int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
-int    db_add   (itunesdb_t *itunesdb, char *filename, char *path, int path_len, int stars);
+int    db_add   (itunesdb_t *itunesdb, char *path, char *mac_path);
 int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
 
 /* make sure all the values contained in the tihm are correct, there is currently no
@@ -155,16 +176,16 @@ int    db_modify_volume_adjustment (itunesdb_t *itunesdb, u_int32_t tihm_num,
 int    db_modify_start_stop_time   (itunesdb_t *itunesdb, u_int32_t tihm_num,
 				    int start_time, int stop_time);
 
-
 int db_playlist_number      (itunesdb_t *itunesdb);
 int db_playlist_create      (itunesdb_t *itunesdb, char *name, int name_len);
-int db_playlist_rename      (itunesdb_t *itunesdb, int playlist, char *name);
+int db_playlist_rename      (itunesdb_t *itunesdb, int playlist, char *name, int name_len);
 int db_playlist_delete      (itunesdb_t *itunesdb, int playlist);
 int db_playlist_tihm_add    (itunesdb_t *itunesdb, int playlist, int tihm_num);
 int db_playlist_tihm_remove (itunesdb_t *itunesdb, int playlist, int tihm_num);
 int db_playlist_clear       (itunesdb_t *itunesdb, int playlist);
 int db_playlist_fill        (itunesdb_t *itunesdb, int playlist);
 int db_playlist_remove_all  (itunesdb_t *itunesdb, int tihm_num);
+int db_playlist_get_name    (itunesdb_t *itunesdb, int playlist, char **name);
 
 /* this has to deal with the view in itunes, you can use them if you
    wish */
@@ -173,6 +194,7 @@ int db_playlist_column_show (itunesdb_t *itunesdb, int playlist, int column,
 int db_playlist_column_hide (itunesdb_t *itunesdb, int playlist, int column);
 int db_playlist_column_move (itunesdb_t *itunesdb, int playlist, int cola,
 			     int pos);
+int db_playlist_column_list_shown (itunesdb_t *itunesdb, int playlist, int **list);
 
 
 /* returns a list of the playlists on the itunesdb. The data field is of

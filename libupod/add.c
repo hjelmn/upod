@@ -1,4 +1,4 @@
-#include "upod.h"
+#include "itunesdb.h"
 
 #include <stdlib.h>
 
@@ -10,7 +10,8 @@ void usage(void) {
 }
 
 int main(int argc, char *argv[]) {
-  ipod_t ipod;
+  itunesdb_t ipod;
+  tihm_t new_entry;
   int ret;
 
   if (argc != 5)
