@@ -343,8 +343,6 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
     return -1;
   }
 
-  db_log (ipod_db, 0, "Loaded... %i bytes\n", ibuffer[2]);
-
   bswap_block((char *)ibuffer, 4, 3);
   memmove (buffer, ibuffer, 12);
   
@@ -353,10 +351,15 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   /* do the work of building the ipoddb_t structure */
   ipod_db->tree_root = db_build_tree(ipod_db, &bytes_read, NULL, &buffer);
 
+  db_log (ipod_db, 0, "Loaded... %i bytes\n", ibuffer[2]);
+
   ipod_db->flags = flags;
 
   ipod_db->path  = strdup (path);
   free(tmp);
+
+  if (ipod_db->type == 0)
+    db_playlist_strip_indices (ipod_db);
 
   return bytes_read;
 }
@@ -440,7 +443,13 @@ int db_write (ipoddb_t ipod_db, char *path) {
     return -1;
   }
 
+  if (ipod_db.type == 0)
+    db_playlist_add_indices (&ipod_db);
+
   ret = db_write_tree (fd, ipod_db.tree_root);
+
+  if (ipod_db.type == 0)
+    db_playlist_strip_indices (&ipod_db);
   
   close (fd);
   

@@ -64,3 +64,12 @@ int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
 
   return 0;
 }
+
+int db_pyhm_dohm_detach (tree_node_t *pyhm_header, int index, tree_node_t **store) {
+  struct db_pyhm *pyhm_data;
+  
+  pyhm_data = (struct db_pyhm *)pyhm_header->data;
+  pyhm_data->num_dohm--;
+
+  return db_detach (pyhm_header, index, store);
+}

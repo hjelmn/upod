@@ -483,6 +483,7 @@ int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num);
 int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags);
 int db_tihm_fill (tree_node_t *tihm_header, tihm_t *tihm);
 int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **parent, int tihm_num);
+int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **indices, u_int32_t *num_indices);
 
 tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num);
 int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, int stars, int tihm_num);
@@ -503,6 +504,7 @@ int db_aihm_create (struct tree_node **entry, u_int32_t image_id);
 int db_pyhm_create (tree_node_t **entry, int is_visible);
 int db_pyhm_set_id (tree_node_t *entry, int id);
 int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
+int db_pyhm_dohm_detach (tree_node_t *pyhm_header, int index, tree_node_t **store);
 
 
 /* abhm.c */
@@ -518,10 +520,13 @@ void    dohm_free       (dohm_t *dohm, int num_dohm);
 
 
 int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header, int dohm_type);
+int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2);
+int db_dohm_get_string (tree_node_t *dohm_header, u_int8_t **str);
 int db_dohm_fill (tree_node_t *entry, dohm_t **dohms);
 int db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
 int db_dohm_create_pihm (tree_node_t **entry, int order);
 int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq);
+int db_dohm_index_create (tree_node_t **entry, int sort_by, int num_tracks, u_int32_t tracks[]);
 int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, int flags);
 
 /* Operations on a wierd dohm */
@@ -551,6 +556,8 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
 int db_playlist_retrieve (ipoddb_t *, struct db_plhm **, tree_node_t **, int, tree_node_t **);
+int db_playlist_strip_indices (ipoddb_t *itunesdb);
+int db_playlist_add_indices (ipoddb_t *itunesdb);
 
 /* inhm.c */
 int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,

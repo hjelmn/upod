@@ -65,6 +65,89 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
   return entry_num;
 }
 
+static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_int32_t *tmp, int list_length) {
+  int i, j, k;
+
+  tree_node_t *dohm_header1, *dohm_header2;
+
+  if (list_length < 2)
+    return 0;
+  
+  db_sort (dshm_header, sort_by, list, tmp, list_length/2);
+  db_sort (dshm_header, sort_by, &list[list_length/2], tmp, list_length - list_length/2);
+
+  db_dohm_retrieve (dshm_header->children[1 + list[0]], &dohm_header1, sort_by);
+  db_dohm_retrieve (dshm_header->children[1 + list[list_length/2]], &dohm_header2, sort_by);
+
+  /* merge */
+  for (i = 0, j = list_length/2, k = 0 ; (i < list_length/2) && (j < list_length) ; k++) {
+    if (db_dohm_compare (dohm_header1, dohm_header2) <= 0) {
+      tmp[k] = list[i++];
+      db_dohm_retrieve (dshm_header->children[1 + list[i]], &dohm_header1, sort_by);
+    } else {
+      tmp[k] = list[j++];
+      db_dohm_retrieve (dshm_header->children[1 + list[j]], &dohm_header2, sort_by);
+    }
+  }
+
+  while (i < list_length/2)
+    tmp[k++] = list[i++];
+  while (j < list_length)
+    tmp[k++] = list[j++];
+
+  memcpy (list, tmp, 4 * list_length);
+
+  return 0;
+}
+
+int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **indices, u_int32_t *num_indices) {
+  tree_node_t *dshm_header;
+  tree_node_t *tlhm_header;
+
+  struct db_tlhm *tlhm_data;
+  u_int32_t *tmp;
+
+  int i, ret;
+
+  if (itunesdb == NULL || indices == NULL || num_indices == NULL)
+    return -EINVAL;
+
+  /* find the song list */
+  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
+    db_log (itunesdb, ret, "Could not get song list header\n");
+    return ret;
+  }
+
+  tlhm_header = dshm_header->children[0];
+  tlhm_data = (struct db_tlhm *)tlhm_header->data;
+
+  *indices = (u_int32_t *) calloc (tlhm_data->num_tihm, 4);
+
+  if (*indices == NULL) {
+    perror ("db_tihm_get_sorted_indices|calloc");
+    
+    exit (EXIT_FAILURE);
+  }
+
+  for (i = 0 ; i < tlhm_data->num_tihm ; i++)
+    (*indices)[i] = i;
+
+  tmp = (u_int32_t *) calloc (tlhm_data->num_tihm, 4);
+
+  if (tmp == NULL) {
+    perror ("db_tihm_get_sorted_indices|calloc");
+    
+    exit (EXIT_FAILURE);
+  }
+
+  db_sort (dshm_header, sort_by, *indices, tmp, tlhm_data->num_tihm);
+  *num_indices = tlhm_data->num_tihm;
+
+  free (tmp);
+
+  return 0;
+}
+
 /* fills a tree_node with the data from a tihm_t structure */
 int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   struct db_tihm *tihm_data;

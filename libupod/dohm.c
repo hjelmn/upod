@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0 dohm.c
+ *   v0.4.0 dohm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -49,6 +49,46 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
   *dohm_header = 0;
 
   return -1;
+}
+
+/* Assumes a non-null string */
+int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2) {
+  u_int8_t *utf8_1;
+  u_int8_t *utf8_2;
+
+  size_t length_1;
+  size_t length_2;
+
+  size_t shortest_string;
+
+  int cmp = 0;
+  int i;
+  
+  if (dohm_header1 == NULL && dohm_header2 == NULL)
+    return 0;
+  else if (dohm_header1 == NULL)
+    return 1;
+  else if (dohm_header2 == NULL)
+    return -1;
+
+  db_dohm_get_string (dohm_header1, &utf8_1);
+  db_dohm_get_string (dohm_header2, &utf8_2);
+  
+  length_1 = strlen (utf8_1);
+  length_2 = strlen (utf8_2);
+
+  shortest_string = ((length_1 < length_2) ? length_1 :length_2) + 1;
+
+  for (i = 0 ; !cmp && i < shortest_string ; i++)
+    if (utf8_1[i] > utf8_2[i])
+      cmp = 1;
+    else if (utf8_1[i] < utf8_2[i])
+      cmp = -1;
+
+  free (utf8_1);
+  free (utf8_2);
+
+  return cmp;
 }
 
 dohm_t *dohm_create (tihm_t *tihm, int data_type) {
@@ -130,6 +170,40 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
 
   dohm_data = (struct db_dohm *)(*entry)->data;
   dohm_data->type        = type;
+
+  return 0;
+}
+
+int db_dohm_index_create (tree_node_t **entry, int sort_by, int num_tracks, u_int32_t tracks[]) {
+  struct db_dohm *dohm_data;
+  int *iptr;
+  int ret;
+
+  if (entry == NULL)
+    return -EINVAL;
+
+  if ((ret = db_dohm_create_generic (entry, DOHM_HEADER_SIZE + 0x28 + 4 * num_tracks, 0x34)) < 0)
+    return ret;
+
+  dohm_data = (struct db_dohm *)(*entry)->data;
+  iptr = (int *)&((*entry)->data[0x18]);
+
+  if (sort_by == IPOD_TITLE)
+    dohm_data->unk1 = 0x00000003;
+  else if (sort_by == IPOD_ALBUM)
+    dohm_data->unk1 = 0x00000004;
+  else if (sort_by == IPOD_ARTIST)
+    dohm_data->unk1 = 0x00000005;
+  else if (sort_by == IPOD_GENRE)
+    dohm_data->unk1 = 0x00000007;
+  else if (sort_by == IPOD_COMPOSER)
+    dohm_data->unk1 = 0x00000012;
+
+  iptr[0] = num_tracks;
+
+  iptr += 10;
+
+  memcpy (iptr, tracks, num_tracks * 4);
 
   return 0;
 }
@@ -289,13 +363,43 @@ int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq) {
   return 0;
 }
 
-int db_dohm_fill (tree_node_t *entry, dohm_t **dohms) {
+int db_dohm_get_string (tree_node_t *dohm_header, u_int8_t **str) {
   struct db_dohm *dohm_data;
-  tree_node_t *dohm_header;
-  int i, *iptr;
+  u_int8_t *string_start;
   int string_format;
   int string_length;
-  u_int8_t *string_start;
+
+  if (dohm_header == NULL || str == NULL)
+    return -EINVAL;
+  
+  dohm_data   = (struct db_dohm *)dohm_header->data;
+  
+  if (dohm_header->string_header_size == 12) {
+    struct string_header_12 *string_header = (struct string_header_12 *)&(dohm_header->data[0x18]);
+    
+    string_length = string_header->string_length;
+    string_format = string_header->format;
+    
+    string_start  = &(dohm_header->data[0x24]);
+  } else if (dohm_header->string_header_size == 16) {
+    struct string_header_16 *string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
+    
+    string_length = string_header->string_length;
+    string_format = string_header->format;
+    
+    string_start  = &(dohm_header->data[0x28]);
+  } else
+    return -1;
+
+  to_utf8 (str, string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
+
+  return 0;
+}
+
+int db_dohm_fill (tree_node_t *entry, dohm_t **dohms) {
+  tree_node_t *dohm_header;
+  struct db_dohm *dohm_data;
+  int i, *iptr;
 
   if (entry == NULL || dohms == NULL)
     return -EINVAL;
@@ -306,31 +410,15 @@ int db_dohm_fill (tree_node_t *entry, dohm_t **dohms) {
 
   for (i = 0 ; i < entry->num_children ; i++) {
     dohm_header = entry->children[i];
-    dohm_data   = (struct db_dohm *)dohm_header->data;
+    dohm_data = (struct db_dohm *)dohm_header->data;
 
-    if (dohm_header->string_header_size == 12) {
-      struct string_header_12 *string_header = (struct string_header_12 *)&(dohm_header->data[0x18]);
-
-      string_length = string_header->string_length;
-      string_format = string_header->format;
-
-      string_start  = &(dohm_header->data[0x24]);
-    } else if (dohm_header->string_header_size == 16) {
-      struct string_header_16 *string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
-
-      string_length = string_header->string_length;
-      string_format = string_header->format;
-
-      string_start  = &(dohm_header->data[0x28]);
-    } else {
+    if (db_dohm_get_string (dohm_header, &((*dohms)[i].data)) < 0) {
       (*dohms)[i].type = -1;
 
       continue;
     }
 
     (*dohms)[i].type = dohm_data->type;
-
-    to_utf8 (&((*dohms)[i].data), string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
   }
 
   return 0;

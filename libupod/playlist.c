@@ -746,3 +746,64 @@ int db_playlist_get_name (ipoddb_t *itunesdb, int playlist, u_int8_t **name) {
 
   return 0;
 }
+
+int db_playlist_strip_indices (ipoddb_t *itunesdb) {
+  tree_node_t *pyhm_header, *dohm_header;
+  struct db_dohm *dohm_data;
+  struct db_pyhm *pyhm_data;
+
+  int i, ret;
+
+  db_log (itunesdb, 0, "db_playlist_strip_indices: entering...\n");
+  
+  if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, 0, &pyhm_header)) < 0)
+    return ret;
+ 
+  pyhm_data = (struct db_pyhm *)pyhm_header->data;
+
+  for (i = (pyhm_data->num_dohm - 1) ; i >= 0 ; i--) {
+    dohm_data = (struct db_dohm *)pyhm_header->children[i];
+
+    if (dohm_data->type == 0x34) {
+      db_pyhm_dohm_detach (pyhm_header, i, &dohm_header);
+      
+      db_free_tree (dohm_header);
+    }
+  }
+
+  db_log (itunesdb, 0, "db_playlist_strip_indices: complete\n");
+
+  return 0;
+}
+
+int db_playlist_add_indices (ipoddb_t *itunesdb) {
+  tree_node_t *pyhm_header, *dohm_header;
+  struct db_pyhm *pyhm_data;
+  int sort_by[] = {IPOD_TITLE, IPOD_ALBUM, IPOD_ARTIST, IPOD_GENRE, IPOD_COMPOSER, -1};
+
+  u_int32_t *tracks;
+  int num_tracks;
+
+  int i, ret;
+
+  db_log (itunesdb, 0, "db_playlist_add_indices: entering...\n");
+  
+  if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, 0, &pyhm_header)) < 0)
+    return ret;
+ 
+  pyhm_data = (struct db_pyhm *)pyhm_header->data;
+
+  for (i = 0 ; sort_by[i] > -1 ; i++) {
+    if (db_tihm_get_sorted_indices (itunesdb, sort_by[i], &tracks, &num_tracks) < 0) 
+      continue;
+
+    if (db_dohm_index_create (&dohm_header, sort_by[i], num_tracks, tracks) == 0)
+      db_pyhm_dohm_attach (pyhm_header, dohm_header);
+
+    free (tracks);
+  }
+
+  db_log (itunesdb, 0, "db_playlist_add_indices: complete\n");
+
+  return 0;
+}
