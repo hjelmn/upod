@@ -73,7 +73,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
   sprintf (testpath, "%s/%s", dir, ITUNESDB);
   if (db_load (&(ipod->itunesdb), testpath, 0x1) < 0) {
     fprintf(stderr, "iTunesDB not found, creating one\n");
-    db_create (&(ipod->itunesdb), "iPod", 4, 0x1);
+    db_create (&(ipod->itunesdb), "iPod", 0x1);
     ipod->itunesdb.path = strdup (testpath);
   }
 
@@ -113,7 +113,7 @@ static int ipod_init (ipod_t *ipod, int debug_level, FILE *debug_out) {
       db_photo_create (&(ipod->photodb));
       ipod->photodb.path = strdup (testpath);
 
-      db_album_create (&ipod->photodb, "iPod photos", 11);
+      db_album_create (&ipod->photodb, "iPod photos");
     }
   }
   /* try iPod/iPodPrefs */
@@ -170,5 +170,5 @@ int ipod_copy_to (ipod_t *ipod, char *topath, char *frompath) {
 }
 
 int ipod_rename (ipod_t *ipod, char *name, int name_len) {
-  return db_playlist_rename (&(ipod->itunesdb), 0, name, name_len);
+  return db_playlist_rename (&(ipod->itunesdb), 0, name);
 }

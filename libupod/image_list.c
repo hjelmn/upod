@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 image_list.c
+ *   v0.3.0a0 image_list.c
  *
  *   Functions to manipulate the list of artwork in an ArtworkDB.
  *   
@@ -106,16 +106,21 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   
   MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
   MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
-
-  if (thumb_width == 56)
-    file_id = 1017;
+  
+  if (thumb_width == 173)
+    file_id = 1009;
+  else if (thumb_width == 220)
+    file_id = 1013;
+  else if (thumb_width == 130)
+    file_id = 1015;
   else if (thumb_width == 140)
     file_id = 1016;
-  else if (thumb_width == 640)
+  else if (thumb_width == 56)
+    file_id = 1017;
+  else if (thumb_width == 712)
     file_id = 1019;
   else
-    file_id = 1015;
-
+    file_id = 1008; /* Arbitrary */
 
   tmp = strdup (photodb->path);
   sprintf (file_name, "%s/F%lu_1.ithmb", dirname (tmp), file_id);
@@ -142,7 +147,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   return 0;
 }
 
-static int iihm_lookup (ipoddb_t *photodb, int id1, int id2) {
+static int iihm_lookup (ipoddb_t *photodb, u_int64_t id) {
   tree_node_t *dshm_header;
   int i, ret;
   struct db_ilhm *ilhm_data;
@@ -163,14 +168,14 @@ static int iihm_lookup (ipoddb_t *photodb, int id1, int id2) {
   for (i = 0 ; i < ilhm_data->num_images ; i++) {
     struct db_iihm *iihm_data = (struct db_iihm *)dshm_header->children[i + 1]->data;
 
-    if (iihm_data->id1 == id1 && iihm_data->id2 == id2)
+    if (iihm_data->id == id)
       return 1;
   }
 
   return 0;
 }
 
-int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_size, int id1, int id2) {
+int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_int64_t id) {
   tree_node_t *dshm_header, *new_iihm_header;
   struct db_ilhm *ilhm_data;
   struct db_dfhm *dfhm_data;
@@ -188,7 +193,7 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
     return ret;
   }
 
-  if (iihm_lookup (photodb, id1, id2)) {
+  if (iihm_lookup (photodb, id)) {
     db_log (photodb, ret, "Image already exists in the database\n");
 
     return 0;
@@ -198,7 +203,7 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
 
   identifier = dfhm_data->next_iihm;
 
-  if ((ret = db_iihm_create (&new_iihm_header, identifier, id1, id2)) < 0) {
+  if ((ret = db_iihm_create (&new_iihm_header, identifier, id)) < 0) {
     db_log (photodb, ret, "Could not create iihm entry\n");
     return ret;
   }
@@ -207,7 +212,6 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   db_attach (dshm_header, new_iihm_header);
 
   db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
-
   if (db_thumb_add (photodb, identifier, image_data, image_size, 56, 56) < 0) {
     db_detach (dshm_header, dshm_header->num_children-1, &new_iihm_header);
     db_free_tree (new_iihm_header);
@@ -216,6 +220,8 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   }
 
   db_thumb_add (photodb, identifier, image_data, image_size, 140, 140);
+
+  db_album_image_add (photodb, 0, identifier);
 
   /* everything was successfull, increase the image count in the ilhm header */
   ilhm_data = (struct db_ilhm *)dshm_header->children[0]->data;
@@ -293,9 +299,7 @@ static dohm_t *db_dohm_fill_art (tree_node_t *entry) {
     iptr = (int *)dohm_list[i]->data;
     
     dohms[i].type = dohm_data->type;
-    dohms[i].size = iptr[6];
-    dohms[i].data = (u_int16_t *) calloc (dohms[i].size, 1);
-    memcpy(dohms[i].data, &(dohm_list[i]->data[0x24]), dohms[i].size);
+    to_utf8 (&(dohms[i].data), &(dohm_list[i]->data[0x24]), iptr[6], "UTF-16BE");
   }
 
   return dohms;
@@ -321,8 +325,7 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
   iihm_data = (struct db_iihm *)iihm_header->data;
 
   iihm->identifier = iihm_data->identifier;
-  iihm->id1        = iihm_data->id1;
-  iihm->id2        = iihm_data->id2;
+  iihm->id         = iihm_data->id;
   iihm->num_inhm   = iihm_data->num_thumbs;
 
   iihm->inhms      = (inhm_t *) calloc (iihm->num_inhm, sizeof (inhm_t));

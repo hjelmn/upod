@@ -23,7 +23,7 @@
 
 #define IIHM_HEADER_SIZE 0x98
 
-int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2) {
+int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id) {
   struct db_iihm *iihm_data;
   int ret;
 
@@ -32,8 +32,7 @@ int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2) {
 
   iihm_data = (struct db_iihm *)(*entry)->data;
   iihm_data->identifier  = identifier;
-  iihm_data->id1 = id1;
-  iihm_data->id2 = id2;
+  iihm_data->id = id;
 
   return 0;
 }

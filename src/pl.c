@@ -70,13 +70,12 @@ int main(int argc, char *argv[]) {
 	      ((pyhm_t *)tmp->data)->name);
     db_playlist_list_free(&list);
   } else if (cr) {
-    if (db_playlist_create (&itunesdb, argv[3], strlen(argv[3])) > 0) {
+    if (db_playlist_create (&itunesdb, argv[3]) > 0) {
       db_write (itunesdb, argv[1]);
     }
 
   } else if (rn) {
-    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4],
-			    strlen(argv[4])) == 0) {
+    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4]) == 0) {
       db_write (itunesdb, argv[1]);
     }
   } else {

@@ -104,11 +104,11 @@ static int db_plhm_create (tree_node_t **entry) {
    < 0 on error
      0 on success
 **/
-int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
+int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, int flags) {
   tree_node_t *root, *entry, *entry2;
   int ret;
 
-  if ((itunesdb == NULL) || (db_name == NULL) || (name_len < 1))
+  if ((itunesdb == NULL) || (db_name == NULL))
     return -EINVAL;
 
   db_log (itunesdb, 0, "db_create: entering...\n");
@@ -133,7 +133,7 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
   itunesdb->flags = flags;
   itunesdb->type  = 0;
 
-  ret = db_playlist_create (itunesdb, db_name, name_len);
+  ret = db_playlist_create (itunesdb, db_name);
 
   db_log (itunesdb, 0, "db_create: complete\n");
 
@@ -173,6 +173,8 @@ int db_photo_create (ipoddb_t *photodb) {
 
   photodb->tree_root = root;
   photodb->type = 1;
+
+  db_album_create (photodb, "Artwork");
 
   db_log (photodb, 0, "db_photo_create: complete\n");
 

@@ -75,7 +75,7 @@ int dir_add (ipoddb_t *ipod, ipoddb_t *artworkdb, char *dir) {
   } else if (S_ISREG (statinfo.st_mode) || S_ISLNK(statinfo.st_mode)) {
     /* regular files get inserted into the database */
     path_unix_mac_root (dir, path_temp);
-    ret = db_song_add (ipod, artworkdb, dir, path_temp, strlen(path_temp), 0, 1);
+    ret = db_song_add (ipod, artworkdb, dir, path_temp, 0, 1);
 
     added = (ret < 0) ? 0 : 1;
   } else if (S_ISDIR (statinfo.st_mode)) {
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     if (argc < 5) usage();
     printf ("Creating a database... ");
 
-    if ((ret = db_create(&itunesdb, "iPod", 4, 0x1)) < 0) {
+    if ((ret = db_create(&itunesdb, "iPod", 0x1)) < 0) {
       printf("Could not create database.\n");
       exit(2);
     }

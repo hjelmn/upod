@@ -38,8 +38,6 @@
 #include <math.h>
 #include <string.h>
 
-
-unsigned int crc32 (unsigned char *, unsigned int);
 void mp3_debug (char *, ...);
 
 u_int16_t big16_2_arch16 (u_int16_t x) {
@@ -122,7 +120,7 @@ int is_media_header (int type) {
 
 int parse_covr (char *buffer, int buffer_size, FILE *fd, struct qt_meta meta, tihm_t *tihm) {
   unsigned char *image_data;
-  unsigned long cksum;
+  u_int64_t cksum;
 
   if (tihm->image_data)
     return 0;
@@ -134,13 +132,12 @@ int parse_covr (char *buffer, int buffer_size, FILE *fd, struct qt_meta meta, ti
   fseek (fd, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
   fread (image_data, 1, meta.offset - sizeof (struct qt_meta), fd);
 
-  /* TODO -- Use a 64 bit checksum */
-  cksum = crc32 (image_data, meta.offset - sizeof (struct qt_meta));
+  cksum = crc64 (image_data, meta.offset - sizeof (struct qt_meta));
 
   tihm->has_artwork = 1;
 
   /* By using a checksum duplicate artwork will be avoided */
-  tihm->artwork_id1 = cksum;
+  tihm->artwork_id  = cksum;
 
   tihm->image_data  = image_data;
   tihm->image_size  = meta.offset - sizeof (struct qt_meta);

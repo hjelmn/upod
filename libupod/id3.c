@@ -21,8 +21,6 @@
 #include "config.h"
 #endif
 
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -43,6 +41,7 @@
 
 #define ID3_DEBUG 0
 
+#include "itunesdbi.h"
 #include "genre.h"
 
 #ifdef HAVE_LIBGEN_H
@@ -73,11 +72,22 @@ u_int32_t big32_2_arch32 (u_int32_t); /* defined in aac.c */
 
 static int synchsafe_to_int (char *buf, int nbytes) {
   int id3v2_len = 0;
+  int error = 0;
   int i;
 
   for (i = 0 ; i < nbytes ; i++) {
     id3v2_len <<= 7;
     id3v2_len += buf[i] & 0x7f;
+    if (buf[i] & 0xf0)
+      error = 1;
+  }
+
+  if (error) {
+    id3v2_len = 0;
+    for (i = 0 ; i < nbytes ; i++) {
+      id3v2_len <<= 8;
+      id3v2_len += buf[i] & 0xff;
+    }
   }
 
   return id3v2_len;
@@ -187,7 +197,8 @@ char *id3v1_string (signed char *unclean) {
 
 static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_majorversion) {
   unsigned char *image_data;
-  int c, cksum;
+  int c;
+  u_int64_t cksum;
 
   if (tihm->image_data != NULL)
     return -1;
@@ -211,12 +222,12 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
   image_data = (unsigned char *)calloc (1, length);
   fread (image_data, 1, length, fh);
 
-  cksum = crc32 (image_data, length);
+  cksum = crc64 (image_data, length);
 
   tihm->has_artwork = 1;
   
   /* By using a checksum we can garuntee no duplicate artwork */
-  tihm->artwork_id1 = cksum;
+  tihm->artwork_id  = cksum;
 
   tihm->image_data  = image_data;
   tihm->image_size  = length;

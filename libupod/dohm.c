@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 dohm.c
+ *   v0.3.0 dohm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -85,30 +85,12 @@ int dohm_add (tihm_t *tihm, char *data, int data_len, char *encoding, int data_t
   dohm_t *dohm;
 
   if (data_len <= 0 || data_type < 1)
-    return -1;
+    return -EINVAL;
 
   if ((dohm = dohm_create (tihm, data_type)) == NULL)
     return -1;
 
-  to_unicode (&(dohm->data), &(dohm->size), data, data_len, encoding);
-
-  return 0;
-}
-
-int dohm_add_path (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type,
-		   int ipod_use_unicode_hack) {
-  dohm_t *dohm;
-
-  if (data_len == 0)
-    return -1;
-
-  if (ipod_use_unicode_hack == 0)
-    return dohm_add (tihm, data, data_len, encoding, data_type);
-
-  if ((dohm = dohm_create (tihm, data_type)) == NULL)
-    return -1;
-
-  to_unicode_hack (&(dohm->data), &(dohm->size), data, data_len, encoding);
+  to_utf8 (&(dohm->data), data, data_len, encoding);
 
   return 0;
 }
@@ -134,12 +116,15 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
   struct db_dohm *dohm_data;
   int ret;
 
+  if (size < DOHM_HEADER_SIZE)
+    return -EINVAL;
+
   if ((ret = db_node_allocate (entry, DOHM, DOHM_HEADER_SIZE, size)) < 0)
     return ret;
 
   (*entry)->data = realloc ((*entry)->data, size);
   memset (&((*entry)->data[DOHM_HEADER_SIZE]), 0, size - DOHM_HEADER_SIZE);
-  (*entry)->size = size;
+  (*entry)->data_size = size;
 
   dohm_data = (struct db_dohm *)(*entry)->data;
   dohm_data->type        = type;
@@ -228,10 +213,17 @@ int db_dohm_create_pihm (tree_node_t **entry, int order) {
   return 0;
 }
 
-int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
+int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, int flags) {
   int entry_size;
+  u_int16_t *unicode_data;
+  size_t unicode_length;
 
-  entry_size   = DOHM_HEADER_SIZE + string_header_size + dohm.size;
+  if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
+    to_unicode_hack (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+  else
+    to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+
+  entry_size   = DOHM_HEADER_SIZE + string_header_size + unicode_length;
 
   db_dohm_create_generic (entry, entry_size, dohm.type);
 
@@ -240,14 +232,14 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
     
     string_header = (struct string_header_12 *)&((*entry)->data[DOHM_HEADER_SIZE]);
 
-    string_header->string_length = dohm.size;
+    string_header->string_length = unicode_length;
     string_header->format = 0x00000002;
   } else {
     struct string_header_16 *string_header;
     
     string_header = (struct string_header_16 *)&((*entry)->data[DOHM_HEADER_SIZE]);
 
-    string_header->string_length = dohm.size;
+    string_header->string_length = unicode_length;
     string_header->unk0 = 0x00000001;
 
     string_header->format = 0x00000000;
@@ -255,8 +247,8 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
 
   (*entry)->string_header_size = string_header_size;
 
-  memcpy(&(*entry)->data[DOHM_HEADER_SIZE + string_header_size], dohm.data,
-	 dohm.size);
+  memcpy(&(*entry)->data[DOHM_HEADER_SIZE + string_header_size], unicode_data,
+	 unicode_length);
   
   return 0;
 }
@@ -270,18 +262,15 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
    < 0 if an error occured
      0 if successful
 */
-int db_dohm_create_eq (tree_node_t **entry, int eq) {
-  int *iptr;
-  char ceq[] = "\x23\x21\x23\x31\x30\x00\x23\x21\x23";
-
-  db_dohm_create_generic(entry, DOHM_EQ_SIZE, IPOD_EQ);
-  iptr = (int *)(*entry)->data;
-    
-  iptr[6] = 0x01;
-  iptr[7] = 0x12;
+int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq) {
+  dohm_t dohm;
+  char ceq[9] = "\x23\x21\x23\x31\x30\x00\x23\x21\x23";
 
   ceq[5] = eq;
-  char_to_unicode ((u_int16_t *)&(*entry)->data[0x28], ceq, 9);
+  dohm.data = ceq;
+  dohm.type = IPOD_EQ;
+  
+  db_dohm_create (entry, dohm, 16, 0);
 
   return 0;
 }
@@ -289,23 +278,43 @@ int db_dohm_create_eq (tree_node_t **entry, int eq) {
 dohm_t *db_dohm_fill (tree_node_t *entry) {
   dohm_t *dohms;
   struct db_dohm *dohm_data;
-  tree_node_t **dohm_list;
+  tree_node_t *dohm_header;
   int i, *iptr;
+  int string_format;
+  int string_length;
+  u_int8_t *string_start;
 
   dohms = (dohm_t *) calloc (entry->num_children, sizeof(dohm_t));
-
-  dohm_list = entry->children;
 
   iptr = (int *)entry->data;
 
   for (i = 0 ; i < entry->num_children ; i++) {
-    dohm_data = (struct db_dohm *)dohm_list[i]->data;
+    dohm_header = entry->children[i];
+    dohm_data   = (struct db_dohm *)dohm_header->data;
+
+    if (dohm_header->string_header_size == 12) {
+      struct string_header_12 *string_header = (struct string_header_12 *)&(dohm_header->data[0x18]);
+
+      string_length = string_header->string_length;
+      string_format = string_header->format;
+
+      string_start  = &(dohm_header->data[0x24]);
+    } else if (dohm_header->string_header_size == 16) {
+      struct string_header_16 *string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
+
+      string_length = string_header->string_length;
+      string_format = string_header->format;
+
+      string_start  = &(dohm_header->data[0x28]);
+    } else {
+      dohms[i].type = -1;
+
+      continue;
+    }
 
     dohms[i].type = dohm_data->type;
-    dohms[i].size = iptr[7];
-    
-    dohms[i].data = (u_int16_t *) calloc (dohms[i].size, 1);
-    memcpy(dohms[i].data, &(dohm_list[i]->data[40]), dohms[i].size);
+
+    to_utf8 (&(dohms[i].data), string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
   }
 
   return dohms;
@@ -353,7 +362,7 @@ int db_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm) {
     db_free_tree (dohm_header);
   }
 
-  db_dohm_create (&dohm_header, *dohm, 16);
+  db_dohm_create (&dohm_header, *dohm, 16, 0);
   db_attach (tihm_header, dohm_header);
 
   return 0;

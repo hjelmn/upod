@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 inhm.c
+ *   v0.3.0 inhm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -95,10 +95,9 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
   
   (void)fclose (fh);
 
-  to_unicode (&(dohm.data), &(dohm.size), rel_mac_path, strlen(rel_mac_path), "ASCII");
+  dohm.data = rel_mac_path;
   dohm.type = 3;
-  (void)db_dohm_create (&dohm_header, dohm, 12);
-  free (dohm.data);
+  (void)db_dohm_create (&dohm_header, dohm, 12, 0);
   
   (void)db_attach (*entry, dohm_header);
   

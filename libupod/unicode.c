@@ -29,23 +29,14 @@
 #define const /* get rid of const (useless in c anyway?) */
 #endif
 #include <iconv.h>
-void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
-  int i;
- 
-  memset (dst, 0, src_length * 2);
-  
-  for (i = 0 ; i < src_length ; i++)
-    dst[i] = src[i];
-}
 
-void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
-		      size_t src_len) {
+void to_utf8 (u_int8_t **dst, u_int8_t *src, size_t src_len, char *encoding) {
   iconv_t conv;
   size_t final_size;
   char *inbuf, *outbuf;
   size_t inbytes, outbytes;
   
-  if (dst == NULL || dst_len == NULL)
+  if (dst == NULL)
     return;
 
   if (src_len == 0) {
@@ -56,20 +47,20 @@ void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
   inbytes = src_len;
   inbuf   = (char *)src;
 
-  /* UTF-8 encoding could be as large as 3 bytes for every 2 bytes
-     of Unicode input */
-  outbytes = src_len/2;
+  /* Allocate plenty of space for the conversion */
+  outbytes = src_len * 3;
   *dst = outbuf  = calloc (outbytes + 1, 1);
 
-  conv = iconv_open ("ASCII", "UTF-16BE");
+  conv = iconv_open ("UTF-8", encoding);
+
   iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
+
   iconv_close (conv);
  
-  final_size = src_len/2 - outbytes;
+  final_size = (src_len * 3) - outbytes;
 
   *dst = realloc (*dst, final_size + 1);
   (*dst)[final_size] = '\0';
-  *dst_len = final_size;
 }
 
 void path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,

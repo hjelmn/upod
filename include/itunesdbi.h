@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 itunesdbi.h
+ *   v0.3.0 itunesdbi.h
  *
  *   Internal functions. Do not include ipoddbi.h in any end software.
  *
@@ -33,7 +33,7 @@
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
-#define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
+#define   free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
 #endif
 
 /* some structures to help clarify code */
@@ -160,8 +160,7 @@ struct db_tihm {
   u_int32_t bookmark_time;
 
   /* These ids might be an image checksum to avoid duplicates */
-  u_int32_t iihm_id1;
-  u_int32_t iihm_id2;
+  u_int64_t iihm_id;
   u_int32_t unk1;        /* includes Beats Per Minute, Checked, etc */
   u_int32_t has_artwork; /* usually 0xffff0001 BE */
 
@@ -206,23 +205,28 @@ struct db_inhm {
   u_int32_t image_size;
   u_int32_t unk2;
 
-  u_int16_t height;
   u_int16_t width;
+  u_int16_t height;
   u_int32_t unk3[3];
 
   u_int32_t unk4[7];
 };
 
 /* Image Item Header */
+/* This structure might have problems on machines
+   with 64-bit alignment. */
 struct db_iihm {
   u_int32_t iihm;
   u_int32_t header_size;
   u_int32_t record_size;
   u_int32_t num_thumbs;
 
+  /* Internal Database identifier */
   u_int32_t identifier;
-  u_int32_t id1;
-  u_int32_t id2;
+
+  /* Identifier shared with iTunesDB */
+  u_int64_t id;
+
   u_int32_t unk0;
 
   u_int32_t unk1[4];
@@ -375,6 +379,19 @@ static u_int32_t string_to_int (unsigned char *string) {
   return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
 }
 
+struct tree_node {
+  struct tree_node *parent;
+  
+  u_int8_t *data;
+  size_t data_size;
+  
+  int num_children;
+  struct tree_node **children;
+  
+  /* Only affects dohm entries containing unicode string. */
+  int string_header_size;
+};
+
 
 /* iTunesDB specific */
 #define DBHM string_to_int("dbhm")
@@ -460,14 +477,13 @@ int     db_node_allocate (tree_node_t **entry, unsigned long type,
 
 /* tihm.c */
 int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t **entry, tihm_t *tihm);
+int     db_tihm_create   (tree_node_t **entry, tihm_t *tihm, int flags);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
 int     db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 			  tree_node_t **parent, int tihm_num);
 int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
-			     size_t path_len, int stars, int tihm_num,
-			     int ipod_use_unicode_hack);
+			     int stars, int tihm_num);
 void    tihm_free        (tihm_t *tihm);
 
 /* pihm.c */
@@ -496,8 +512,8 @@ dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
 int     db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
 int     db_dohm_create_pihm (tree_node_t **entry, int order);
-int     db_dohm_create_eq (tree_node_t **entry, int eq);
-int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size);
+int     db_dohm_create_eq (tree_node_t **entry, u_int8_t eq);
+int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, int flags);
 dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
 /* Operations on a wierd dohm */
@@ -512,15 +528,12 @@ int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
 int db_dshm_create (tree_node_t **entry, int type);
 
 /* unicode.c */
-void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length);
-void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length);
 void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		 size_t src_len, char *src_encoding);
 void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		      size_t src_len, char *src_encoding);
-void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
-		      size_t src_len);
 int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len);
+void to_utf8 (u_int8_t **dst, u_int8_t *src, size_t src_len, char *encoding);
 
 int mp3_fill_tihm (u_int8_t *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);
@@ -536,7 +549,7 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 		    char *rel_mac_path, MagickWand *magick_wand);
 
 /* iihm.c */
-int db_iihm_create (tree_node_t **entry, int identifier, int id1, int id2);
+int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id);
 int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier);
 int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
                       tree_node_t **parent, int iihm_identifier);
@@ -544,5 +557,10 @@ int db_iihm_retrieve (ipoddb_t *photodb, tree_node_t **entry,
 /* fihm.c */
 int db_fihm_create (tree_node_t **entry, unsigned int file_id);
 int db_fihm_register (ipoddb_t *photodb, char *file_name, unsigned long file_id);
+
+
+/* crc */
+u_int32_t crc32 (u_int8_t *buf, size_t length);
+u_int64_t crc64 (u_int8_t *buf, size_t length);
 
 #endif /* __ITUNESDBI_H */

@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.1 tihm.c
+ *   v0.3.0a tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -107,8 +107,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
   if (tihm->has_artwork) {
     tihm_data->has_artwork = 0xffff0001;
-    tihm_data->iihm_id1 = tihm->artwork_id1;
-    tihm_data->iihm_id2 = tihm->artwork_id2;
+    tihm_data->iihm_id  = tihm->artwork_id;
   } else
     tihm_data->has_artwork = 0xffffffff;
 
@@ -118,8 +117,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   return 0;
 }
 
-int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t path_len,
-			 int stars, int tihm_num, int ipod_use_unicode_hack) {
+int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, int stars, int tihm_num) {
   if (tihm == NULL)
     return -1;
 
@@ -142,7 +140,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
   } else
     return -1;
   
-  dohm_add_path (tihm, ipod_path, path_len, "UTF-8", IPOD_PATH, ipod_use_unicode_hack);
+  dohm_add (tihm, ipod_path, strlen(ipod_path), "UTF-8", IPOD_PATH);
 
   tihm->num = tihm_num;
   tihm->stars = stars;
@@ -156,7 +154,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
  Creates a database entry from a structure describing the song and stores the
  data into the location pointed to by entry.
 */
-int db_tihm_create (tree_node_t **entry, tihm_t *tihm) {
+int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags) {
   tree_node_t *dohm;
   int i, ret;
 
@@ -166,7 +164,7 @@ int db_tihm_create (tree_node_t **entry, tihm_t *tihm) {
   tihm_db_fill (*entry, tihm);
   
   for (i = 0 ; i < tihm->num_dohm ; i++) {
-    if (db_dohm_create (&dohm, tihm->dohms[i], 16) < 0)
+    if (db_dohm_create (&dohm, tihm->dohms[i], 16, flags) < 0)
       return -1;
 
     db_attach (*entry, dohm);
@@ -207,8 +205,7 @@ static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
   tihm->creation_date = dbtihm->creation_date;
 
   tihm->has_artwork = (dbtihm->has_artwork != 0xffffffff) ? 1 : 0;
-  tihm->artwork_id1  = dbtihm->iihm_id1;
-  tihm->artwork_id2  = dbtihm->iihm_id2;
+  tihm->artwork_id  = dbtihm->iihm_id;
   
   tihm->dohms     = db_dohm_fill (entry);
 

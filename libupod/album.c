@@ -121,13 +121,13 @@ void db_album_list_free (GList **head) {
   db_playlist_list_free (head);
 }
 
-int db_album_create (ipoddb_t *photodb, char *name, int name_len) {
+int db_album_create (ipoddb_t *photodb, u_int8_t *name) {
   tree_node_t *new_abhm, *new_dohm, *dshm_header;
   struct db_alhm *alhm_data;
   struct string_header_12 *string_header;
   int ret;
 
-  if (name == NULL || name_len == 0)
+  if (name == NULL)
     return -EINVAL;
 
   db_log (photodb, 0, "db_album_create: entering...\n");
@@ -139,16 +139,16 @@ int db_album_create (ipoddb_t *photodb, char *name, int name_len) {
     return ret;
 
   /* create the title entry for the new playlist */
-  if ((ret = db_dohm_create_generic (&new_dohm, 0x18 + 12 + name_len, 1)) < 0)
+  if ((ret = db_dohm_create_generic (&new_dohm, 0x18 + 12 + strlen(name), 1)) < 0)
     return ret;
 
   string_header = (struct string_header_12 *)&(new_dohm->data[0x18]);
-  string_header->string_length = name_len;
+  string_header->string_length = strlen(name);
   string_header->format = 0x1;
 
   new_dohm->string_header_size = 12;
 
-  memcpy (&new_dohm->data[0x24], name, name_len);
+  memcpy (&new_dohm->data[0x24], name, strlen(name));
 
   db_abhm_dohm_attach (new_abhm, new_dohm);
 

@@ -9,45 +9,87 @@
 
 #include <machine/endian.h>
 
-#define CRC32POLY 	0x04C11DB7
+#define CRC32POLY 	0x04C11DB7l
+#define CRC64POLY 	0xd800000000000000ll
 
-/*
- * 1024 byte look up table.
- */
 void crc32_init_table(void);
-static u_int32_t *crc32_table = NULL;
+void crc64_init_table(void);
+
+static u_int32_t crc32_table[256];
+static u_int64_t crc64_table[256];
+
+static int crc32_initialized = 0;
+static int crc64_initialized = 0;
 
 void crc32_init_table(void) {
   u_int32_t i, j, r;
   
-  crc32_table = (u_int32_t *)malloc(sizeof(u_int32_t) * 256);
-  
+  crc32_initialized = 1;
+
   for (i = 0 ; i < 256 ; i++) {
-    r = i << 24;
+    r = i;
+
     for (j = 0; j < 8; j++)  {
-      if (r & 0x80000000)
-	r = (r << 1) ^ CRC32POLY;
+      if (r & 1)
+	r = (r >> 1) ^ CRC32POLY;
       else
-	r <<= 1;
+	r >>= 1;
     }
+
     crc32_table[i] = r;
   }
-  return;
 }
 
-unsigned int crc32 (unsigned char *buf, unsigned int length) {
+void crc64_init_table(void) {
+  u_int32_t i, j;
+  u_int64_t r;
+  
+  crc64_initialized = 1;
+
+  for (i = 0 ; i < 256 ; i++) {
+    r = i;
+
+    for (j = 0; j < 8; j++)  {
+      if (r & 1)
+	r = (r >> 1) ^ CRC64POLY;
+      else
+	r >>= 1;
+    }
+
+    crc64_table[i] = r;
+  }
+}
+
+u_int32_t crc32 (u_int8_t *buf, size_t length) {
   unsigned long crc = 0;
   int i;
   
-  if (crc32_table == NULL)
+  if (crc32_initialized == 0)
     crc32_init_table();
   
   for (i = 0 ; i < length ; i++)
-    crc = (crc<<8) ^ crc32_table[((crc >> 24) ^ buf[i]) & 0xff];
+    crc = (crc >> 8) ^ crc32_table[(crc ^ buf[i]) & 0xff];
   
-#if BYTE_ORDER == BIG_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
   crc = bswap_32(crc);
-#endif /* BIG_ENDIAN */
+#endif
   
+  return crc;
+}
+
+u_int64_t crc64 (u_int8_t *buf, size_t length) {
+  u_int64_t crc = 0;
+  int i;
+  
+  if (crc64_initialized == 0)
+    crc64_init_table();
+  
+  for (i = 0 ; i < length ; i++)
+    crc = (crc >> 8) ^ crc64_table[(crc ^ buf[i]) & 0xff];
+
+#if BYTE_ORDER==LITTLE_ENDIAN
+  crc = bswap_64 (crc);
+#endif
+
   return crc;
 }

@@ -134,10 +134,9 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
       mac_path = path_unix_mac_root (scratch);
       if ((tmp = g_list_find_custom (hidden, scratch,
 				     (GCompareFunc)glist_cmp)) != NULL) {
-	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, strlen (mac_path), 0, 0);
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 0);
 
-	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
-						    strlen (mac_path))) >= 0)) {
+	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
 	  db_song_hide (itunesdb, tihm_num);
 	  tihm_num = -1;
 	}
@@ -145,10 +144,9 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
 	free (tmp->data);
 	hidden = g_list_delete_link (hidden, tmp);
       } else {
-	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, strlen (mac_path), 0, 1);
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
 
-	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path,
-						    strlen (mac_path))) >= 0)) {
+	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
 	  db_song_unhide (itunesdb, tihm_num);
 	  tihm_num = -1;
 	}
@@ -199,12 +197,11 @@ int parse_playlists (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
 
     if (S_ISDIR (statinfo.st_mode) && 
 	strcasecmp(dirent->d_name, "main_playlist")) {
-      playlist = db_lookup_playlist (itunesdb, dirent->d_name, strlen(dirent->d_name));
+      playlist = db_lookup_playlist (itunesdb, dirent->d_name);
 
       if (playlist < 0) {
 	printf ("Creating playlist: %s\n", dirent->d_name);
-	playlist = db_playlist_create (itunesdb, dirent->d_name,
-				       strlen(dirent->d_name));
+	playlist = db_playlist_create (itunesdb, dirent->d_name);
       }
     }
 
@@ -267,9 +264,6 @@ int cleanup_database (ipoddb_t *itunesdb) {
 
   struct stat statinfo;
 
-  u_int8_t *buffer;
-  size_t buffer_len;
- 
   db_song_list (itunesdb, &song_list);
 
   if (song_list == NULL)
@@ -281,18 +275,17 @@ int cleanup_database (ipoddb_t *itunesdb) {
     for (i = 0 ; i < tihm->num_dohm ; i++)
       if (tihm->dohms[i].type == IPOD_PATH)
 	break;
-    if (i != tihm->num_dohm)
-      path_to_utf8 (&buffer, &buffer_len, tihm->dohms[i].data, tihm->dohms[i].size);
+    if (i == tihm->num_dohm)
+      continue;
 
-    unix_path = path_mac_unix (buffer);
+    unix_path = path_mac_unix (tihm->dohms[i].data);
 
     if (stat (unix_path, &statinfo) < 0) {
-      printf ("%s(%s): no longer exists. Removing from the iTunesDB\n", unix_path, buffer);
+      printf ("%s(%s): no longer exists. Removing from the iTunesDB\n", unix_path, tihm->dohms[i].data);
       db_song_remove (itunesdb, tihm->num);
     }
 
     free (unix_path);
-    free (buffer);
   }
 
   db_song_list_free (&song_list);
@@ -370,7 +363,7 @@ int main (int argc, char *argv[]) {
       }
     }
   } else {
-    if ((ret = db_create (&itunesdb, ipod_name, strlen(ipod_name), flags)) < 0) {
+    if ((ret = db_create (&itunesdb, ipod_name, flags)) < 0) {
       fprintf (stderr, "Error creating iTunesDB\n");
       
       exit (1);
@@ -384,8 +377,8 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  itunesdb.path   = ITUNESDB;
-  artworkdb.path = ARTWORKDB;
+  itunesdb.path  = strdup(ITUNESDB);
+  artworkdb.path = strdup(ARTWORKDB);
 
   cleanup_database (&itunesdb);
 

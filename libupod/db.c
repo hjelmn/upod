@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.2 db.c
+ *   v0.3.0 db.c
  *
  *   Routines for reading/writing the iPod's databases.
  *
@@ -46,7 +46,7 @@
   the database below an entry.
 */
 static int db_size_tree (tree_node_t *ptr) {
-  int i, size = ptr->size;
+  int i, size = ptr->data_size;
 
   for (i = 0 ; i < ptr->num_children ; i++)
     size += db_size_tree (ptr->children[i]);
@@ -202,7 +202,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   
 
   tnode_0->num_children = 0;
-  tnode_0->size = copy_size;
+  tnode_0->data_size = copy_size;
   tnode_0->data = calloc (copy_size, 1);
 
   if (tnode_0->data == NULL) {
@@ -385,7 +385,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
       if (string_header->format != 1)
 	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
     } else
-      swap = entry->size/4;
+      swap = entry->data_size/4;
 
   } else
     swap = ((int *)entry->data)[1]/4;
@@ -393,7 +393,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   bswap_block(entry->data, 4, swap);
 #endif
 
-  ret += write (fd, entry->data, entry->size);
+  ret += write (fd, entry->data, entry->data_size);
 
 
 #if BYTE_ORDER == BIG_ENDIAN
@@ -541,8 +541,8 @@ int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int 
     exit (EXIT_FAILURE);
   }
 
-  (*entry)->size = size;
-  (*entry)->data = calloc ((*entry)->size, 1);
+  (*entry)->data_size = size;
+  (*entry)->data = calloc ((*entry)->data_size, 1);
   if ((*entry)->data == NULL) {
     perror ("db_node_allocate|calloc");
 
@@ -553,6 +553,8 @@ int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int 
   
   data->type         = type;
   data->cell_size    = size;
+
+  /* Tree nodes do not always use this integer for a subtree-size. */
   data->subtree_size = subtree;
 
   return 0;

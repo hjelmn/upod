@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0a itunesdb.h
+ *   v0.3.0a itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -75,28 +75,19 @@ enum itunesdb_flags {
      Files with non-ascii characters in their names will not play in
      iTunes if this flag was set when they were added. */
   FLAG_UNICODE_HACK = 0x1,
+
+  /* uPod will use utf-8 encoding for strings in the database.
+     With exception of playlist names. *NOTE* Does nothing yet! */
+  FLAG_NO_UNICODE = 0x2,
 };
 
 typedef struct _ipoddatabase {
-  struct tree_node {
-    struct tree_node *parent;
-
-    u_int8_t *data;
-    size_t size;
-
-    int num_children;
-    struct tree_node **children;
-
-    /* Only affects dohm entries containing unicode string. */
-    int string_header_size;
-  } *tree_root;
+  struct tree_node *tree_root;
 
   int log_level;
   FILE *log;
   int flags;
   int last_entry;
-
-  int database_type;
 
   char *path;
   int type; /* 0 == iTunesDB, 1 == ArtworkDB */
@@ -122,10 +113,9 @@ typedef struct _ipod {
  
 typedef struct dohm {
   u_int32_t type;
-  size_t size;
 
-  /* unicode string */
-  u_int16_t *data;
+  /* UTF-8 encoded string */
+  u_int8_t *data;
 } dohm_t;
 
 typedef dohm_t mhod_t;
@@ -146,8 +136,7 @@ typedef inhm_t ipod_thumbnail_t;
 typedef struct iihm {
   int identifier;
 
-  int id1;
-  int id2;
+  u_int64_t id;
 
   u_int32_t num_inhm;
   inhm_t *inhms;
@@ -187,8 +176,7 @@ typedef struct tihm {
 
   /* These three fields only apply to color iPods */
   u_int32_t has_artwork;
-  u_int32_t artwork_id1;
-  u_int32_t artwork_id2;
+  u_int64_t artwork_id;
 
   unsigned char *image_data;
   size_t image_size;
@@ -215,12 +203,12 @@ int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
 
 /* itunesdb2/create.c */
-int    db_create (ipoddb_t *ipoddb, char *db_name, int name_len, int flags);
+int    db_create (ipoddb_t *ipoddb, u_int8_t *db_name, int flags);
 int    db_photo_create (ipoddb_t *photodb);
 
 /* itunesdb2/song_list.c */
 int  db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
-int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show);
+int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *mac_path, int stars, int show);
 int  db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
 int  db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
@@ -230,8 +218,7 @@ int  db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 int  db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 
 /* itunesdb2/image_list.c */
-int  db_photo_add (ipoddb_t *artworkdb, unsigned char *image_data, size_t image_size, int id1, int id2);
-int  db_artwork_add (ipoddb_t *artworkdb, unsigned char *image_data, size_t image_size, int id1, int id2);
+int  db_photo_add (ipoddb_t *artworkdb, u_int8_t *image_data, size_t image_size, u_int64_t id);
 int  db_photo_list (ipoddb_t *artworkdb, GList **head);
 void db_photo_list_free (GList **head);
 
@@ -242,14 +229,13 @@ int    db_set_debug (ipoddb_t *itunesdb, int level, FILE *out);
 int    db_song_modify (ipoddb_t *itunesdb, int tihm_num, tihm_t *tihm);
 
 /* returns the tihm number of the first match to data of dohm_type */
-int    db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len);
+int    db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data);
 /* returns the playlist number of first match */
-int    db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len);
+int    db_lookup_playlist (ipoddb_t *itunesdb, char *data);
 
 int db_playlist_number      (ipoddb_t *itunesdb);
-int db_playlist_create      (ipoddb_t *itunesdb, char *name, int name_len);
-int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, char *name,
-			     int name_len);
+int db_playlist_create      (ipoddb_t *itunesdb, u_int8_t *name);
+int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, u_int8_t *name);
 int db_playlist_delete      (ipoddb_t *itunesdb, int playlist);
 int db_playlist_tihm_add    (ipoddb_t *itunesdb, int playlist, int tihm_num);
 int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int tihm_num);
@@ -279,7 +265,7 @@ int db_album_number       (ipoddb_t *photodb);
 int db_album_list         (ipoddb_t *photodb, GList **head);
 int db_album_image_remove (ipoddb_t *photodb, int album, int image_id);
 int db_album_image_add    (ipoddb_t *photodb, int album, int image_id);
-int db_album_create       (ipoddb_t *photodb, char *name, int name_len);
+int db_album_create       (ipoddb_t *photodb, u_int8_t *name);
 
 
 int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);

@@ -41,7 +41,7 @@
    >= 0 if found
 */
 
-int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
+int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
   struct tree_node *dshm, *tihm, *dohm;
   int i, j, ret;
 
@@ -60,9 +60,9 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
     return -1;
 
   if ((itunesdb->flags & FLAG_UNICODE_HACK) && dohm_type == IPOD_PATH)
-    to_unicode_hack (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
+    to_unicode_hack (&unicode_data, &unicode_data_len, data, strlen(data), "UTF-8");
   else
-    to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
+    to_unicode (&unicode_data, &unicode_data_len, data, strlen(data), "UTF-8");
 
   tlhm_data = (struct db_tlhm *)dshm->children[0]->data;
 
@@ -113,11 +113,11 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
    < -1 on any error occurred
    >= 0 on found
 */
-int db_lookup_tihm (ipoddb_t *itunesdb, char *data, int data_len) {
-  return db_lookup (itunesdb, -1, data, data_len);
+int db_lookup_tihm (ipoddb_t *itunesdb, char *data) {
+  return db_lookup (itunesdb, -1, data);
 }
 
-int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
+int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
   tree_node_t *dshm_header, *dohm_header = NULL;
   int i, j, ret;
   size_t unicode_data_len;
@@ -134,7 +134,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
   if (db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, NULL) != 0)
     return -1;
 
-  to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");
+  to_unicode (&unicode_data, &unicode_data_len, data, strlen(data), "UTF-8");
 
   if (itunesdb->log_level > 1)
     pretty_print_block ((unsigned char *)unicode_data, unicode_data_len);

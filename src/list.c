@@ -51,6 +51,8 @@ char *str_type(int dohm_type) {
     return "Equilizer";
   case IPOD_COMPOSER:
     return "Composer";
+  case -1:
+    return "Error";
   default:
     return "Unknown";
   }
@@ -119,13 +121,8 @@ int main (int argc, char *argv[]) {
 	  fprintf (stdout, "     size       : %08x\n", inhm->image_size);
 	  fprintf (stdout, "     dimensions : %ix%i\n", inhm->height, inhm->width);
 
-	  for (i = 0 ; i < inhm->num_dohm ; i++) {
-	    unicode_to_utf8 (&buffer, &buffer_len, inhm->dohms[i].data, inhm->dohms[i].size);
-	    fprintf (stdout, "     %-10s : %s\n", "Filename", buffer);
-	    
-	    if (buffer)
-	      free (buffer);
-	  }
+	  for (i = 0 ; i < inhm->num_dohm ; i++)
+	    fprintf (stdout, "     %-10s : %s\n", "Filename", inhm->dohms[i].data);
 	  
 	  fprintf (stdout, "\n");
 	}
@@ -155,14 +152,10 @@ int main (int argc, char *argv[]) {
       fprintf (stdout, " disk    : %d/%d\n", tihm->disk_num, tihm->disk_total);
       
       for (i = 0 ; i < tihm->num_dohm ; i++) {
-	unicode_to_utf8 (&buffer, &buffer_len, tihm->dohms[i].data, tihm->dohms[i].size);
 	if (tihm->dohms[i].type == IPOD_EQ)
-	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
+	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), tihm->dohms[i].data[5]);
 	else
-	  fprintf (stdout, " %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
-	
-	if (buffer)
-	  free (buffer);
+	  fprintf (stdout, " %10s : %s\n", str_type(tihm->dohms[i].type), tihm->dohms[i].data);
       }
       
       fprintf (stdout, "\n");
