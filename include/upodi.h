@@ -39,6 +39,7 @@
 /* some structures to help clarify code */
 /* plhms are headers to pyhms */
 struct db_plhm {
+  u_int32_t plhm;
   u_int32_t header_size;
   u_int32_t num_pyhm;
 };
@@ -81,6 +82,17 @@ struct db_tihm {
   u_int32_t encoding;
   u_int32_t unk[4];
   u_int32_t sample_rate;
+};
+
+struct db_dohm {
+  u_int32_t dohm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t type;
+  u_int32_t unk0;
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t len;
 };
 
 #define UPOD_ERROR(x, format, args...) do {\
@@ -136,6 +148,7 @@ dohm_t *db_dohm_fill (struct tree_node *entry);
 void    dohm_free (dohm_t *dohm, int num_dohm);
 
 /* path seperator should be : */
+int path_mac_to_unix (char *mac_path, char *unix_dst);
 /* path seperator should be / */
 
 

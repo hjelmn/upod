@@ -18,9 +18,12 @@
  **/
 
 #include <sys/types.h>
-#include <glib.h>
+//#include <glib.h>
 
-enum file_types_t {TITLE=1, PATH, ALBUM, ARTIST, GENRE, TYPE, COMMENT};
+#define PATH_MAX 255
+
+enum dohm_types_t {IPOD_TITLE=1, IPOD_PATH, IPOD_ALBUM, IPOD_ARTIST, IPOD_GENRE,
+		   IPOD_TYPE, IPOD_COMMENT};
 
 struct tree {
   struct tree_node {
@@ -38,6 +41,9 @@ struct tree {
 
 typedef struct _ipod {
   struct tree iTunesDB;
+
+  char prefix[PATH_MAX];
+  char path[PATH_MAX];
 } ipod_t;
 
 typedef struct dohm {
@@ -67,16 +73,36 @@ typedef struct tihm {
   dohm_t *dohms;
 } tihm_t;
 
+/* libupod/ipod.c */
+int ipod_open   (ipod_t *ipod, char *path);
+int ipod_close  (ipod_t *ipod);
+
+/* mac_path is a volume path starting with : and seperated by : */
+int ipod_add    (ipod_t *ipod, char *filename, char *mac_path, int use_apple_path);
+int ipod_remove (ipod_t *ipod, char *mac_path, int remove_from_db, int remove_file);
+
+/* src and dst can be either mac or unix (if you use a unix path, it does not
+ translate onto the ipod) */
+int ipod_move   (ipod_t *ipod, char *src, char *dst);
+int ipod_copy   (ipod_t *ipod, char *src, char *dst);
+
 /* libupod/db.c */
-int    db_load  (ipod_t *ipod, char *path);
-void   db_free  (ipod_t *ipod);
-int    db_write (ipod_t ipod, char *path);
+int    db_load  (ipod_t *ipod, char *path); /* called by ipod_open */
+void   db_free  (ipod_t *ipod); /* called by ipod_close */
+int    db_write (ipod_t ipod, char *path); /* called by ipod_close */
 
-int    db_remove(ipod_t *ipod, u_int32_t tihm_num);
-int    db_hide  (ipod_t *ipod, u_int32_t tihm_num);
+int    db_remove(ipod_t *ipod, u_int32_t tihm_num); /* called by ipod_remove */
+int    db_hide  (ipod_t *ipod, u_int32_t tihm_num); /* called by db_remove */
 
-int    db_add   (ipod_t *ipod, char *filename, char *path);
-int    db_unhide(ipod_t *ipod, u_int32_t tihm_num);
+int    db_add   (ipod_t *ipod, char *filename, char *path); /*called by ipod_add */
+int    db_unhide(ipod_t *ipod, u_int32_t tihm_num); /* called by db_add */
+
+int    db_lookup(ipod_t ipod, int dohm_type, char *data, int data_len);
+
+typedef struct glist {
+  struct glist *next;
+  void *data;
+} GList;
 
 GList *db_song_list (ipod_t ipod);
 void   db_song_list_free (GList *head);
