@@ -33,7 +33,7 @@
 #define TLHM_HEADER_SIZE 0x5c
 #define PLHM_HEADER_SIZE 0x5c
 
-static int db_dbhm_create (tree_node_t **entry) {
+static int db_dbhm_create (tree_node_t **entry, int flags) {
   struct db_dbhm *dbhm_data;
   int ret;
 
@@ -42,9 +42,12 @@ static int db_dbhm_create (tree_node_t **entry) {
   dbhm_data = (struct db_dbhm *) (*entry)->data;
 
   /* these are the values seen in iTunes iTunesDBs */
-  dbhm_data->unk0     = 0x1;
-  dbhm_data->unk1     = 0x1;
-  dbhm_data->num_dshm = 0x2;
+  dbhm_data->unk0           = 0x1;
+  dbhm_data->unk3           = rand ();
+  dbhm_data->unk4           = rand ();
+  dbhm_data->unk5           = 0x00000001;
+  dbhm_data->itunes_version = 0x00000010;
+  dbhm_data->num_dshm       = 0x2;
 
   return 0;
 }
@@ -108,11 +111,9 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
   if ((itunesdb == NULL) || (db_name == NULL) || (name_len < 1))
     return -EINVAL;
 
-  db_log (itunesdb, 0, "db_create: entering (itunesdb = %08x, db_name = %s, name_len = %i)...\n", itunesdb, db_name, name_len);
+  db_log (itunesdb, 0, "db_create: entering...\n");
 
-  memset (itunesdb, 0, sizeof (ipoddb_t));
-
-  db_dbhm_create (&root);
+  db_dbhm_create (&root, flags);
 
   /* create song list */
   db_dshm_create (&entry, 1); /* type 1 is the track list */
@@ -130,6 +131,7 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   itunesdb->tree_root = root;
   itunesdb->flags = flags;
+  itunesdb->type  = 0;
 
   ret = db_playlist_create (itunesdb, db_name, name_len);
 
@@ -145,8 +147,6 @@ int db_photo_create (ipoddb_t *photodb) {
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_create: entering (photodb = %08x)...\n", photodb);
-
-  memset (photodb, 0, sizeof (ipoddb_t));
 
   db_dfhm_create (&root);
 
@@ -172,6 +172,7 @@ int db_photo_create (ipoddb_t *photodb) {
   db_attach (entry, entry2);
 
   photodb->tree_root = root;
+  photodb->type = 1;
 
   db_log (photodb, 0, "db_photo_create: complete\n");
 

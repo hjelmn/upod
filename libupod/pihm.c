@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <time.h>
+
 #define PIHM_HEADER_SIZE   0x4c
 
 int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
@@ -41,7 +43,7 @@ int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
 }
 
 int db_pihm_create (struct tree_node **entry, u_int32_t tihm_num,
-		    u_int32_t junk) {
+		    u_int32_t order) {
   struct db_pihm *pihm_data;
   int ret;
 
@@ -50,9 +52,11 @@ int db_pihm_create (struct tree_node **entry, u_int32_t tihm_num,
 
   pihm_data = (struct db_pihm *)(*entry)->data;
   
-  pihm_data->unk[0] = 1;
-  pihm_data->unk[2] = junk + 1;
+  pihm_data->unk0      = 1;
+  pihm_data->order     = order;
   pihm_data->reference = tihm_num;
+
+  pihm_data->date_added = time (NULL);
 
   return 0;
 }

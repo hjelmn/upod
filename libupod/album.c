@@ -130,7 +130,9 @@ int db_album_create (ipoddb_t *photodb, char *name, int name_len) {
   string_header->string_length = name_len;
   string_header->format = 0x1;
 
-  memcpy (&new_dohm->data[0x18], name, name_len);
+  new_dohm->string_header_size = 12;
+
+  memcpy (&new_dohm->data[0x24], name, name_len);
 
   db_abhm_dohm_attach (new_abhm, new_dohm);
 

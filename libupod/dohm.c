@@ -218,6 +218,17 @@ int db_dohm_itunes_hide (tree_node_t *entry, int column_id) {
   return 0;
 }
 
+int db_dohm_create_pihm (tree_node_t **entry, int order) {
+  int *iptr;
+
+  db_dohm_create_generic (entry, 0x2c, 0x64);
+  
+  iptr = (int *)&((*entry)->data[0x18]);
+  iptr[0] = order;
+
+  return 0;
+}
+
 int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size) {
   int entry_size;
 

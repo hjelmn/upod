@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 tihm.c
+ *   v0.2.1 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -76,9 +76,9 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   /* lowest flag bit(byte?) is vrb */
   tihm_data->flags      |= tihm->vbr;
 
-  tihm_data->creation_date = tihm->creation_date;
+  tihm_data->creation_date     = tihm->creation_date;
   tihm_data->modification_date = tihm->mod_date;
-  tihm_data->last_played_date = time(NULL);
+  tihm_data->last_played_date  = 0;
 
   tihm_data->num_played[0] = 0;
   tihm_data->num_played[1] = 0;
@@ -94,7 +94,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
   tihm_data->sample_rate = tihm->samplerate << 16;
   tihm_data->bit_rate    = tihm->bitrate;
-  tihm_data->unk11       = tihm->bpm << 16;
+  tihm_data->unk1        = tihm->bpm << 16;
 
   tihm_data->year        = tihm->year;
 
@@ -195,12 +195,12 @@ static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
   tihm->volume_adjustment = dbtihm->volume_adjustment;
   tihm->start_time= dbtihm->start_time;
   tihm->stop_time = dbtihm->stop_time;
-  tihm->bpm       = dbtihm->unk11 >> 16;
+  tihm->bpm       = dbtihm->unk1 >> 16;
 
   tihm->year        = dbtihm->year;
 
-  tihm->mod_date  = dbtihm->modification_date;
-  tihm->played_date = dbtihm->last_played_date;
+  tihm->mod_date      = dbtihm->modification_date;
+  tihm->played_date   = dbtihm->last_played_date;
   tihm->creation_date = dbtihm->creation_date;
 
   tihm->has_artwork = (dbtihm->has_artwork != 0xffffffff) ? 1 : 0;

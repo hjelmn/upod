@@ -1,6 +1,6 @@
 /**
  *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.2a1 ipod_update.c
+ *   v1.2.0 ipod_update.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU Public License as published by
@@ -307,11 +307,13 @@ int main (int argc, char *argv[]) {
   int create = 0;
   char *ipod_name = NULL;
   int flags = FLAG_UNICODE_HACK;
+  int noartwork = 0;
   char c;
 
   int ret;
 
   struct option long_options[] = {
+    {"noartwork",     0, 0, 'n'},
     {"help",          0, 0, '?'},
     {"create",        1, 0, 'c'},
     {"debug",         0, 0, 'd'},
@@ -335,6 +337,9 @@ int main (int argc, char *argv[]) {
     case 't':
       flags = flags & ~(FLAG_UNICODE_HACK);
       break;
+    case 'n':
+      noartwork = 1;
+      break;
     case 'v':
       version ();
       break;
@@ -354,11 +359,14 @@ int main (int argc, char *argv[]) {
 
       exit (1);
     }
-    if ((ret = db_load (&artworkdb, ITUNESDB, flags)) < 0) {
-      if ((ret = db_photo_create (&artworkdb)) < 0) {
-	fprintf (stderr, "Error creating ArtworkDB\n");
-	
-	exit (1);
+
+    if (noartwork == 0) {
+      if ((ret = db_load (&artworkdb, ITUNESDB, flags)) < 0) {
+	if ((ret = db_photo_create (&artworkdb)) < 0) {
+	  fprintf (stderr, "Error creating ArtworkDB\n");
+	  
+	  exit (1);
+	}
       }
     }
   } else {
@@ -367,10 +375,12 @@ int main (int argc, char *argv[]) {
       
       exit (1);
     }
-    if ((ret = db_photo_create (&artworkdb)) < 0) {
-      fprintf (stderr, "Error creating ArtworkDB\n");
-      
-      exit (1);
+    if (noartwork == 0) {
+      if ((ret = db_photo_create (&artworkdb)) < 0) {
+	fprintf (stderr, "Error creating ArtworkDB\n");
+	
+	exit (1);
+      }
     }
   }
 
@@ -379,12 +389,17 @@ int main (int argc, char *argv[]) {
 
   cleanup_database (&itunesdb);
 
-  parse_playlists ("Music", &itunesdb, &artworkdb);
+  if (noartwork == 1)
+    parse_playlists ("Music", &itunesdb, NULL);
+  else
+    parse_playlists ("Music", &itunesdb, &artworkdb);
 
   ret = write_itdatabase (&itunesdb);
   printf ("%i B written to the iTunesDB: %s\n", ret, ITUNESDB);
-  ret = write_awdatabase (&artworkdb);
-  printf ("%i B written to the ArtworkDB: %s\n", ret, ARTWORKDB);
+  if (noartwork == 0) {
+    ret = write_awdatabase (&artworkdb);
+    printf ("%i B written to the ArtworkDB: %s\n", ret, ARTWORKDB);
+  }
 
   db_free (&itunesdb);
   db_free (&artworkdb);
@@ -398,6 +413,7 @@ void usage (void) {
   printf ("Update the database in iPod_Control/iTunes/iTunesDB\n");
   printf ("with music from the Music folder.\n\n");
 
+  printf ("  -n, --noartwork      supress modifying the ArtworkDB\n");
   printf ("  -c, --create=<name>  create new database\n");
   printf ("  -d, --debug          increase debuging verbosity\n");
   printf ("  -t, --itunes_compat  turn on itunes compatability for files\n"

@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 db.c
+ *   v0.2.1 db.c
  *
  *   Routines for reading/writing the iPod's databases.
  *
@@ -285,11 +285,13 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
   bswap_block((char *)ibuffer, 4, 3);
 
-  if (ibuffer[0] == DBHM)
+  if (ibuffer[0] == DBHM) {
     db_log (ipod_db, 0, "Reading an iTunesDB.\n");
-  else if (ibuffer[0] == DFHM)
+    ipod_db->type = 0;
+  } else if (ibuffer[0] == DFHM) {
     db_log (ipod_db, 0, "Reading a photo or artwork database.\n");
-  else {
+    ipod_db->type = 1;
+  } else {
     db_log (ipod_db, -1, "%s is not a valid database. Exiting.\n", path);
     close (iPod_DB_fd);
 
@@ -329,6 +331,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   ipod_db->tree_root = db_build_tree(ipod_db, &bytes_read, NULL, &buffer);
 
   ipod_db->flags = flags;
+
   ipod_db->path  = strdup (path);
   free(tmp);
 
@@ -336,7 +339,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 }
 
 static int db_write_tree (int fd, tree_node_t *entry) {
-  static int ret;
+  int ret = 0;
   int i, swap;
   struct db_dohm *dohm_data;
 
@@ -395,7 +398,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 #endif
 
   for (i = 0 ; i < entry->num_children ; i++)
-    db_write_tree (fd, entry->children[i]);
+    ret += db_write_tree (fd, entry->children[i]);
 
   return ret;
 }

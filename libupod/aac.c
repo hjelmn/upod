@@ -322,7 +322,9 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     return -errno;
   }
 
-  tihm->size = statinfo.st_size;
+  tihm->size     = statinfo.st_size;
+  tihm->mod_date = statinfo.st_mtimespec.tv_sec;
+  tihm->creation_date = statinfo.st_mtimespec.tv_sec;
 
   if ((fd = fopen (file_name, "r")) == NULL)
     return -errno;

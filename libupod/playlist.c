@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 playlist.c
+ *   v0.2.1 playlist.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <errno.h>
 
@@ -312,7 +313,7 @@ int db_playlist_create (ipoddb_t *itunesdb, char *name, int name_len) {
   /* this MUST be done last to avoid adding the sizes it's children twice */
   db_attach (dshm_header, new_pyhm);
 
-  dohm_free (&dohm, 1);
+  free (dohm.data);
 
   db_log (itunesdb, 0, "db_playlist_create: complete\n");
 
@@ -499,8 +500,8 @@ int db_playlist_tihm_add (ipoddb_t *itunesdb, int playlist, int tihm_num) {
   entry_num = db_pihm_search (pyhm_header, tihm_num);
 
   if (entry_num == -1) {
-    db_pihm_create (&pihm, tihm_num, tihm_num);
-    db_dohm_create_generic (&dohm, 0x2c, tihm_num);
+    db_pihm_create (&pihm, tihm_num, tihm_num + 1);
+    db_dohm_create_pihm (&dohm, tihm_num + 1);
     
     db_attach (pyhm_header, pihm);
     db_attach (pyhm_header, dohm);

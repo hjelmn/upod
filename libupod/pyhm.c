@@ -27,6 +27,8 @@
 
 #include <errno.h>
 
+#include <time.h>
+
 #define PYHM_HEADER_SIZE 0x6c
 
 int db_pyhm_create (tree_node_t **entry, int is_visible) {
@@ -37,7 +39,8 @@ int db_pyhm_create (tree_node_t **entry, int is_visible) {
     return ret;
 
   pyhm_data = (struct db_pyhm *)(*entry)->data;
-  pyhm_data->is_visible  = (is_visible) ? 1 : 0;
+  pyhm_data->is_visible    = (is_visible) ? 1 : 0;
+  pyhm_data->creation_date = time (NULL);
 
   return 0;
 }

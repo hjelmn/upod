@@ -44,10 +44,17 @@ struct db_dbhm {
   u_int32_t db_size;
   u_int32_t unk0;
 
-  u_int32_t unk1;
+  u_int32_t itunes_version;
   u_int32_t num_dshm;
   u_int32_t unk3;
   u_int32_t unk4;
+
+  u_int32_t unk5; /* Always seems to be 1 */
+  u_int32_t unk6;
+  u_int32_t unk7;
+  u_int32_t unk8;
+
+  u_int32_t unk9[14]; /* 0's */
 };
 
 struct db_dshm {
@@ -55,6 +62,8 @@ struct db_dshm {
   u_int32_t header_size;
   u_int32_t record_size;
   u_int32_t type;
+
+  u_int32_t unk0[20]; /* 0's */
 };
 
 /* plhms are list headers to pyhms */
@@ -63,7 +72,8 @@ struct db_plhm {
   u_int32_t plhm;
   u_int32_t header_size;
   u_int32_t num_pyhm;
-  u_int32_t unk0;
+
+  u_int32_t unk0[20]; /* 0's */
 };
 
 /* tlhms are list headers to tihms */
@@ -72,7 +82,8 @@ struct db_tlhm {
   u_int32_t tlhm;
   u_int32_t header_size;
   u_int32_t num_tihm;
-  u_int32_t unk0;
+
+  u_int32_t unk0[20]; /* 0's */
 };
 
 /* iTunesDB Playlist Item Header */
@@ -80,12 +91,16 @@ struct db_pihm {
   u_int32_t pihm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t unk[3];
-
-  u_int32_t reference;
   u_int32_t unk0;
+
   u_int32_t unk1;
-  u_int32_t unk2;
+  /* matches an the first integer after the header of
+     the following dohm. */
+  u_int32_t order;
+  u_int32_t reference;
+  u_int32_t date_added;
+
+  u_int32_t unk3[11]; /* 0's */
 };
 
 /* Playlist Header */
@@ -97,10 +112,15 @@ struct db_pyhm {
 
   u_int32_t num_pihm;
   u_int32_t is_visible;
-  u_int32_t modification_date;
+  u_int32_t creation_date; /* secs since epoch? */
   u_int32_t playlist_id;
 
-  u_int32_t unk0[0x13];
+  u_int32_t unk0; /* 0 */
+  u_int32_t unk1; /* 0 */
+  u_int32_t unk2; /* 1 */
+  u_int32_t unk3; /* 1 */
+
+  u_int32_t unk4[15]; /* 0's */
 };
 
 /* Track Item Header */
@@ -117,18 +137,17 @@ struct db_tihm {
 
   u_int32_t creation_date;
   u_int32_t file_size;
-  u_int32_t duration; /* in millisecs */
+  u_int32_t duration;   /* in millisecs */
   u_int32_t order;
 
   u_int32_t album_tracks; /* number of tracks on album */
   u_int32_t year;
-  u_int32_t bit_rate; /* i dont know since this is often 0 */
+  u_int32_t bit_rate;
   u_int32_t sample_rate;
 
   u_int32_t volume_adjustment;
-  /* in millisecs */
-  u_int32_t start_time;
-  u_int32_t stop_time;
+  u_int32_t start_time; /* in millisecs */
+  u_int32_t stop_time;  /* in millisecs */
   u_int32_t sound_check;
 
   u_int32_t num_played[2]; /* no idea why there are two of these */
@@ -136,16 +155,17 @@ struct db_tihm {
   u_int32_t disk_num;
 
   u_int32_t disk_total;
-  u_int32_t unk6;
+  u_int32_t user_id; /* for iTMS songs */
   u_int32_t modification_date;
   u_int32_t bookmark_time;
 
   /* These ids might be an image checksum to avoid duplicates */
   u_int32_t iihm_id1;
   u_int32_t iihm_id2;
-
-  u_int32_t unk11; /* includes bpm, checked */
+  u_int32_t unk1;        /* includes Beats Per Minute, Checked, etc */
   u_int32_t has_artwork; /* usually 0xffff0001 BE */
+
+  u_int32_t unk2[29];
 };
 
 /* Photo Database */
@@ -158,10 +178,20 @@ struct db_dfhm {
 
   u_int32_t unk1;
   u_int32_t num_dshm;
-  u_int32_t unk3;
+  u_int32_t unk2;
   u_int32_t next_iihm;
 
-  u_int32_t unk4[21];
+  u_int32_t unk3;
+  u_int32_t unk4;
+  u_int32_t unk5;
+  u_int32_t unk6;
+
+  u_int32_t unk7; /* usually 1 */
+  u_int32_t unk8;
+  u_int32_t unk9;
+  u_int32_t unk10;
+
+  u_int32_t unk11[17];
 };
 
 /* Thumbnail Header */
@@ -195,7 +225,12 @@ struct db_iihm {
   u_int32_t id2;
   u_int32_t unk0;
 
-  u_int32_t unk1[30];
+  u_int32_t unk1[4];
+
+  u_int32_t source_size;
+  u_int32_t unk2[3];
+
+  u_int32_t unk3[22];
 };
 
 /* Image List Header */
@@ -438,7 +473,7 @@ void    tihm_free        (tihm_t *tihm);
 /* pihm.c */
 int     db_pihm_search   (tree_node_t *entry, u_int32_t tihm_num);
 int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
-			  u_int32_t junk);
+			  u_int32_t order);
 
 /* aihm.c */
 int db_aihm_search (struct tree_node *entry, u_int32_t image_id);
@@ -460,6 +495,7 @@ int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
 dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
 int     db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
+int     db_dohm_create_pihm (tree_node_t **entry, int order);
 int     db_dohm_create_eq (tree_node_t **entry, int eq);
 int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size);
 dohm_t *db_dohm_fill    (tree_node_t *entry);

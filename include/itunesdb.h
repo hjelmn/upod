@@ -71,8 +71,9 @@ enum show_entries {
 };
 
 enum itunesdb_flags {
-  /* Turn on hack so more unicode names will work on the ipod. Files with non-ascii characters in
-     their names will no longer play in iTunes when this flag is set. */
+  /* Turn on hack so more unicode filenames will work with the ipod.
+     Files with non-ascii characters in their names will not play in
+     iTunes if this flag was set when they were added. */
   FLAG_UNICODE_HACK = 0x1,
 };
 
@@ -98,6 +99,7 @@ typedef struct _ipoddatabase {
   int database_type;
 
   char *path;
+  int type; /* 0 == iTunesDB, 1 == ArtworkDB */
 } ipoddb_t;
 
 typedef struct tree_node tree_node_t;
@@ -125,6 +127,7 @@ typedef struct dohm {
 } dohm_t;
 
 typedef dohm_t mhod_t;
+typedef dohm_t ipod_data_object_t;
 
 typedef struct inhm {
   u_int32_t file_offset;
@@ -136,6 +139,8 @@ typedef struct inhm {
   dohm_t *dohms;
 } inhm_t;
 
+typedef inhm_t ipod_thumbnail_t;
+
 typedef struct iihm {
   int identifier;
 
@@ -145,6 +150,8 @@ typedef struct iihm {
   u_int32_t num_inhm;
   inhm_t *inhms;
 } iihm_t;
+
+typedef iihm_t ipod_image_t;
 
 typedef struct tihm {
   int num;
@@ -164,14 +171,13 @@ typedef struct tihm {
 
   u_int32_t year;
 
-  /* in thousants of seconds */
-  u_int32_t time;
-  u_int32_t start_time;
-  u_int32_t stop_time;
+  u_int32_t time;       /* In milliseconds */
+  u_int32_t start_time; /* In milliseconds */
+  u_int32_t stop_time;  /* In milliseconds */
 
   u_int32_t volume_adjustment;
-  u_int32_t times_played;
-  u_int32_t stars;
+  u_int32_t times_played; /* From iTunes */
+  u_int32_t stars; /* iTunes star rating */
   u_int32_t played_date;
   u_int32_t mod_date;
   u_int32_t creation_date;
@@ -191,6 +197,7 @@ typedef struct tihm {
 } tihm_t;
 
 typedef tihm_t mhit_t;
+typedef tihm_t ipod_track_t;
 
 typedef struct pyhm {
   int num;
@@ -199,6 +206,7 @@ typedef struct pyhm {
 } pyhm_t;
 
 typedef pyhm_t mhyp_t;
+typedef pyhm_t ipod_playlist_t;
 
 /* itunesdb2/db.c */
 int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
@@ -221,6 +229,7 @@ int  db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 
 /* itunesdb2/image_list.c */
 int  db_photo_add (ipoddb_t *artworkdb, unsigned char *image_data, size_t image_size, int id1, int id2);
+int  db_artwork_add (ipoddb_t *artworkdb, unsigned char *image_data, size_t image_size, int id1, int id2);
 int  db_photo_list (ipoddb_t *artworkdb, GList **head);
 void db_photo_list_free (GList **head);
 

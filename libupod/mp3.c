@@ -88,6 +88,7 @@ struct mp3_file {
   int samplerate; /* Hz */
 
   int length;     /* ms */
+  int mod_date;
 };
 
 /* [version][layer][bitrate] */
@@ -258,6 +259,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
     return -errno;
 
   mp3->file_size = mp3->data_size = statinfo.st_size;
+  mp3->mod_date  = statinfo.st_mtimespec.tv_sec;
 
   mp3->fh = fopen (file_name, "r");
   if (mp3->fh == NULL) 
@@ -417,6 +419,8 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
   tihm->samplerate = mp3.samplerate;
   tihm->time       = mp3.length;
   tihm->size       = mp3.file_size;
+  tihm->mod_date   = mp3.mod_date;
+  tihm->creation_date = mp3.mod_date;
 
   return 0;
 }
