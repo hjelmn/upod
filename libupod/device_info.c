@@ -24,10 +24,64 @@
 #include <string.h>
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
+
+#include <fcntl.h>
+
+#include <sys/stat.h>
+
 #include "itunesdbi.h"
 
 int device_info_write (ipod_t *ipod) {
-  UPOD_NOT_IMPL("device_info_write");
+  int fd, i;
+
+  char file_name[255];
+  u_int8_t *ipod_name;
+  u_int16_t *unicode_name;
+  size_t unicode_len;
+  int perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+
+  int ret;
+
+  unsigned short num_chars;
+
+  if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, &ipod_name)) < 0)
+    return ret;
+
+  to_unicode (&unicode_name, &unicode_len, ipod_name, strlen (ipod_name), "UTF-8");
+
+  free (ipod_name);
+
+  sprintf (file_name, "%s/iPod_Control/iTunes/DeviceInfo", ipod->path);
+  
+  if ((fd = open (file_name, O_WRONLY | O_CREAT | O_TRUNC, perms)) < 0) {
+    perror ("device_info_write|open");
+
+    return -errno;
+  }
+
+  num_chars = unicode_len / 2;
+  num_chars = NXSwapShort(num_chars);
+
+  bswap_block ((char *)unicode_name, 2, unicode_len / 2);
+
+  fprintf (stderr, "num_chars = %04x\n", num_chars);
+
+  write (fd, &num_chars, 2);
+  write (fd, unicode_name, unicode_len);
+
+  free (unicode_name);
+
+  num_chars = 0;
+
+  for (i = unicode_len + 2 ; i < 0x600 ; i += 2)
+    write (fd, &num_chars, 2);
+
+  close (fd);
+
+  return 0;
 }
 
 int device_info_read (ipod_t *ipod) {
