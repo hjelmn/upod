@@ -1,9 +1,10 @@
 libdir = $(prefix)/lib
-EXTRA_DIST = database.c endian.c hexdump.c ipod.c mp3.c playlists.c
+
 INCLUDES += -I$(top_srcdir)/include
+CFLAGS += -ansi `pkg-config --cflags glib`
+LDFLAGS += `pkg-config --libs glib`
 
 lib_LTLIBRARIES = libupod.la
-libupod_la_SOURCES = database.c endian.c hexdump.c ipod.c mp3.c \
-			playlists.c
-libupod_la_LDFLAGS = -version-info 0:0:1
-libupod_la_LIBADD =
+libupod_la_SOURCES = db.c tihm.c endian.c dohm.c mp3.c mp3tech.c unicode.c pihm.c non-posix.c \
+	playlist.c pyhm.c create.c dshm.c checks.c ipod.c
+libupod_la_LDFLAGS = -version-info 3:1:0
