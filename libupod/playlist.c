@@ -43,6 +43,7 @@ int db_playlist_retrieve_header (struct tree iTunesDB, struct tree_node **entry,
 
   if (root == NULL) return -1;
 
+
   for (master = &(root->children[root->num_children-1]) ;
        !strstr((*master)->data, "dshm") ; master--);
 
@@ -168,11 +169,11 @@ static int db_pyhm_create (struct tree_node *entry) {
 
   entry->size = PYHM_HEADER_SIZE;
   entry->data = malloc (PYHM_HEADER_SIZE);
-  if (entry->data = NULL) {
+  if (entry->data == NULL) {
     perror ("db_pyhm_create|malloc");
     return -1;
   }
-
+  memset (entry->data, 0, PYHM_HEADER_SIZE);
   pyhm_data = (struct db_pyhm *)entry->data;
   pyhm_data->pyhm        = PYHM;
   pyhm_data->header_size = PYHM_HEADER_SIZE;
@@ -180,17 +181,23 @@ static int db_pyhm_create (struct tree_node *entry) {
 }
 
 int db_create_new_playlist (ipod_t *ipod, char *name) {
-  struct tree_node *plhm_header, *new_pyhm, *new_dohm;
+  struct tree_node *plhm_header, *new_pyhm, *new_dohm, *dshm_header;
   struct db_plhm *plhm;
   struct db_dohm *dohm;
 
   if (name == NULL) return -1;
   if (ipod == NULL) return -1;
 
-  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, NULL) < 0)
+  if (db_playlist_retrieve_header (ipod->iTunesDB, &plhm_header, &dshm_header) < 0)
     return -1;
 
   plhm = (struct db_plhm *) plhm_header->data;
+
+  new_pyhm = (struct tree_node *) malloc (sizeof (struct tree_node));
+  if (new_pyhm == NULL) {
+    perror ("db_create_new_playlist|malloc");
+    return errno;
+  }
 
   if (db_pyhm_create (new_pyhm) < 0)
     return -1;
@@ -228,7 +235,9 @@ int db_create_new_playlist (ipod_t *ipod, char *name) {
   db_attach (new_pyhm, new_dohm);
 
   /* this MUST be done last to avoid adding the sizes it's children twice */
-  db_attach (plhm_header, new_pyhm);
+  db_attach (dshm_header, new_pyhm);
+
+  printf ("Playlist added.\n");
 
   return plhm->num_pyhm++;
 }

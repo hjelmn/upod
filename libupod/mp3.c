@@ -107,6 +107,8 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen) {
 	read(fd, &head, 4);
 	lseek(fd, -128, SEEK_END);
 
+	chead = (char *)&head;
+	chead[3] = 0;
 #if BYTE_ORDER == LITTLE_ENDIAN
 	head = bswap_32(head);
 #endif

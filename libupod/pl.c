@@ -4,8 +4,9 @@
 
 void usage(void) {
   printf("Usage:\n");
-  printf("  db_pl list\n");
-  printf("  db_pl songs <int>\n");
+  printf("  db_pl <db> list\n");
+  printf("  db_pl <db> songs <int>\n");
+  printf("  db_pl <db> create <name>\n");
 
   exit(1);
 }
@@ -16,6 +17,7 @@ int main(int argc, char *argv[]) {
   int *reflist;
   int ret;
   int qlist = 0;
+  int cr = 0;
 
   if (argc < 3 || argc > 4)
     usage();
@@ -24,6 +26,8 @@ int main(int argc, char *argv[]) {
     qlist = 1;
   else if (strstr (argv[2], "songs") != NULL)
     qlist = 0;
+  else if (strstr (argv[2], "create") != NULL && argc == 4)
+    cr = 1;
   else
     usage();
 
@@ -40,6 +44,11 @@ int main(int argc, char *argv[]) {
     for (tmp = list ; tmp ; tmp = tmp->next)
       printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num, ((pyhm_t *)tmp->data)->name);
     db_playlist_list_free(list);
+  } else if (cr) {
+    if (db_create_new_playlist (&ipod, argv[3]) > 0) {
+      db_write (ipod, argv[1]);
+    }
+
   } else {
     int i;
     if ((ret = db_playlist_list_songs (&ipod, atoi(argv[3]), &reflist)) > 0) {

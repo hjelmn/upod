@@ -228,6 +228,7 @@ int db_load (ipod_t *ipod, char *path) {
     free(buffer);
     return -1;
   }
+
   bswap_block((char *)ibuffer, 4, 3);
   memcpy (buffer, ibuffer, 12);
   close(iTunesDB);
@@ -288,7 +289,7 @@ int db_write (ipod_t ipod, char *path) {
 
   if (ipod.iTunesDB.tree_root == NULL) return -1;
 
-  fd = open(path, O_WRONLY | O_CREAT, perms);
+  fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, perms);
 
   if (fd < 0) {
     perror("db_write");
