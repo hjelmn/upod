@@ -179,6 +179,7 @@ int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);
 int    db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm);
 
 /* returns the tihm number of the first match to data of dohm_type */
+int    db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len);
 int    db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len);
 /* returns the playlist number of first match */
 int    db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len);
