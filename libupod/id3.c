@@ -263,7 +263,8 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       if (id3v2_majorversion > 2) {
 	/* id3v2.3 does not use synchsafe integers in frame headers. */
 	if (id3v2_majorversion == 3 || strcmp (identifier, "APIC") == 0 ||
-	    strcmp (identifier, "COMM") == 0 || strcmp (identifier, "COM ") == 0)
+	    strcmp (identifier, "COMM") == 0 || strcmp (identifier, "COM ") == 0 ||
+	    strcmp (identifier, "GEOB"))
 	  length = big32_2_arch32 (((int *)tag_data)[1]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
