@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.1 id3.c 
+ *   v1.1.1 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -49,8 +49,7 @@
 #endif
                        /* v2.2 v2.3 */
 
-char *ID3_TITLE[2]   = {"TT1", "TIT1"};
-char *ID3_TALT[2]    = {"TT2", "TIT2"};
+char *ID3_TITLE[2]   = {"TT2", "TIT2"};
 char *ID3_ARTIST[2]  = {"TP1", "TPE1"};
 char *ID3_ALBUM[2]   = {"TAL", "TALB"};
 char *ID3_TRACK[2]   = {"TRK", "TRCK"};
@@ -300,6 +299,13 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       tag_temp = tag_data;
 
+      if (strcmp (identifier, "APIC") != 0 &&
+	  strcmp (identifier, "PIC") != 0) {
+	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
+	for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
+	/*      length--; */
+      }
+
       /* Get the tag encoding */
       switch (*tag_temp) {
       case 0x00:
@@ -309,6 +315,12 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       case 0x01:
 	sprintf (encoding, "UTF-16LE");
 	tag_temp += 3;
+
+	/* If the above look cut off part of the unicode string
+	   re-add it. */
+	if (length % 2 == 0)
+	  length++;
+
 	break;
       case 0x03:
 	sprintf (encoding, "UTF-16BE");
@@ -322,18 +334,10 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	sprintf (encoding, "ISO-8859-1");
       }
 
-      if (strcmp (identifier, "APIC") != 0 &&
-	  strcmp (identifier, "PIC") != 0) {
-	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
-	for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
-	/*      length--; */
-      }
-
       if (length <= 0)
 	continue;
 
-      if (strcmp (identifier, ID3_TITLE[newv]) == 0 ||
-	  strcmp (identifier, ID3_TALT[newv]) == 0) 
+      if (strcmp (identifier, ID3_TITLE[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_TITLE);
       else if (strcmp (identifier, ID3_ARTIST[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_ARTIST);
