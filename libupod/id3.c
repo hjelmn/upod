@@ -61,9 +61,9 @@
 #define ID3_YEARNEW           12
 #define ID3_DISKNUM           13
 
-static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
+static int find_id3 (int version, FILE *fh, char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version);
-static void parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int version,
+static void parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int version,
 		       int id3v2_majorversion, int field, tihm_t *tihm);
 
 static int synchsafe_to_int (char *buf, int nbytes) {
@@ -89,7 +89,7 @@ static int synchsafe_to_int (char *buf, int nbytes) {
 
   The file descriptor is reset to the start of the file on completion.
 */
-static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
+static int find_id3 (int version, FILE *fh, char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version) {
     int head;
     char data[10];
@@ -98,7 +98,7 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
     int  id3v2_len;
     int  id3v2_extendedlen;
 
-    fread(&head, 4, 1, fd);
+    fread(&head, 4, 1, fh);
     
 #if BYTE_ORDER == LITTLE_ENDIAN
     head = bswap_32(head);
@@ -108,7 +108,7 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
     if (version == 2) {
       /* version 2 */
       if ((head & 0xffffff00) == 0x49443300) {
-	fread(data, 1, 10, fd);
+	fread(data, 1, 10, fh);
 	
 	*major_version = head & 0xff;
 	
@@ -116,7 +116,7 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
 	
 	id3v2_len = *id3_len = synchsafe_to_int (&data[2], 4);
 
-	*id3_len += 10; /* total length = id3v2len + 0x10 + footer (if present) */
+	*id3_len += 10; /* total length = id3v2len + 010 + footer (if present) */
 	*id3_len += (id3v2_flags & 0x10) ? 10 : 0; /* ID3v2 footer */
 
 	/* the 6th bit of the flag field being set indicates that an
@@ -125,25 +125,25 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
 	  /* Skip extended header */
 	  id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
 	  
-	  fseek(fd, 0xa + id3v2_extendedlen, SEEK_SET);
+	  fseek(fh, 0xa + id3v2_extendedlen, SEEK_SET);
 	  *tag_datalen = id3v2_len - id3v2_extendedlen;
 	} else {
 	  /* Skip standard header */
-	  fseek(fd, 0xa, SEEK_SET);
+	  fseek(fh, 0xa, SEEK_SET);
 	  *tag_datalen = id3v2_len;
 	}
 	
 	return 2;
       }
     } else if (version == 1) {
-      fseek(fd, 0, SEEK_SET);
+      fseek(fh, 0, SEEK_SET);
       
       /* tag not at beginning? */
       if ((head & 0xffffff00) != 0x54414700) {
 	/* maybe end */
-	fseek(fd, -128, SEEK_END);
-	fread(&head, 1, 4, fd);
-	fseek(fd, -128, SEEK_END);
+	fseek(fh, -128, SEEK_END);
+	fread(&head, 1, 4, fh);
+	fseek(fh, -128, SEEK_END);
 	
 #if BYTE_ORDER == LITTLE_ENDIAN
 	head = bswap_32(head);
@@ -152,7 +152,7 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
       
       /* version 1 */
       if ((head & 0xffffff00) == 0x54414700) {
-	fread(tag_data, 1, 128, fd);
+	fread(tag_data, 1, 128, fh);
 	
 	return 1;
       }
@@ -165,7 +165,7 @@ static int find_id3 (int version, FILE *fd, char *tag_data, int *tag_datalen,
 /*
   parse_id3
 */
-static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int version,
+static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int version,
 				int id3v2_majorversion, tihm_t *tihm) {
   int data_type;
   int i, j;
@@ -191,9 +191,7 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       int tag_found = 0;
       u_int8_t *tmp;
 
-      tag_temp = tag_data;
-
-      fread (tag_data, 1, (id3v2_majorversion > 2) ? 10 : 6, fd);
+      fread (tag_data, 1, (id3v2_majorversion > 2) ? 10 : 6, fh);
       
       if (tag_data[0] == 0)
 	return;
@@ -225,29 +223,29 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
 	i += 6 + length;
       }
 
-      /* the string length will not include the encoding or the \0 */
-      length -= 2;
+      if (tag_found == 0 || length < 2) {
+	fseek (fh, length, SEEK_CUR);
 
-      if (tag_found == 0 || length < 1) {
-	fseek (fd, length+2, SEEK_CUR);
 	continue;
       }
 
-      fread (tag_data, 1, (length < 128) ? length+2 : 128, fd);
+      memset (tag_data, 0, 128);
+      fread (tag_data, 1, (length < 128) ? length : 128, fh);
 
       if (length > 128)
-	fseek (fd, length - 128, SEEK_CUR);
+	fseek (fh, length - 128, SEEK_CUR);
+
+      tag_temp = tag_data;
 
       /* Scan past the language field in id3v2 */
       if (field == ID3_COMMENT) {
 	tag_temp += 4;
-	j = 4;
+	length -= 4;
 
 	if (id3v2_majorversion > 2) {
-	  tag_temp++; j++;
+	  tag_temp++; length--;
 	}
-      } else
-	j = 0;
+      }
 
       switch (*tag_temp) {
       case 0x00:
@@ -265,10 +263,12 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
       default:
 	continue;
       }
-
-      tag_temp++;
       
-      if (*tag_temp == '\0')
+      for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
+
+      length--;
+
+      if (length <= 0)
 	continue;
 
       switch (field) {
@@ -398,22 +398,22 @@ static void one_pass_parse_id3 (FILE *fd, char *tag_data, int tag_datalen, int v
   }
 }
 
-int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
+int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   int tag_datalen = 0, id3_len = 0;
   char tag_data[128];
   int version;
   int id3v2_majorversion;
   
   /* built-in id3tag reading -- id3v2, id3v1 */
-  if ((version = find_id3(2, fd, tag_data, &tag_datalen, &id3_len, &id3v2_majorversion)) != 0)
-    one_pass_parse_id3(fd, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
+  if ((version = find_id3(2, fh, tag_data, &tag_datalen, &id3_len, &id3v2_majorversion)) != 0)
+    one_pass_parse_id3(fh, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
 
   /* some mp3's have both tags so check v1 even if v2 is available */
-  if ((version = find_id3(1, fd, tag_data, &tag_datalen, NULL, &id3v2_majorversion)) != 0)
-    one_pass_parse_id3(fd, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
+  if ((version = find_id3(1, fh, tag_data, &tag_datalen, NULL, &id3v2_majorversion)) != 0)
+    one_pass_parse_id3(fh, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
   
   /* Set the file descriptor at the end of the id3v2 header (if one exists) */
-  fseek (fd, id3_len, SEEK_SET);
+  fseek (fh, id3_len, SEEK_SET);
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
     char *tmp = (char *)basename(file_name);
