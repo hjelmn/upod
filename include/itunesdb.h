@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0a itunesdb.h
+ *   v0.3.1 itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -31,9 +31,10 @@ extern "C" {
 
 #include <glib.h>
 
-#define ITUNESDB "iPod_Control/iTunes/iTunesDB"
-#define ARTWORKDB "iPod_Control/Artwork/ArtworkDB"
-#define PHOTODB "Photos/Photo Database"
+#define ITUNESDB     "iPod_Control/iTunes/iTunesDB"
+#define ARTWORKDB    "iPod_Control/Artwork/ArtworkDB"
+#define OTG_PLAYLIST "iPod_Control/iTunes/OTGPlaylist"
+#define PHOTODB      "Photos/Photo Database"
 
 enum dohm_types_t {
   IPOD_TITLE=1,
@@ -41,7 +42,8 @@ enum dohm_types_t {
   IPOD_ALBUM,
   IPOD_ARTIST,
   IPOD_GENRE,
-  IPOD_TYPE, IPOD_EQ,
+  IPOD_TYPE,
+  IPOD_EQ,
   IPOD_COMMENT,
   IPOD_COMPOSER = 14
 };
@@ -98,8 +100,6 @@ typedef struct _ipoddatabase {
   int type; /* 0 == iTunesDB, 1 == ArtworkDB */
 } ipoddb_t;
 
-typedef struct tree_node tree_node_t;
-
 typedef struct _ipod {
   ipoddb_t itunesdb;
   ipoddb_t artworkdb;
@@ -149,7 +149,7 @@ typedef struct iihm {
 
 typedef iihm_t ipod_image_t;
 
-typedef struct tihm {
+struct song_info {
   int num;
 
   u_int32_t type;
@@ -189,7 +189,9 @@ typedef struct tihm {
   int num_dohm;
 
   dohm_t *dohms;
-} tihm_t;
+};
+
+typedef struct song_info tihm_t;
 
 typedef tihm_t mhit_t;
 typedef tihm_t ipod_track_t;

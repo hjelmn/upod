@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0 itunesdbi.h
+ *   v0.3.1 itunesdbi.h
  *
  *   Internal functions. Do not include ipoddbi.h in any end software.
  *
@@ -26,8 +26,10 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+
 #include <sys/types.h>
 #include <wand/magick_wand.h>
+
 #include "itunesdb.h"
 
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
@@ -74,42 +76,27 @@ struct db_dshm {
   u_int32_t unk0[20]; /* 0's */
 };
 
-/* plhms are list headers to pyhms */
-/* iTunesDB Playlist Header */
-struct db_plhm {
-  u_int32_t plhm;
-  u_int32_t header_size;
-  u_int32_t num_pyhm;
-
-  u_int32_t unk0[20]; /* 0's */
-};
-
-/* tlhms are list headers to tihms */
-/* iTunesDB Track List Header */
-struct db_tlhm {
+/* List headers */
+struct db_lhm {
   u_int32_t tlhm;
   u_int32_t header_size;
-  u_int32_t num_tihm;
+  u_int32_t list_entries;
 
   u_int32_t unk0[20]; /* 0's */
 };
 
-/* iTunesDB Playlist Item Header */
-struct db_pihm {
-  u_int32_t pihm;
-  u_int32_t header_size;
-  u_int32_t record_size;
-  u_int32_t unk0;
+/* iTunesDB Track List Header */
+typedef struct db_lhm db_tlhm_t;
+/* iTunesDB Playlist Header */
+typedef struct db_lhm db_plhm_t;
 
-  u_int32_t unk1;
-  /* matches an the first integer after the header of
-     the following dohm. */
-  u_int32_t order;
-  u_int32_t reference;
-  u_int32_t date_added;
+/* ArtworkDB Image List */
+typedef struct db_lhm db_ilhm_t;
+/* Photo Database Album List */
+typedef struct db_lhm db_alhm_t;
+/* ArtworkDB File ID List */
+typedef struct db_lhm db_flhm_t;
 
-  u_int32_t unk3[11]; /* 0's */
-};
 
 /* Playlist Header */
 struct db_pyhm {
@@ -130,6 +117,24 @@ struct db_pyhm {
 
   u_int32_t unk4[15]; /* 0's */
 };
+
+/* iTunesDB Playlist Item Header */
+struct db_pihm {
+  u_int32_t pihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk0;
+
+  u_int32_t unk1;
+  /* matches an the first integer after the header of
+     the following dohm. */
+  u_int32_t order;
+  u_int32_t reference;
+  u_int32_t date_added;
+
+  u_int32_t unk3[11]; /* 0's */
+};
+
 
 /* Track Item Header */
 struct db_tihm {
@@ -201,25 +206,6 @@ struct db_dfhm {
   u_int32_t unk11[17];
 };
 
-/* Thumbnail Header */
-struct db_inhm {
-  u_int32_t inhm;
-  u_int32_t header_size;
-  u_int32_t record_size;
-  u_int32_t num_dohm;
-
-  u_int32_t file_id;
-  u_int32_t file_offset;
-  u_int32_t image_size;
-  u_int32_t unk2;
-
-  u_int16_t width;
-  u_int16_t height;
-  u_int32_t unk3[3];
-
-  u_int32_t unk4[7];
-};
-
 /* Image Item Header */
 /* This structure might have problems on machines
    with 64-bit alignment. */
@@ -245,22 +231,23 @@ struct db_iihm {
   u_int32_t unk3[22];
 };
 
-/* Image List Header */
-struct db_ilhm {
-  u_int32_t ilhm;
+/* Thumbnail Header */
+struct db_inhm {
+  u_int32_t inhm;
   u_int32_t header_size;
-  u_int32_t num_images;
+  u_int32_t record_size;
+  u_int32_t num_dohm;
 
-  u_int32_t unk0[20];
-};
+  u_int32_t file_id;
+  u_int32_t file_offset;
+  u_int32_t image_size;
+  u_int32_t unk2;
 
-/* Album List Header */
-struct db_alhm {
-  u_int32_t alhm;
-  u_int32_t header_size;
-  u_int32_t num_albums;
-  
-  u_int32_t unk0[20];
+  u_int16_t width;
+  u_int16_t height;
+  u_int32_t unk3[3];
+
+  u_int32_t unk4[7];
 };
 
 /* Album Header */
@@ -294,13 +281,6 @@ struct db_aihm {
   u_int32_t unk2[3];
 
   u_int32_t unk3[2];
-};
-
-/* Fileid List Header */
-struct db_flhm {
-  u_int32_t flhm;
-  u_int32_t header_size;
-  u_int32_t num_files;
 };
 
 /* Fileid Item Header */
@@ -385,7 +365,8 @@ struct db_wierd_dohm {
 
 u_int32_t string_to_int (unsigned char *string);
 
-struct tree_node {
+
+typedef struct tree_node {
   struct tree_node *parent;
   
   u_int8_t *data;
@@ -396,7 +377,7 @@ struct tree_node {
   
   /* Only affects dohm entries containing unicode string. */
   int string_header_size;
-};
+} tree_node_t;
 
 
 /* iTunesDB specific */
@@ -562,7 +543,7 @@ int aac_fill_tihm (char *, tihm_t *);
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
-int db_playlist_retrieve (ipoddb_t *, struct db_plhm **, tree_node_t **, int, tree_node_t **);
+int db_playlist_retrieve (ipoddb_t *, db_plhm_t **, tree_node_t **, int, tree_node_t **);
 int db_playlist_strip_indices (ipoddb_t *itunesdb);
 int db_playlist_add_indices (ipoddb_t *itunesdb);
 
