@@ -1,3 +1,8 @@
+/* (c) 2002-2004 Nathan Hjelm <hjelmn@mac.com>
+   uPod: list.c
+
+   Released under the terms of the GPL. */
+
 #include "itunesdb.h"
 
 #include <stdlib.h>
