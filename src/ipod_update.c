@@ -217,6 +217,7 @@ int parse_playlists (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
     }
 
     parse_dir (scratch, itunesdb, artworkdb, NULL, playlist);
+    printf ("\n");
   }
   
   closedir (dirp);
@@ -354,8 +355,12 @@ int main (int argc, char *argv[]) {
   }
 
   memset (&itunesdb, 0, sizeof (ipoddb_t));
+  memset (&artworkdb, 0, sizeof (ipoddb_t));
 
   db_set_debug (&itunesdb, debug_level, stderr);
+
+  if (noartwork == 0)
+    db_set_debug (&artworkdb, debug_level, stderr);
 
   if (create == 0) {
     if ((ret = db_load (&itunesdb, ITUNESDB, flags)) < 0) {
@@ -401,6 +406,7 @@ int main (int argc, char *argv[]) {
 
   ret = write_itdatabase (&itunesdb);
   printf ("%i B written to the iTunesDB: %s\n", ret, ITUNESDB);
+
   if (noartwork == 0) {
     ret = write_awdatabase (&artworkdb);
     printf ("%i B written to the ArtworkDB: %s\n", ret, ARTWORKDB);

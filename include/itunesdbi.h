@@ -569,4 +569,7 @@ u_int64_t crc64 (u_int8_t *buf, size_t length);
 /* sysinfo.c */
 int sysinfo_read (ipod_t *ipod, char *filename);
 
+/* db_lookup.c */
+int db_lookup_image (ipoddb_t *photodb, u_int64_t id);
+
 #endif /* __ITUNESDBI_H */

@@ -267,7 +267,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   Returns:
    < 0 on error
-     0 on success
+   bytes read on success
 **/
 int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   int iPod_DB_fd;
@@ -280,8 +280,10 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
   size_t bytes_read  = 0;
 
-  if (path == NULL || strlen(path) == 0)
-    return -1;
+  if (path == NULL || strlen(path) == 0 || ipod_db == NULL)
+    return -EINVAL;
+
+  db_log (ipod_db, 0, "db_load: entering...\n");
 
   if (stat(path, &statinfo) < 0) {
     db_log (ipod_db, errno, "db_load|stat: %s\n", strerror(errno));
@@ -290,12 +292,12 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   }
 
   if (!S_ISREG(statinfo.st_mode)) {
-    db_log (ipod_db, -1, "db_load: Not a regular file\n");
+    db_log (ipod_db, -1, "db_load: %s, not a regular file\n", path);
 
     return -1;
   }
 
-  db_log (ipod_db, 0, "Attempting to read an iPod database: %s\n", path);
+  db_log (ipod_db, 0, "db_load: Attempting to read an iPod database: %s\n", path);
 
   if ((iPod_DB_fd = open (path, O_RDONLY)) < 0) {
     db_log (ipod_db, errno, "db_load|open: %s\n", strerror(errno));
@@ -309,13 +311,13 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   bswap_block((char *)ibuffer, 4, 3);
 
   if (ibuffer[0] == DBHM) {
-    db_log (ipod_db, 0, "Reading an iTunesDB.\n");
+    db_log (ipod_db, 0, "db_load: Reading an iTunesDB.\n");
     ipod_db->type = 0;
   } else if (ibuffer[0] == DFHM) {
-    db_log (ipod_db, 0, "Reading a photo or artwork database.\n");
+    db_log (ipod_db, 0, "db_load: Reading a photo or artwork database.\n");
     ipod_db->type = 1;
   } else {
-    db_log (ipod_db, -1, "%s is not a valid database. Exiting.\n", path);
+    db_log (ipod_db, -1, "db_load: %s is not a valid database. Exiting.\n", path);
     close (iPod_DB_fd);
 
     return -1;
@@ -323,7 +325,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   
   buffer = (char *)calloc(ibuffer[2], 1);
   if (buffer == NULL) {
-    db_log (ipod_db, errno, "Could not allocate memory\n");
+    db_log (ipod_db, errno, "db_load: Could not allocate memory\n");
     close (iPod_DB_fd);
 
     return -errno;
@@ -332,10 +334,13 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   /* keep track of where buffer starts */
   tmp = (int *)buffer;
 
+  if (ibuffer[2] != statinfo.st_size)
+    db_log (ipod_db, -1, "db_load: File size does not match database size! Continuing anyway.\n");
+
   /* read in the rest of the database */
   if ((ret = read (iPod_DB_fd, buffer + 12, ibuffer[2] - 12)) <
       (ibuffer[2] - 12)) {
-    db_log (ipod_db, errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2],
+    db_log (ipod_db, errno, "db_load: Short read: %i bytes wanted, %i read\n", ibuffer[2],
 	    ret);
     
     free(buffer);
@@ -348,18 +353,28 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   
   close (iPod_DB_fd);
 
-  /* do the work of building the ipoddb_t structure */
-  ipod_db->tree_root = db_build_tree(ipod_db, &bytes_read, NULL, &buffer);
-
-  db_log (ipod_db, 0, "Loaded... %i bytes\n", ibuffer[2]);
+  /* Load the database into a tree structure. */
+  ipod_db->tree_root = db_build_tree (ipod_db, &bytes_read, NULL, &buffer);
 
   ipod_db->flags = flags;
-
   ipod_db->path  = strdup (path);
+
+  /*
+    This pointer points to the space allocated for reading from the file.
+    Free it now as it is no longer useful.
+  */
   free(tmp);
 
-  if (ipod_db->type == 0)
+  if (ipod_db->type == 0) {
+    /*
+      Remove index dohms from the main playlist as they will be invalid
+      after any change to the database. The indices will be generated
+      when the database is written out to a file.
+    */
     db_playlist_strip_indices (ipod_db);
+  }
+
+  db_log (ipod_db, 0, "db_load: complete. loaded %i B\n", bytes_read);
 
   return bytes_read;
 }
@@ -429,18 +444,26 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   return ret;
 }
 
+/*
+  db_write:
+
+  Write the ipod_db out to a file.
+*/
 int db_write (ipoddb_t ipod_db, char *path) {
   int fd;
 
   int ret;
   int perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
-  if (ipod_db.tree_root == NULL) return -1;
+  if (ipod_db.tree_root == NULL || path == NULL)
+    return -EINVAL;
+
+  db_log (&ipod_db, 0, "db_write: entering...\n");
 
   if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, perms)) < 0) {
-    printf ("error writing %s\n", path);
-    perror("db_write_unix");
-    return -1;
+    db_log (&ipod_db, -errno, "db_write: error writing %s, %s\n", path, strerror (errno));
+
+    return -errno;
   }
 
   if (ipod_db.type == 0)
@@ -452,6 +475,8 @@ int db_write (ipoddb_t ipod_db, char *path) {
     db_playlist_strip_indices (&ipod_db);
   
   close (fd);
+
+  db_log (&ipod_db, 0, "db_write: complete. wrote %i B\n", ret);
   
   return ret;
 }

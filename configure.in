@@ -4,6 +4,11 @@ AC_INIT(upod.c)
 dnl Every other copy of the package version number gets its value from here
 AM_INIT_AUTOMAKE(upod, 0.1.0)
 
+AH_TOP(
+#undef __MacOSX__
+#undef HAVE_UINT64
+)
+
 dnl create a config.h file (Automake will add -DHAVE_CONFIG_H)
 AM_CONFIG_HEADER(config.h)
 
@@ -56,7 +61,10 @@ case $host in
 esac
 
 AM_CONDITIONAL(MACOSX, test "$osx_support" = "yes")
-
+AC_CHECK_TYPE(u_int64_t, [
+			 AC_DEFINE_UNQUOTED(HAVE_UINT64)
+			 AC_SUBST (HAVE_UNIT64)
+			 ])
 AC_OUTPUT(
 Makefile
 libupod/Makefile

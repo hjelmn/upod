@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0 db_lookup.c
+ *   v0.3.1 db_lookup.c
  *
  *   Contains function for looking up a tihm entry in the iTunesDB
  *
@@ -25,6 +25,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <errno.h>
 
 #include "itunesdbi.h"
 
@@ -147,4 +149,38 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
   db_free_tree (dohm_temp);
 
   return ret;
+}
+
+/* Locate an image from its 64-bit ID */
+int db_lookup_image (ipoddb_t *photodb, u_int64_t id) {
+  tree_node_t *dshm_header;
+  int i, ret;
+  db_ilhm_t *ilhm_data;
+
+  if (photodb == NULL || photodb->type != 1)
+    return -EINVAL;
+
+  db_log (photodb, 0, "db_lookup_image: entering...\n");
+
+  /* find the image list */
+  if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
+    db_log (photodb, ret, "db_lookup_image: could not get image list header\n");
+    return ret;
+  }
+
+  ilhm_data = (db_ilhm_t *)dshm_header->children[0]->data;
+
+  for (i = 0 ; i < ilhm_data->list_entries ; i++) {
+    struct db_iihm *iihm_data = (struct db_iihm *)dshm_header->children[i + 1]->data;
+
+    if (iihm_data->id == id) {
+      db_log (photodb, 0, "db_lookup_image: found\n");
+
+      return 1;
+    }
+  }
+  
+  db_log (photodb, 0, "db_lookup_image: not found\n");
+
+  return 0;
 }

@@ -70,7 +70,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 
   /* find the image list */
   if ((ret = db_iihm_retrieve (photodb, &iihm_header, &dshm_header, iihm_identifier)) < 0) {
-    db_log (photodb, ret, "db_thumb_add: could not retrieve iihm header\n");
+    db_log (photodb, ret, "db_thumb_add: could not retrieve image entry\n");
 
     return ret;
   }
@@ -85,7 +85,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   if (ret == MagickFalse) {
     DestroyMagickWand (magick_wand);
 
-    fprintf (stderr, "******* Error reading image blob *******\n");
+    db_log (photodb, ret, "db_thumb_add: ImageMagick returned an error.\n");
 
     return -1;
   }
@@ -147,34 +147,6 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   return 0;
 }
 
-static int iihm_lookup (ipoddb_t *photodb, u_int64_t id) {
-  tree_node_t *dshm_header;
-  int i, ret;
-  db_ilhm_t *ilhm_data;
-
-  if (photodb == NULL)
-    return -EINVAL;
-
-  db_log (photodb, 0, "iihm_lookup: entering...\n");
-
-  /* find the image list */
-  if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
-    db_log (photodb, ret, "Could not get image list header\n");
-    return ret;
-  }
-
-  ilhm_data = (db_ilhm_t *)dshm_header->children[0]->data;
-
-  for (i = 0 ; i < ilhm_data->list_entries ; i++) {
-    struct db_iihm *iihm_data = (struct db_iihm *)dshm_header->children[i + 1]->data;
-
-    if (iihm_data->id == id)
-      return 1;
-  }
-
-  return 0;
-}
-
 int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_int64_t id) {
   tree_node_t *dshm_header, *new_iihm_header;
   db_ilhm_t *ilhm_data;
@@ -182,19 +154,19 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
 
   int identifier, ret;
 
-  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
+  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1) || (photodb->type == 0))
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_add: entering...\n");
 
   /* find the image list */
   if ((ret = db_dshm_retrieve (photodb, &dshm_header, 1)) < 0) {
-    db_log (photodb, ret, "Could not get image list header\n");
+    db_log (photodb, ret, "db_photo_add: could not get image list header\n");
     return ret;
   }
 
-  if (iihm_lookup (photodb, id)) {
-    db_log (photodb, ret, "Image already exists in the database\n");
+  if (db_lookup_image (photodb, id)) {
+    db_log (photodb, ret, "db_photo_add: image already exists in database\n");
 
     return 0;
   }
@@ -204,14 +176,16 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
   identifier = dfhm_data->next_iihm;
 
   if ((ret = db_iihm_create (&new_iihm_header, identifier, id)) < 0) {
-    db_log (photodb, ret, "Could not create iihm entry\n");
+    db_log (photodb, ret, "db_photo_add: could not create image entry\n");
     return ret;
   }
 
   new_iihm_header->parent = dshm_header;
   db_attach (dshm_header, new_iihm_header);
 
-  db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
+  db_log (photodb, 0, "db_photo_add: image entry created\n");
+  db_log (photodb, 0, "db_photo_add: creating default thumbnails (ArtworkDB thumbs)..\n");
+
   if (db_thumb_add (photodb, identifier, image_data, image_size, 56, 56) < 0) {
     db_detach (dshm_header, dshm_header->num_children-1, &new_iihm_header);
     db_free_tree (new_iihm_header);
@@ -228,6 +202,8 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
   ilhm_data->list_entries += 1;
 
   dfhm_data->next_iihm++;
+
+  db_log (photodb, 0, "db_photo_add: complete\n");
 
   return identifier;
 }

@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0 iihm.c
+ *   v0.3.1 iihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -44,8 +44,8 @@ int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id) {
 
   Searches for an image item with identifier == iihm_identifier.
 
-  If the image item is found the index where it is located is returned.
-  Otherwise -1 is returned.
+  If the image item is found the index where it is located is returned,
+  otherwise -1 is returned.
 */
 int db_iihm_search (tree_node_t *entry, u_int32_t iihm_identifier) {
   int i;

@@ -105,26 +105,36 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
   if (itunesdb == NULL || path == NULL || mac_path == NULL || itunesdb->type != 0)
     return -EINVAL;
 
-  /* find the song list */
-  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0)
-    return ret;
+  db_log (itunesdb, 0, "db_song_add: entering...\n");
+  db_log (itunesdb, 0, "db_song_add: adding file %s to database.\n", path);
 
-  if (db_lookup (itunesdb, IPOD_PATH, mac_path) > -1)
+  /* find the song list */
+  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
+    db_log (itunesdb, 0, "db_song_add: could net get data storage for track list.\n");
+
+    return ret;
+  }
+
+  if (db_lookup (itunesdb, IPOD_PATH, mac_path) > -1) {
+    /* Future. Check modification date of file vs. database. */
+    db_log (itunesdb, 0, "db_song_add: file already exists in database.\n");
+    
     return -1; /* A song already exists in the database with this path */
-  
+  }
+
   /* Set the new tihm entry's number to 1 + the previous one */
   tihm_num = itunesdb->last_entry + 1;
 
   if ((ret = tihm_fill_from_file (&tihm, path, mac_path, stars, tihm_num)) < 0) {
-    db_log (itunesdb, ret, "Could not fill tihm structure from file: %s.\n",
-	    path);
+    db_log (itunesdb, ret, "db_song_add: could not parse audio file.\n");
 
     return ret;
   }
 
   if ((ret = db_tihm_create (&new_tihm_header, &tihm, itunesdb->flags)) < 0) {
-    db_log (itunesdb, ret, "Could not create tihm entry\n");
+    db_log (itunesdb, ret, "db_song_add: could not add track.\n");
     free (new_tihm_header);
+
     return ret;
   }
 
@@ -144,6 +154,8 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
   tlhm_data->list_entries += 1;
 
   itunesdb->last_entry++;
+
+  db_log (itunesdb, ret, "db_song_add: complete\n");
 
   return tihm_num;
 }
