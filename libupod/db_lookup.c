@@ -118,7 +118,7 @@ int db_lookup_tihm (ipoddb_t *itunesdb, char *data, int data_len) {
 }
 
 int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
-  tree_node_t *dshm_header, *plhm_header, *dohm_header;
+  tree_node_t *dshm_header, *plhm_header, *dohm_header = NULL;
   int i, j, ret;
   size_t unicode_data_len;
   u_int16_t *unicode_data;
@@ -127,7 +127,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
 
   /* simpifies code */
   struct db_plhm *plhm_data;
-  struct db_dohm *dohm_data;
+  struct db_dohm *dohm_data = NULL;
 
   db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
 
@@ -144,6 +144,8 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
   db_log (itunesdb, 0, "num_pyhm == %i\n", plhm_data->num_pyhm);
 
   for (i = 1 ; i < plhm_data->num_pyhm+1 ; i++) {
+    dohm_header = NULL;
+
     for (j = 0 ; j < dshm_header->children[i]->num_children ; j++) {
       dohm_header = dshm_header->children[i]->children[j];
       dohm_data = (struct db_dohm *)dohm_header->data;
@@ -151,6 +153,9 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
       if (dohm_data->dohm == DOHM && dohm_data->type == IPOD_TITLE)
 	break;
     }
+
+    if (dohm_header == NULL)
+      continue;
 
     iptr = (int *)dohm_data;
 

@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <errno.h>
 
@@ -149,7 +150,6 @@ int db_album_image_add (ipoddb_t *photodb, int album, int image_id) {
   tree_node_t *aihm_header;
 
   struct db_alhm *alhm_data;
-  struct db_abhm *abhm_data;
 
   int entry_num;
 

@@ -192,6 +192,7 @@ int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, ti
     else if (strncmp (meta.identifier, "nre", 3) == 0) {
       int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
+
       dohm_add(tihm, genre_table[genre_num],
 	       strlen(genre_table[genre_num]), "UTF-8", data_type);
 

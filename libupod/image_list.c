@@ -42,7 +42,8 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 
 /* The image described by image_data will be scaled to the correct size */
 int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
-		  size_t image_size, size_t thumb_width, size_t thumb_height, int file_id, int artwork) {
+		  size_t image_size, size_t thumb_width, size_t thumb_height,
+		  unsigned long file_id, int artwork) {
   tree_node_t *dshm_header;
   tree_node_t *dohm_header, *inhm_header, *iihm_header;
 

@@ -185,7 +185,7 @@ int db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
 **/
 int db_song_modify_eq (ipoddb_t *itunesdb, u_int32_t tihm_num, int eq) {
   tree_node_t *tihm_header, *dohm_header;
-  struct db_tihm *tihm_data;
+  struct db_tihm *tihm_data = NULL;
   int ret;
 
   if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0) {
@@ -211,7 +211,8 @@ int db_song_modify_eq (ipoddb_t *itunesdb, u_int32_t tihm_num, int eq) {
   return 0;
 }
 
-int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num, unsigned long iihm_identifier) {
+int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num,
+			 unsigned long iihm_identifier) {
   tree_node_t *tihm_header;
   struct db_tihm *tihm_data;
   int ret;
@@ -221,6 +222,8 @@ int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num, unsigned long i
 
     return ret;
   }
+
+  tihm_data = (struct db_tihm *)tihm_header->data;
 
   tihm_data->iihm_id1 = iihm_identifier;
   tihm_data->iihm_id2 = iihm_identifier;
