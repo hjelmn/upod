@@ -37,7 +37,14 @@ void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 #define free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
 #endif
 
-/* some structures to help clarify code */
+/* some structures to help keep the code clean */
+struct db_generic {
+  u_int32_t type;
+  u_int32_t cell_size;
+  u_int32_t subtree_size;
+  u_int32_t num_dohm; /* tihm, pyhm */
+};
+
 /* iTunesDB Database Header */
 struct db_dbhm {
   u_int32_t dbhm;
@@ -376,7 +383,7 @@ struct db_wierd_dohm {
   u_int32_t unk13;
 };
 
-extern u_int32_t string_to_int (unsigned char *string);
+u_int32_t string_to_int (unsigned char *string);
 
 struct tree_node {
   struct tree_node *parent;
@@ -519,7 +526,7 @@ void    dohm_destroy    (tihm_t *tihm);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
 
 
-int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header, int dohm_type);
+int db_dohm_retrieve (tree_node_t *entry, tree_node_t **dohm_header, int dohm_type);
 int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2);
 int db_dohm_get_string (tree_node_t *dohm_header, u_int8_t **str);
 int db_dohm_fill (tree_node_t *entry, dohm_t **dohms);
