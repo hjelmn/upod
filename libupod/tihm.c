@@ -123,6 +123,7 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_le
       return -1;
     }
   } else if ( (strcasecmp (path + (strlen(path) - 3), "m4a") == 0)  ||
+	      (strcasecmp (path + (strlen(path) - 3), "m4p") == 0)  ||
 	      (strcasecmp (path + (strlen(path) - 3), "aac") == 0) ) {
     if (aac_fill_tihm (path, &tihm) < 0) {
       fprintf (stderr, "Invalid AAC file: %s\n", path);

@@ -44,6 +44,8 @@
 #include <libgen.h>
 #endif
 
+#include "hexdump.c"
+
 #define ID3_TITLE             0
 #define ID3_TALT              1
 #define ID3_ARTIST            2
@@ -62,8 +64,10 @@ static int synchsafe_to_int (char *buf, int nbytes) {
   int id3v2_len = 0;
   int i;
 
-  for (i = 0 ; i < nbytes ; i++)
-    id3v2_len = buf[i] & 0x7f + id3v2_len << 7;
+  for (i = 0 ; i < nbytes ; i++) {
+    id3v2_len <<= 7;
+    id3v2_len += buf[i] & 0x7f;
+  }
 
   return id3v2_len;
 }
@@ -82,18 +86,13 @@ static int synchsafe_to_int (char *buf, int nbytes) {
 static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_version) {
     int head;
     char data[10];
-    char *chead;
 
     char id3v2_flags;
     int  id3v2_len;
     int  id3v2_extendedlen;
 
     read(fd, &head, 4);
-    lseek(fd, 0, SEEK_CUR);
     
-    chead = (char *)&head;
-    chead[3] = 0;
-
 #if BYTE_ORDER == LITTLE_ENDIAN
     head = bswap_32(head);
 #endif
@@ -106,13 +105,13 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
 
 	id3v2_flags = data[1];
 
-	id3v2_len = syncsafe_to_int (&data[2], 4);
+	id3v2_len = synchsafe_to_int (&data[2], 4);
 
 	/* the 6th bit of the flag field being set indicates that an
 	   extended header is present */
 	if (id3v2_flags & 0x40) {
 	  /* Skip extended header */
-	  id3v2_extendedlen = syncsafe_to_int (&data[6], 4);
+	  id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
 
 	  lseek(fd, 0xa + id3v2_extendedlen, SEEK_SET);
 	  *tag_datalen = id3v2_len - id3v2_extendedlen;
@@ -122,9 +121,9 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
 	  *tag_datalen = id3v2_len;
 	}
 
-	*tag_data = calloc(id3v2_len, sizeof(char));
+	*tag_data = calloc(*tag_datalen, sizeof(char));
 
-	read(fd, *tag_data, id3v2_len);
+	read(fd, *tag_data, *tag_datalen);
 	lseek(fd, 0, SEEK_SET);
 
 	return 2;
@@ -133,21 +132,19 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
     lseek(fd, 0, SEEK_SET);
 
     /* tag not at beginning? */
-    if (head != 0x54414700) {
+    if ((head & 0xffffff00) != 0x54414700) {
 	/* maybe end */
 	lseek(fd, -128, SEEK_END);
 	read(fd, &head, 4);
 	lseek(fd, -128, SEEK_END);
 
-	chead = (char *)&head;
-	chead[3] = 0;
 #if BYTE_ORDER == LITTLE_ENDIAN
 	head = bswap_32(head);
 #endif
     }
 
     /* version 1 */
-    if (head == 0x54414700) {
+    if ((head & 0xffffff00) == 0x54414700) {
 	*tag_datalen = 128;
 	*tag_data = calloc(128, sizeof(char));
 
@@ -208,27 +205,28 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 
     for (i = 0 ; i < tag_datalen ; ) {
       int length = 0;
+
       tag_temp = NULL;
 
       if (id3v2_majorversion > 2) {
-	length = syncsafe_to_int (&tag_data[4], 4);
+	length = synchsafe_to_int (&tag_data[i + 4], 4);
 
-	if (strncmp(&tag_data[i], fourfields[field], 4))
+	if (strncmp(&tag_data[i], fourfields[field], 4) == 0)
 	  tag_temp = &tag_data[i + 10];
 
 	i += 10 + length;
       } else {
-	length = syncsafe_to_int (&tag_data[3], 3);
+	length = synchsafe_to_int (&tag_data[i + 3], 3);
 
-	if (strncmp(&tag_data[i], fields[field], 3))
-	  tag_temp = &tag_data[i + 6];
+	if (strncmp(&tag_data[i], fields[field], 3) == 0)
+	  tag_temp = &tag_data[i + 6 + 1];
 
 	i += 6 + length;
       }
 
       if (tag_temp == NULL || length < 1)
 	continue;
-      
+
       if ((field != ID3_TRACK) &&
 	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) )
 	dohm_add (tihm, tag_temp, length, data_type);
@@ -319,8 +317,9 @@ int get_id3_info (char *file_name, tihm_t *tihm) {
   if ((fd = open (file_name, O_RDONLY)) < 0)
     return -errno;
   
-  /* ** NEW ** built-in id3tag reading -- id3v2, id3v1 */
+  /* built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(fd, &tag_data, &tag_datalen, &id3v2_majorversion)) != 0) {
+    fprintf (stderr, "id3v2.%i found\n", id3v2_majorversion);
     parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TITLE, tihm);
     
     /* Much of the time the title is in field TT2 not TT1 */
