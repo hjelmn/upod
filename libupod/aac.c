@@ -245,6 +245,9 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     }
   }
 
+  if (bit_rate == 0)
+    return -1;
+
   tihm->time = duration * 1000;
   tihm->samplerate = time_scale;
   tihm->bitrate = bit_rate;
