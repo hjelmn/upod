@@ -87,6 +87,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
   tihm_data->flags      |= 0x100;
   tihm_data->flags      |= ((tihm->stars % 6) * 0x14) << 24;
+  /* lowest flag bit(byte?) is vrb */
   tihm_data->flags      |= tihm->vbr;
 
   tihm_data->creation_date = tihm->creation_date;
@@ -101,7 +102,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->order       = tihm->track;
   tihm_data->sample_rate = tihm->samplerate << 16;
   tihm_data->bit_rate    = tihm->bitrate;
-  tihm_data->bpm         = tihm->bpm;
+  tihm_data->unk11       = tihm->bpm << 16;
 
   tihm_data->volume_adjustment = tihm->volume_adjustment;
   tihm_data->start_time  = tihm->start_time;

@@ -55,7 +55,7 @@
 #define ID3_GENRE             6
 #define ID3_ENCODER           7
 #define ID3_COMMENT           8
-#define ID3_BPM               9
+#define ID3_BPM               11
 
 static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_version);
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_majorversion, int field, tihm_t *tihm);
@@ -164,45 +164,20 @@ static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_ver
 /*
   parse_id3
 */
-static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_majorversion, int field,
-		       tihm_t *tihm) {
+static void one_pass_parse_id3 (char *tag_data, int tag_datalen, int version,
+				int id3v2_majorversion, tihm_t *tihm) {
   int data_type;
-  int i;
-
-  switch (field) {
-  case ID3_ARTIST:
-    data_type = IPOD_ARTIST;
-    break;
-  case ID3_TALT:
-  case ID3_TITLE:
-    data_type = IPOD_TITLE;
-    break;
-  case ID3_GENRE:
-    data_type = IPOD_GENRE;
-    break;
-  case ID3_ALBUM:
-    data_type = IPOD_ALBUM;
-    break;
-  case ID3_COMMENT:
-    data_type = IPOD_COMMENT;
-    break;
-  case ID3_BPM:
-    if (id3v2_majorversion < 3)
-      return;
-    break;
-  case ID3_TRACK:
-    break;
-  default:
-    return;
-  }
+  int i, j;
+  int field;
+  char *slash;
 
   if (version == 2) {
     /* field tags associated with id3v2 with major version <= 2 */
     char *fields[]     = {"TT1", "TT2", "TP1", "TAL", "TRK", "TYE", "TCO",
-			  "TEN", "COM", "TLE", "TKE"};
+			  "TEN", "COM", "TLE", "TKE", NULL};
     /* field tags associated with id3v2 with major version > 2 */
     char *fourfields[] = {"TIT1", "TIT2", "TPE1", "TALB", "TRCK", "TYER", "TCON",
-			  "TENC", "COMM", "TLEN", "TIME", "TBPM"};
+			  "TENC", "COMM", "TLEN", "TIME", "TBPM", NULL};
     
     char *tag_temp;
     char *sizeloc;
@@ -223,15 +198,27 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 	else
 	  length = synchsafe_to_int (&tag_data[i + 4], 4);
 
-	if (strncmp(&tag_data[i], fourfields[field], 4) == 0)
-	  tag_temp = &tag_data[i + 10];
+
+	for (field = 0 ; fourfields[field] != NULL ; field++)
+	  if (strncmp(&tag_data[i], fourfields[field], 4) == 0) {
+	    tag_temp = &tag_data[i + 10];
+	    break;
+	  }
+
+#if defined(ID3_DEBUG)
+	if (length < 0x1000)
+	  pretty_print_block (&tag_data[i], 10 + length);
+#endif
 
 	i += 10 + length;
       } else {
 	length = synchsafe_to_int (&tag_data[i + 3], 3);
 
-	if (strncmp(&tag_data[i], fields[field], 3) == 0)
-	  tag_temp = &tag_data[i + 6 + 1];
+	for (field = 0 ; fields[field] != NULL ; field++)
+	  if (strncmp(&tag_data[i], fields[field], 3) == 0) {
+	    tag_temp = &tag_data[i + 6 + 1];
+	    break;
+	  }
 
 	i += 6 + length;
       }
@@ -243,14 +230,21 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 
       for ( ; *tag_temp == '\0' ; tag_temp++);
 
-      if ((field != ID3_TRACK) && (field != ID3_BPM) &&
-	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) ) {
-	dohm_add (tihm, tag_temp, length, data_type);
-      } else if (field == ID3_BPM) {
-	tihm->bpm = strtol (tag_temp, NULL, 10);
-      } else if (field == ID3_TRACK) {
-	char *slash;
-
+      switch (field) {
+      case ID3_TITLE:
+      case ID3_TALT:
+	dohm_add (tihm, tag_temp, length, IPOD_TITLE);
+	break;
+      case ID3_ARTIST:
+	dohm_add (tihm, tag_temp, length, IPOD_ARTIST);
+	break;
+      case ID3_ALBUM:
+	dohm_add (tihm, tag_temp, length, IPOD_ALBUM);
+	break;
+      case ID3_COMMENT:
+	dohm_add (tihm, tag_temp, length, IPOD_COMMENT);
+	break;
+      case ID3_TRACK:
 	/* some id3 tags have track/total tracks in the TRK field */
 	slash = strchr (tag_temp, '/');
 
@@ -259,66 +253,81 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 	tihm->track = atol (tag_temp);
 
 	if (slash) *slash = '/';
-      } else {
-	int i;
-	
-	/* 41 is right parenthesis */
-	for (i = 0 ; (*(tag_temp + 1 + i) != 41) ; i++) {
-	  genre_temp[i] = *(tag_temp + 1 + i);
+	break;
+      case ID3_BPM:
+	tihm->bpm = strtol (tag_temp, NULL, 10);
+	fprintf (stderr, " ***** BPM = %i *****\n", tihm->bpm);
+	break;
+      case ID3_GENRE:
+	if (tag_temp[0] != '(') {
+	  dohm_add (tihm, tag_temp, length, IPOD_GENRE);
+	} else {
+	  /* 41 is right parenthesis */
+	  for (j = 0 ; (*(tag_temp + 1 + j) != 41) ; j++) {
+	    genre_temp[j] = *(tag_temp + 1 + j);
+	  }
+	  
+	  genre_temp[j] = 0;
+	  
+	  if (atoi (genre_temp) > 147)
+	    return;
+	  
+	  dohm_add (tihm, genre_table[atoi(genre_temp)],
+		    strlen (genre_table[atoi(genre_temp)]), IPOD_GENRE);
+	  
+	  genre_temp[j] = 41;
 	}
-	
-	genre_temp[i] = 0;
-
-	if (atoi (genre_temp) > 147)
-	  return;
-
-	dohm_add (tihm, genre_table[atoi(genre_temp)], strlen (genre_table[atoi(genre_temp)]), data_type);
-      }   
-
-      return;
+	break;
+      deafult:
+	break;
+      }
     }
-  } else if (version == 1) {
-    int i = 29;
-    char *copy_from, *tmp;
-
-    switch (field) {
-    case ID3_TITLE:
-      copy_from = &tag_data[3];
-      break;
-    case ID3_ARTIST:
-      copy_from = &tag_data[33];
-      break;
-    case ID3_ALBUM:
-      copy_from = &tag_data[63];
-      break;
-    case ID3_COMMENT:
-      copy_from = &tag_data[93];
-      break;
-    case ID3_GENRE:
-      if ((int)tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
-	return;
-
-      copy_from = genre_table[tag_data[127]];
-      i = strlen (copy_from - 1);
-      break;
-    default:
-      return;
-    }
-
-    if ((signed char) copy_from[0] == -1)
-      return;
-
-    if (field != ID3_GENRE)
-      for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1) && i >= 0; tmp--, i--)
-	*tmp = 0;
-    else
-      i = strlen(copy_from) - 1;
-
-    if (i < 0)
-      return;
     
-    i++;
-    dohm_add (tihm, copy_from, i, data_type);
+  } else if (version == 1) {
+    for (field = 0 ; field < ID3_BPM ; field++) {
+      char *copy_from, *tmp;
+      
+      i = 29;
+
+      switch (field) {
+      case ID3_TITLE:
+	copy_from = &tag_data[3];
+	break;
+      case ID3_ARTIST:
+	copy_from = &tag_data[33];
+	break;
+      case ID3_ALBUM:
+	copy_from = &tag_data[63];
+	break;
+      case ID3_COMMENT:
+	copy_from = &tag_data[93];
+	break;
+      case ID3_GENRE:
+	if ((int)tag_data[127] >= genre_count || (signed char)tag_data[127] == -1)
+	  return;
+	
+	copy_from = genre_table[tag_data[127]];
+	i = strlen (copy_from - 1);
+	break;
+      default:
+	return;
+      }
+      
+      if ((signed char) copy_from[0] == -1)
+	return;
+      
+      if (field != ID3_GENRE)
+	for (tmp = copy_from + i ; (*tmp == ' ' || (signed char)(*tmp) == -1) && i >= 0; tmp--, i--)
+	  *tmp = 0;
+      else
+	i = strlen(copy_from) - 1;
+      
+      if (i < 0)
+	return;
+      
+      i++;
+      dohm_add (tihm, copy_from, i, data_type);
+    }
   }
 }
 
@@ -334,21 +343,8 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
   int id3v2_majorversion;
   
   /* built-in id3tag reading -- id3v2, id3v1 */
-  if ((version = find_id3(fd, &tag_data, &tag_datalen, &id3v2_majorversion)) != 0) {
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TITLE, tihm);
-    
-    /* Much of the time the title is in field TT2 not TT1 */
-    if ( (version == 2) && (tihm->num_dohm == 0))
-      parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TALT, tihm);
-    
-    
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_ARTIST , tihm);
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_ALBUM  , tihm);
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_COMMENT, tihm);
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_GENRE  , tihm);
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TRACK  , tihm);
-    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_BPM    , tihm);
-  }
+  if ((version = find_id3(fd, &tag_data, &tag_datalen, &id3v2_majorversion)) != 0)
+    one_pass_parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, tihm);
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
     char *tmp = (char *)basename(file_name);

@@ -252,6 +252,11 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   tihm->samplerate = time_scale;
   tihm->bitrate = bit_rate;
 
+  if (tihm->bitrate == 0) {
+    fclose(fd);
+    return -1;
+  }
+
   dohm_add (tihm, type_string, strlen (type_string), IPOD_TYPE);
   fclose (fd);
 

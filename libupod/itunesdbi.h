@@ -134,9 +134,8 @@ struct db_tihm {
 
   u_int32_t unk8;
   u_int32_t unk9;
-  u_int16_t unk10;
-  u_int16_t bpm; /* beats/min */
-  u_int32_t unk11;
+  u_int32_t unk11; /* including bpm */
+  u_int32_t unk12;
 };
 
 struct db_dohm {
