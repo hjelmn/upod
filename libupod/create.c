@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2a create.c
+ *   (c) 2002-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v1.0 create.c
  *
  *   Contains db_create and various node creation routines (that dont have another home).
  *

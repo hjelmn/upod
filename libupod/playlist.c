@@ -298,20 +298,23 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   wierd_dohm_data->unk7 = 0x00000004;
 
   /* but, I now know what this is */
-  wierd_dohm_data->shows[0].unk10[0] = 8;
+  wierd_dohm_data->shows[0].unk10[0] = 10;
 
   /* show playing column */
-  wierd_dohm_data->shows[0].show = SHOW_PLAYING | 0x00120000;
-  wierd_dohm_data->shows[1].show = SHOW_TITLE   | 0x007d0000;
-  wierd_dohm_data->shows[2].show = SHOW_TIME    | 0x00350000;
-  
-  /* show a few more colums */
-  for (i = 3; i < 6 ; i++)
-    /* im just showing some usefull info (artist, bitrate, etc) */
-    wierd_dohm_data->shows[i].show = i | 0x007d0000; /* 7d pixel(?) width */
+  wierd_dohm_data->shows[0].show = SHOW_PLAYING     | 0x00120000;
 
-  wierd_dohm_data->shows[6].show = 6 | 0x00400000;
-  wierd_dohm_data->shows[7].show = 7 | 0x00400000;
+  wierd_dohm_data->shows[1].show = SHOW_TITLE       | 0x009d0000;
+  wierd_dohm_data->shows[2].show = SHOW_TIME        | 0x00350000;
+
+  wierd_dohm_data->shows[3].show = SHOW_DISK_NUMBER | 0x002e0000;
+  wierd_dohm_data->shows[4].show = SHOW_TRACK_NUM   | 0x003c0000;
+  
+  wierd_dohm_data->shows[5].show = SHOW_ALBUM       | 0x009d0000; 
+  wierd_dohm_data->shows[6].show = SHOW_ARTIST      | 0x009d0000; 
+
+  wierd_dohm_data->shows[7].show = SHOW_YEAR        | 0x00250000;
+  wierd_dohm_data->shows[8].show = SHOW_BITRATE     | 0x005d0000; 
+  wierd_dohm_data->shows[9].show = SHOW_SAMPLERATE  | 0x004e0000;
 
   db_attach (new_pyhm, new_dohm);
 

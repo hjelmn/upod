@@ -129,15 +129,15 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
 
   memset (tihm, 0, sizeof (tihm_t));
 
-  if (strcasecmp (path + (strlen(path) - 3), "mp3") == 0) {
+  if (strncasecmp (path + (strlen(path) - 3), "mp3", 3) == 0) {
     if (mp3_fill_tihm (path, tihm) < 0) {
       tihm_free (tihm); /* structure may have been partially filled before error */
       
       return -1;
     }
-  } else if ( (strcasecmp (path + (strlen(path) - 3), "m4a") == 0)  ||
-	      (strcasecmp (path + (strlen(path) - 3), "m4p") == 0)  ||
-	      (strcasecmp (path + (strlen(path) - 3), "aac") == 0) ) {
+  } else if ( (strncasecmp (path + (strlen(path) - 3), "m4a", 3) == 0)  ||
+	      (strncasecmp (path + (strlen(path) - 3), "m4p", 3) == 0)  ||
+	      (strncasecmp (path + (strlen(path) - 3), "aac", 3) == 0) ) {
     if (aac_fill_tihm (path, tihm) < 0) {
       tihm_free (tihm); /* structure may have been partially filled before error */
 

@@ -384,7 +384,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	data_type = IPOD_COMMENT;
 	break;
       case ID3_TRACK:
-	if (tag_data[126] != 0xff)
+	if ((tag_data[126] != 0xff) && (tihm->track == 0))
 	  tihm->track = tag_data[126];
 	continue;
       case ID3_GENRE:
@@ -430,7 +430,7 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   /* some mp3's have both tags so check v1 even if v2 is available */
   if ((version = find_id3(1, fh, tag_data, &tag_datalen, NULL, &id3v2_majorversion)) != 0)
     one_pass_parse_id3(fh, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
-  
+
   /* Set the file descriptor at the end of the id3v2 header (if one exists) */
   fseek (fh, id3_len, SEEK_SET);
   

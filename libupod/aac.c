@@ -37,6 +37,8 @@
 
 #include "hexdump.c"
 
+void mp3_debug (char *, ...);
+
 u_int16_t big16_2_arch16 (u_int16_t x) {
   u_int16_t z = x;
   char *tmp = (char *)&z;
@@ -177,6 +179,49 @@ int m4a_bitrates[] = {
   28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
 };
 
+void parse_stsz (FILE *fh, double *bits) {
+  int current_loc = ftell (fh);
+  int buffer[10];
+  double avg = 0.0;
+  int i;
+  double bmax = 0.0;
+  double bmin = 10000.0;
+  int silence_frames = 0;
+  double totalby;
+
+  mp3_debug ("Parsing stsz atom\n");
+
+  fread (buffer, 4, 3, fh);
+
+  for (i = 0 ; i < buffer[2] ; i++) {
+    fread (buffer, 4, 1, fh);
+
+    /* mp3_debug ("Sample %i is %i bits\n", i, buffer[0]); */
+
+    if (buffer[0] > 7)
+      avg += (double)buffer[0];
+    else
+      silence_frames++;
+
+    bmax = ((double)buffer[0] > bmax) ? (double)buffer[0] : bmax;
+    bmin = ((double)buffer[0] < bmin) ? (double)buffer[0] : bmin;
+  }
+
+  mp3_debug ("Total sample size = %f\n", totalby=avg);
+
+  avg /= (double)buffer[2];
+
+  mp3_debug ("Average sample is %f bits\n", avg);
+  
+  mp3_debug ("Minimum bitrate is: %f bps\n", bmin * 44.10 * 8.0);
+  mp3_debug ("Agerage bitrate is: %f bps\n", avg * 44.10 * 8.0);
+  mp3_debug ("Maximum bitrate is: %f bps\n", bmax * 44.10 * 8.0);
+
+  *bits = totalby/((double)(buffer[2]-silence_frames)) * 8.0;
+
+  fseek (fh, current_loc, SEEK_SET);
+}
+
 int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   struct stat statinfo;
   int ret;
@@ -188,8 +233,14 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   char buffer[buffer_size];
 
   int i;
-  long long int duration, time_scale, bit_rate;
+  long int duration, time_scale, bit_rate;
   struct qt_atom atom;
+
+  int meta = type_int ("meta");
+  int mdat = type_int ("mdat");
+  int stsz = type_int ("stsz");
+
+  double bits;
 
   memset (tihm, 0, sizeof(tihm_t));
 
@@ -230,9 +281,6 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   }
 
   while (1) {
-    int meta = type_int ("meta");
-    int mdat = type_int ("mdat");
-
     if (fread (&atom, sizeof(atom), 1, fd) != 1) {
       fclose (fd);
       return -1;
@@ -240,6 +288,10 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
     if (atom.type == mdat || atom.size == 0)
       break;
+
+    if (atom.type == stsz) {
+      parse_stsz (fd, &bits);
+    }
 
     if (atom.size > sizeof(atom)) {
       if (atom.size - sizeof(atom) < 2001) {
@@ -250,6 +302,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
 	  time_scale = mdhd->time_scale;
 	  duration = mdhd->duration/time_scale;
+
+	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %i\n", time_scale, duration);
 	} else if (atom.type == meta)
 	  parse_meta (buffer, buffer_size, fd, atom, tihm);
 	else if (!is_container(atom.type))
@@ -266,7 +320,10 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   fseek (fd, 16, SEEK_CUR);
 
-  bit_rate = (atom.size / 128) / duration;
+  bit_rate = (long int)((bits * (double)time_scale/1000.0)/1000.0);
+  mp3_debug ("Best guess is     : %i kbps\n", bit_rate);
+
+  mp3_debug ("aac_fill_tihm: size = %i\n", atom.size);
 
   for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
     int temp = m4a_bitrates[i-1] - bit_rate;

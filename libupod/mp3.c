@@ -1,7 +1,8 @@
 /**
  *   (c) 2002-2004 Nathan Hjelm <hjelmn@cs.unm.edu>
- *   v0.3 mp3.c 
+ *   v0.3.1 mp3.c 
  *
+ *   (2004-10-28) : Correctly identifies good headers now.
  *   (2004-10-28) : Correctly parses files with LYRICS tags now.
  *
  *   ID3/LYRIC Tag information can be found at http://www.id3.org.
@@ -73,18 +74,97 @@ struct mp3_file {
   int vbr;
   int bitrate;    /* bps */
 
+  int layer;
+  int version;
+
   int samplerate; /* Hz */
 
   int length;     /* ms */
 };
 
-size_t bitrate_table[] = {
-  -1, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320
+/* [version][layer][bitrate] */
+int bitrate_table[4][4][16] = {
+  /* v2.5 */
+  {{-1, -1, -1, -1, -1. -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1,  8, 16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160, -1},
+   {-1,  8, 16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160, -1},
+   {-1, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, -1}},
+
+  /* NOTUSED */
+  {{-1, -1, -1, -1, -1. -1, -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1, -1, -1, -1, -1. -1, -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1, -1, -1, -1, -1. -1, -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1, -1, -1, -1, -1. -1, -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1}},
+
+  /* v2 */
+  {{-1, -1, -1, -1, -1. -1, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1,  8, 16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160, -1},
+   {-1,  8, 16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160, -1},
+   {-1, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, -1}},
+
+  /* v1 */
+  {{-1, -1, -1, -1,  -1.  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1},
+   {-1, 32, 40, 48,  56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, -1},
+   {-1, 32, 48, 56,  64,  80,  96, 112, 128, 160, 192, 224, 256, 320, 384, -1},
+   {-1, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1}},
+
 };
 
-size_t samplerate_table[] = {
-  44100, 48000, 32000
+int samplerate_table[4][4] = {
+  {11025, 12000,  8000, -1},
+  {   -1,    -1,    -1, -1},
+  {22050, 24000, 16000, -1},
+  {44100, 48000, 32000, -1}
 };
+
+float version_table[] = {
+  2.5, -1.0, 2.0, 1.0
+};
+
+size_t layer_table[] = {
+  -1, 3, 2, 1
+};
+
+#define MPEG_VERSION(header) ((header & 0x00180000) >> 19)
+#define MPEG_LAYER(header) ((header & 0x00060000) >> 17)
+#define MPEG_BITRATEI(header) ((header & 0x0000f000) >> 12)
+#define MPEG_SAMPLERATEI(header) ((header & 0x00000c00) >> 10)
+#define MPEG_PADDING(header) ((header & 0x00000200) >> 9)
+
+#define BITRATE(header) bitrate_table[MPEG_VERSION(header)][MPEG_LAYER(header)][MPEG_BITRATEI(header)]
+#define SAMPLERATE(header) samplerate_table[MPEG_VERSION(header)][MPEG_SAMPLERATEI(header)]
+
+static size_t mpeg_frame_length (int header) {
+  double bitrate = (double)BITRATE(header) * 1000.0;
+  double samplerate = (double)SAMPLERATE(header);
+  double padding = (double)MPEG_PADDING(header);
+  char layer = MPEG_LAYER(header);
+  size_t frame_length;
+
+  if (layer == 0x11)
+    frame_length = 144.0 * bitrate/samplerate + padding;
+  else
+    frame_length = (12 * bitrate/samplerate + padding) * 4.0;
+
+  mp3_debug ("Frame length = 0x%08x, version = %02x, layer = %02x, padding = %f, bitrate = %f, samplerate = %f\n",
+	     frame_length, MPEG_VERSION(header), layer, padding, bitrate, samplerate);
+
+  return (size_t)((layer != 0x11) ? (144.0 * bitrate/samplerate + padding)
+		  : (12 * bitrate/samplerate + padding) * 4.0);
+}
+
+
+/* check_mp3_header: returns 0 on success */
+static int check_mp3_header (int header) {
+  if (((header & 0xffe00000) == 0xffe00000) &&
+      (MPEG_VERSION(header) > 0.0) && (BITRATE(header) > 0)
+      && (SAMPLERATE(header) > 0))
+    return 0;
+  else if (header == 0x4d4c4c54) /* MLLT */
+    return 2;
+  else
+    return 1;
+}
 
 static int synchsafe_to_int (char *buffer, int len) {
   int i;
@@ -99,18 +179,17 @@ static int synchsafe_to_int (char *buffer, int len) {
 static int find_first_frame (struct mp3_file *mp3) {
   int header;
   int buffer;
+  int ret;
   mp3->skippage = 0;
 
   while (fread (&header, 4, 1, mp3->fh)) {
     /* MPEG-1 Layer III */
-    if ((header & 0xffea0000) == 0xffea0000) {
+    if ((ret = check_mp3_header (header)) == 0) {
       /* Check for Xing frame and skip it */
       fseek (mp3->fh, 32, SEEK_CUR);
       fread (&buffer, 4, 1, mp3->fh);
       if (buffer == ('X' << 24 | 'i' << 16 | 'n' << 8 | 'g')) {
-	int bitrate = bitrate_table [((header & 0x0000f000) >> 12)];
-	int samplerate = samplerate_table [(header & 0x00000c00) >> 10];
-	int frame_size = (size_t) (144000.0 * (double)bitrate/(double)samplerate) + ((header & 0x00000200) >> 9);
+	int frame_size = mpeg_frame_length (header);
 	fseek (mp3->fh, frame_size, SEEK_CUR);
 
 	/* an mp3 with an Xing header is ALWAYS vbr */
@@ -120,7 +199,8 @@ static int find_first_frame (struct mp3_file *mp3) {
       fseek (mp3->fh, -36, SEEK_CUR);
       fseek (mp3->fh, -4, SEEK_CUR);
       return 0;
-    }
+    } else if (ret == 2)
+      return -2;
     
     fseek (mp3->fh, -3, SEEK_CUR);
     mp3->skippage++;
@@ -134,6 +214,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
 
   char buffer[10];
   int has_v1 = 0;
+  char v2flags;
 
   mp3_debug ("mp3_open: Entering...\n");
 
@@ -187,8 +268,9 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
 
   /* find and skip id3v2 tag if it exists */
   memset (buffer, 0, 5);
-  fread (buffer, 1, 4, mp3->fh);
+  fread (buffer, 1, 5, mp3->fh);
   if (strncmp (buffer, "ID3", 3) == 0) {
+    v2flags = buffer[4];
     fseek (mp3->fh, 6, SEEK_SET);
     fread (buffer, 1, 4, mp3->fh);
     
@@ -196,7 +278,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
 
     fseek (mp3->fh, mp3->tagv2_size, SEEK_SET);
 
-    mp3_debug ("mp3_open: Found id3v2 tag, size = %i Bytes\n", mp3->tagv2_size);
+    mp3_debug ("mp3_open: Found id3v2 tag, size = %i Bytes, flags = %1x\n", mp3->tagv2_size, v2flags);
   } else
     fseek (mp3->fh, 0, SEEK_SET);
 
@@ -211,7 +293,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
 
 static int mp3_scan (struct mp3_file *mp3) {
   int header;
-
+  int ret;
   int frames = 0;
   int last_bitrate = -1;
   double total_bitrate = 0.0;
@@ -225,26 +307,38 @@ static int mp3_scan (struct mp3_file *mp3) {
   while (ftell (mp3->fh) < mp3->data_size) {
     fread (&header, 4, 1, mp3->fh);
 
-    bitrate = bitrate_table [((header & 0x0000f000) >> 12)];
-    samplerate = samplerate_table [(header & 0x00000c00) >> 10];
+    if (check_mp3_header (header) != 0) {
+      mp3_debug ("mp3_scan: Invalid header %08x %08x Bytes into the file.\n", header, ftell(mp3->fh));
 
-    if ((header & 0xffea0000) != 0xffea0000) {
-      frames = 0;
-
-      mp3_debug ("mp3_scan: Invalid header %08x\n", header);
-
-      if (find_first_frame (mp3) < 0) {
+      if ((ret = find_first_frame (mp3)) == -1) {
 	mp3_debug ("mp3_scan: An error occured at line: %i\n", __LINE__);
-	return -1;
-      }
+
+	/* This is hack-ish, but there might be junk at the end of the file. */
+	
+	break;
+      } else if (ret == -2) {
+	mp3_debug ("mp3_scan: Ran into MLLT frame.\n");
+
+	mp3->data_size -= (mp3->file_size) - ftell (mp3->fh);
+
+	break;
+      } else
+	frames = 0;
 
       continue;
     }
 
+
+    mp3_debug ("header = %08x\n", header);
+    bitrate = BITRATE(header);
+    samplerate = SAMPLERATE(header);
+
+    mp3_debug ("bitrate = %i, sample = %i\n", bitrate, samplerate);
+
     last_bitrate = bitrate;
     total_bitrate += (double)bitrate;
 
-    frame_size = 144000.0 * (double)bitrate/(double)samplerate + (double)((header & 0x00000200) >> 9);
+    frame_size = mpeg_frame_length (header);
     total_framesize += frame_size;
     fseek (mp3->fh, frame_size - 4, SEEK_CUR);
 
@@ -261,11 +355,11 @@ static int mp3_scan (struct mp3_file *mp3) {
   }
 
   mp3->samplerate = samplerate;
-  mp3->bitrate    = (int)(total_bitrate/(double)frames * 1000.0);
+  mp3->bitrate    = (int)((total_bitrate/(double)frames - (mp3->vbr ? 0.2 : 0.0)) * 1000.0);
   mp3->length     = (int)(1000.0 * (total_framesize)/(total_bitrate/frames * 125.0));
 
-  mp3_debug ("mp3_scan: Finished. SampleRate: %i, BitRate: %i, Length: %i\n", mp3->samplerate,
-	     mp3->bitrate, mp3->length);
+  mp3_debug ("mp3_scan: Finished. SampleRate: %i, BitRate: %i, Length: %i, Frames: %i\n",
+	     mp3->samplerate, mp3->bitrate, mp3->length, frames);
 
   if (mp3->samplerate <= 0 || mp3->bitrate <= 0.0 || mp3->length <= 0.0)
     return -1;
@@ -283,7 +377,11 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
   if (mp3_open (file_name, &mp3) < 0)
     return -1;
 
-  mp3_scan (&mp3);
+  if (mp3_scan (&mp3) < 0) {
+    mp3_close (&mp3);
+    return -1;
+  }
+
   mp3_close (&mp3);
 
   tihm->bitrate = mp3.bitrate/1000;
