@@ -55,7 +55,8 @@ int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
   struct db_tlhm *tlhm;
   int entry_num;
 
-  if (itunesdb == NULL || itunesdb->tree_root == NULL) return -1;
+  if (itunesdb == NULL || itunesdb->tree_root == NULL || itunesdb->type != 0)
+    return -EINVAL;
 
   entry_num = db_tihm_retrieve (itunesdb, &entry, &parent, tihm_num);
 
@@ -100,6 +101,9 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *
   int tihm_num, ret;
 
   tihm_t tihm;
+
+  if (itunesdb == NULL || path == NULL || mac_path == NULL || itunesdb->type != 0)
+    return -EINVAL;
 
   /* find the song list */
   if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0)
@@ -250,7 +254,7 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
   int i, *iptr;
   int ret;
 
-  if (head == NULL || itunesdb == NULL)
+  if (head == NULL || itunesdb == NULL || itunesdb->type != 0)
     return -EINVAL;
 
   *head = NULL;

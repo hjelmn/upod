@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <errno.h>
+
 #define DSHM_HEADER_SIZE 0x60
 
 /* An itunesdb has two dshm entries. An artworkdb has three. */
@@ -33,13 +35,10 @@ int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header,
   struct tree_node *root;
   struct db_dshm *dshm_data;
 
-  if (ipod_db == NULL || dshm_header == NULL)
-    return -1;
+  if (ipod_db == NULL || dshm_header == NULL || ipod_db->tree_root == NULL)
+    return -EINVAL;
 
   root = ipod_db->tree_root;
-
-  if (root == NULL)
-    return -1;
 
   for (i = 0 ; i < root->num_children ; i++) {
     *dshm_header = (tree_node_t *) root->children[i];

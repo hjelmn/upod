@@ -62,7 +62,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 
   int ret;
 
-  if ((photodb == NULL) || (iihm_identifier < 1))
+  if ((photodb == NULL) || (iihm_identifier < 1) || (photodb->type != 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_thumb_add: entering...\n");
@@ -175,7 +175,7 @@ int db_artwork_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_s
 
   int identifier, ret;
 
-  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
+  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1) || (photodb->type != 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_add: entering...\n");
@@ -241,7 +241,7 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
 
   int identifier, ret;
 
-  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
+  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1) || (photodb->type != 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_add: entering...\n");

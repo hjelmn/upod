@@ -46,6 +46,9 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
   int entry_num;
   int ret;
 
+  if (itunesdb == NULL || itunesdb->type != 0)
+    return -EINVAL;
+
   /* find the song list */
   if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
     db_log (itunesdb, ret, "Could not get song list header\n");

@@ -529,7 +529,7 @@ int aac_fill_tihm (char *, tihm_t *);
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
-int db_playlist_retrieve_header (ipoddb_t *, tree_node_t **, tree_node_t **);
+int db_playlist_retrieve (ipoddb_t *, tree_node_t **, tree_node_t **, int, tree_node_t **);
 
 /* inhm.c */
 int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,

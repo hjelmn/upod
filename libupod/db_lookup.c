@@ -131,7 +131,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
 
   db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
 
-  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) != 0)
+  if (db_playlist_retrieve (itunesdb, &plhm_header, &dshm_header, 0, NULL) != 0)
     return -1;
 
   to_unicode (&unicode_data, &unicode_data_len, data, data_len, "UTF-8");

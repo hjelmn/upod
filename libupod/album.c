@@ -29,7 +29,7 @@
 
 int db_album_retrieve_header (ipoddb_t *photodb, tree_node_t **alhm_header,
 			     tree_node_t **dshm_header) {
-  return db_playlist_retrieve_header (photodb, alhm_header, dshm_header);
+  return db_playlist_retrieve (photodb, alhm_header, dshm_header, 0, NULL);
 }
 
 int db_album_number (ipoddb_t *photodb) {
@@ -41,7 +41,7 @@ int db_album_number (ipoddb_t *photodb) {
   if (photodb == NULL)
     return -EINVAL;
 
-  if ((ret = db_playlist_retrieve_header (photodb, &alhm_header, NULL)) < 0)
+  if ((ret = db_album_retrieve_header (photodb, &alhm_header, NULL)) < 0)
     return ret;
 
   alhm_data = (struct db_alhm *) alhm_header->data;
