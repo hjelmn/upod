@@ -30,7 +30,10 @@
 #include <sys/stat.h>
 
 #include <sys/uio.h>
+
+#ifndef S_SPLINT_S
 #include <unistd.h>
+#endif
 
 #include <fcntl.h>
 
@@ -57,17 +60,21 @@ static int db_size_tree (tree_node_t *ptr) {
   Function to recursively free a tree.
 */
 void db_free_tree (tree_node_t *ptr) {
-  if (ptr == NULL) return;
+  if (ptr == NULL)
+    return;
 
-  if (ptr->num_children) {
-    while (--ptr->num_children > -1)
+  if (ptr->children != NULL) {
+    while (--ptr->num_children > -1) {
       db_free_tree(ptr->children[ptr->num_children]);
+      free (ptr->children[ptr->num_children]);
+    }
 
     free(ptr->children);
+    ptr->children = NULL;
   }
 
   free(ptr->data);
-  free(ptr);
+  ptr->data = NULL;
 }
 
 /**
@@ -82,9 +89,13 @@ void db_free_tree (tree_node_t *ptr) {
    nothing, void function
 **/
 void db_free (ipoddb_t *itunesdb) {
-  if (itunesdb == NULL) return;
+  if (itunesdb == NULL)
+    return;
 
   db_free_tree(itunesdb->tree_root);
+
+  free (itunesdb->tree_root);
+  itunesdb->tree_root = NULL;
 }
 
 static int dohm_contains_string (struct db_dohm *dohm_data) {
@@ -103,7 +114,7 @@ static int dohm_contains_string (struct db_dohm *dohm_data) {
   Purpose is to build up the iTunesDB tree from a buffer.
 */
 static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
-				   tree_node_t *parent, char **buffer) {
+				   /*@null@*/tree_node_t *parent, char **buffer) {
   tree_node_t *tnode_0;
   int *iptr = (int *)*buffer;
 
@@ -114,7 +125,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   if (tnode_0 == NULL) {
     perror("db_build_tree|calloc");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   tnode_0->parent = parent;
@@ -134,9 +145,9 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
     bswap_block (&((*buffer)[0x18]), 4, 1);
 
-    if (dohm_data->type & 0x01000000)
+    if ((dohm_data->type & 0x01000000) != 0)
       copy_size = entry_size;
-    else if (!dohm_contains_string(dohm_data)) {
+    else if (dohm_contains_string(dohm_data) == 0) {
       copy_size = entry_size;
       bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
     } else if (iptr[6] == 1) {
@@ -174,6 +185,11 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   tnode_0->size = copy_size;
   tnode_0->data = calloc (copy_size, 1);
 
+  if (tnode_0->data == NULL) {
+    perror("db_build_tree|calloc");
+    exit (EXIT_FAILURE);
+  }
+
   memmove (tnode_0->data, *buffer, copy_size);
 
 #if DEBUG
@@ -197,7 +213,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   
   if (tnode_0->children == NULL) {
     perror("db_build_tree|calloc");
-    exit(1);
+    exit (EXIT_FAILURE);
   }
 
   while (*bytes_read - current_bytes_read < entry_size) {
@@ -206,7 +222,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
     
     if (tnode_0->children == NULL) {
       perror("db_build_tree|realloc");
-      exit(1);
+      exit (EXIT_FAILURE);
     }
 
     tnode_0->children[tnode_0->num_children-1] = db_build_tree(ipod_db, bytes_read, tnode_0, buffer);
@@ -331,7 +347,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 
   if (dohm_data->dohm == DOHM) {
     iptr = (int *)dohm_data;
-    if (dohm_data->type & 0x01000000)
+    if ((dohm_data->type & 0x01000000) != 0)
       swap = 9;
     else if (entry->string_header_size == 16) {
       swap = 10;
@@ -393,7 +409,8 @@ int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
   int size, i;
   tree_node_t *tmp;
 
-  if (parent == NULL || new_child == NULL) return -1;
+  if ((parent == NULL) || (new_child == NULL))
+    return -EINVAL;
 
   if (index >= (parent->num_children + 1))
     return -1;
@@ -483,11 +500,17 @@ int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int 
   if (*entry == NULL) {
     perror ("db_node_allocate|calloc");
 
-    return errno;
+    exit (EXIT_FAILURE);
   }
 
   (*entry)->size = size;
   (*entry)->data = calloc ((*entry)->size, 1);
+  if ((*entry)->data == NULL) {
+    perror ("db_node_allocate|calloc");
+
+    exit (EXIT_FAILURE);
+  }
+
   data = (struct db_generic *)(*entry)->data;
   
   data->type         = type;

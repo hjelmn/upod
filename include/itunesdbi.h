@@ -133,10 +133,12 @@ struct db_tihm {
   u_int32_t modification_date;
   u_int32_t unk7;
 
+  /* These ids might be an image checksum to avoid duplicates */
   u_int32_t iihm_id1;
   u_int32_t iihm_id2;
-  u_int32_t unk11; /* including bpm */
-  u_int32_t unk12;
+
+  u_int32_t unk11; /* includes bpm */
+  u_int32_t has_artwork; /* usually 0xffff0001 BE */
 };
 
 /* Photo Database */
@@ -148,8 +150,8 @@ struct db_dfhm {
 
   u_int32_t unk1;
   u_int32_t unk2;
-  u_int32_t next_iihm;
   u_int32_t unk3;
+  u_int32_t next_iihm;
 
   u_int32_t unk4[21];
 };
@@ -304,7 +306,7 @@ struct db_wierd_dohm {
   u_int32_t unk13;
 };
 
-static int string_to_int (char *string) {
+static u_int32_t string_to_int (unsigned char *string) {
   return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
 }
 

@@ -102,6 +102,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->start_time  = tihm->start_time;
   tihm_data->stop_time   = tihm->stop_time;
 
+  tihm_data->has_artwork = 0xffffffff;
   /* it may be useful to set other values in the tihm structure but many
      have still not been deciphered */
 

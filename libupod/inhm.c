@@ -22,6 +22,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include <errno.h>
+
 #include <wand/magick_wand.h>
 #include <sys/stat.h>
 
@@ -36,10 +38,13 @@ static u_int16_t host16_to_little (u_int16_t x) {
 int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 		    char *rel_mac_path, MagickWand *magick_wand) {
   struct db_inhm *inhm_data;
+  tree_node_t *dohm_header;
   int ret;
   FILE *fh;
-  unsigned long num_wands;
-  int r, g, b, i, j;
+  unsigned long num_wands = 1;
+  unsigned int r, g, b, i, j;
+
+  dohm_t dohm;
 
   PixelIterator *pixel_iterator;
   PixelWand **pixel_wands;
@@ -56,6 +61,10 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
   /* Thumbnails are 16 bit rgb images (2 Bpp) */
   inhm_data->image_size = inhm_data->height * inhm_data->width * 2;
   fh = fopen (file_name, "a");
+
+  if (fh == NULL)
+    return -errno;
+
   inhm_data->file_offset = ftell (fh);
 
   /* Write the thumbnail to the thumbnail file */
@@ -64,14 +73,11 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 
   j = 0;
 
-  while (1) {
+  while (num_wands != 0) {
     u_int16_t pixel;
 
     pixel_wands = PixelGetNextIteratorRow (pixel_iterator, &num_wands);
 
-    if (num_wands == 0)
-      break;
-    
     for (i = 0 ; i < num_wands ; i++) {
       r = (int)(PixelGetRed (pixel_wands[i]) * 31.0);
       g = (int)(PixelGetGreen (pixel_wands[i]) * 63.0);
@@ -81,15 +87,25 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
       pixel = b | (g << 5) | (r << 11);
       pixel = host16_to_little (pixel);
 
-      fwrite (&pixel, 2, 1, fh);
+      (void)fwrite (&pixel, 2, 1, fh);
     }
 
     j++;
   }
   
-  fclose (fh);
+  (void)fclose (fh);
+
+  to_unicode (&(dohm.data), &(dohm.size), rel_mac_path, strlen(rel_mac_path), "ASCII");
+  dohm.type = 3;
+  (void)db_dohm_create (&dohm_header, dohm, 12);
+  free (dohm.data);
   
-  DestroyPixelIterator (pixel_iterator);
+  (void)db_attach (*entry, dohm_header);
+  
+  inhm_data = (struct db_inhm *)(*entry)->data;
+  inhm_data->num_dohm++;
+  
+  pixel_iterator = DestroyPixelIterator (pixel_iterator);
 
   return 0;
 }

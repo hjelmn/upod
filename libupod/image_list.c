@@ -43,16 +43,12 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifier) {
   tree_node_t *dshm_header;
   tree_node_t *dohm_header, *inhm_header, *iihm_header;
-  tree_node_t *path_header;
 
   struct db_iihm *iihm_data;
-  struct db_inhm *inhm_data;
   
   char file_name[255];
   char file_name_mac[255];
   unsigned long file_id;
-
-  dohm_t dohm;
 
   int ret;
 
@@ -77,27 +73,16 @@ int db_thumb_add (ipoddb_t *photodb, MagickWand *magick_wand, int iihm_identifie
 
   sprintf (file_name_mac, ":F%lu_1.ithmb", file_id);
 
-  to_unicode (&(dohm.data), &(dohm.size), file_name_mac, strlen(file_name_mac), "ASCII");
-
-  dohm.type = 3;
-
   db_dohm_create_generic (&dohm_header, 0x18, 0x02);
   db_inhm_create (&inhm_header, file_id, file_name, file_name_mac, magick_wand);
-  db_dohm_create (&path_header, dohm, 12);
 
   db_fihm_register (photodb, file_name, file_id);
 
-  free (dohm.data);
-
-  db_attach (inhm_header, path_header);
   db_attach (dohm_header, inhm_header);
   db_attach (iihm_header, dohm_header);
 
   iihm_data = (struct db_iihm *)iihm_header->data;
   iihm_data->num_thumbs++;
-
-  inhm_data = (struct db_inhm *)inhm_header->data;
-  inhm_data->num_dohm++;
 
   return 0;
 }
@@ -108,7 +93,11 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   struct db_dfhm *dfhm_data;
 
   MagickWand *magick_wand;
+  PixelWand *pixel_wand;
   int identifier, id1, id2, ret;
+  int image_height, image_width;
+  int scale_height, scale_width;
+  int border_height, border_width;
 
   if ((photodb == NULL) || (image_data == NULL) || (image_size < 1))
     return -EINVAL;
@@ -142,7 +131,8 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
   db_log (photodb, 0, "db_photo_add: complete. Creating default thumbnails..\n");
 
   /* Make thumbnails and add them to the database */
-  magick_wand = NewMagickWand();
+  magick_wand = NewMagickWand ();
+  pixel_wand  = NewPixelWand ();
 
   ret = MagickReadImageBlob (magick_wand, image_data, image_size);
   if (ret == MagickFalse) {
@@ -151,18 +141,46 @@ int db_photo_add (ipoddb_t *photodb, unsigned char *image_data, size_t image_siz
     return -1;
   }
 
-  MagickResizeImage (magick_wand, 140, 140, LanczosFilter, 0.9);
+  image_height = MagickGetImageHeight (magick_wand);
+  image_width  = MagickGetImageWidth (magick_wand);
+
+  if (image_width > image_height) {
+    scale_width  = 140;
+    scale_height = (int) (140.0 * (float) image_height/(float) image_width)/2 * 2;
+  } else {
+    scale_width  = (int) (140.0 * (float) image_width/(float) image_height)/2 * 2;
+    scale_height = 140;
+  }
+
+  border_height = (140 - scale_height)/2;
+  border_width  = (140 - scale_width)/2;
+  
+  MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
+  MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
   db_thumb_add (photodb, magick_wand, identifier);
   DestroyMagickWand (magick_wand);
 
+
+  if (image_width > image_height) {
+    scale_width  = 56;
+    scale_height = (int) (56.0 * (float) image_height/(float) image_width)/2 * 2;
+  } else {
+    scale_width  = (int) (56.0 * (float) image_width/(float) image_height)/2 * 2;
+    scale_height = 56;
+  }
+
+  border_height = (56 - scale_height)/2;
+  border_width  = (56 - scale_width)/2;
 
   magick_wand = NewMagickWand();
   ret = MagickReadImageBlob (magick_wand, image_data, image_size);
-  MagickResizeImage (magick_wand, 56, 56, LanczosFilter, 0.9);
+  MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
+  MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
   db_thumb_add (photodb, magick_wand, identifier);
 
 
   DestroyMagickWand (magick_wand);
+  DestroyPixelWand (pixel_wand);
 
   return identifier;
 }

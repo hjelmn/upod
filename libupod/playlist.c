@@ -329,6 +329,8 @@ int db_playlist_create (ipoddb_t *itunesdb, char *name, int name_len) {
   if ((ret = db_dohm_create_generic (&new_dohm, 0x28 + unicode_len, IPOD_TITLE)) < 0)
     return ret;
 
+  new_dohm->string_header_size = 16;
+
   dohm       = (struct db_dohm *)new_dohm->data;
 
   iptr = (int *)dohm;
