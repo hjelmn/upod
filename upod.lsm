@@ -1,0 +1,21 @@
+Begin3
+Title:		upod
+Version:	0.1.0
+Entered-date:	2002-04-15
+Description:	upod is an API for modifying the iTunesDB and the contents of an iPod.
+		Generated automatically from upod.lsm.in by configure.
+		Please edit upod.lsm.in to fix the Keywords and
+		Primary-site entries, add several more lines of
+		description here if appropriate, and to delete these
+		instructions.
+Keywords:	[substitute your keywords here]
+Author: 	hjelmn@unm.edu (Nathan Hjelm)
+Maintained-by:	hjelmn@unm.edu (Nathan Hjelm)
+Primary-site:	metlab.unc.edu pub/Linux/apps/some/directory
+		31k upod-0.1.0.tar.gz
+		500  upod.lsm
+Alternate-site: 
+Original-site:  
+Platforms:      
+Copying-policy:	GNU copyleft
+End

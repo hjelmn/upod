@@ -18,6 +18,23 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
+#ifndef __UPODI_H
+#define __UPODI_H
+
+#define DEBUG
+
+#if defined(DEBUG)
+#define UPOD_DEBUG printf
+#else
+#define UPOD_DEBUG
+#endif
+
+/* this definition will not be static in non-alpha release */
+#define EMPTYDB "/home/neo/cvs/upod/share/emptydb"
+
+#define UPOD_ERROR(x, s) do {fprintf(stderr, "Error %i: %s", x, s);} while(0);
+
+enum file_types_t {TITLE=1, PATH, ALBUM, ARTIST, GENRE, TYPE, COMMENT};
 
 typedef struct _ipod {
   /* mount information */
@@ -30,8 +47,8 @@ typedef struct _ipod {
 
   int debug;
 
-  int first_entry;
-  int last_entry;
+  char *first_entry;
+  char *last_entry;
   
   int num_playlists;
   
@@ -49,6 +66,8 @@ typedef struct _song_ref {
 
   int bitrate;
   int samplerate;
+
+  int mod_date;
   
   int dohm_num;
   struct dohm {
@@ -64,10 +83,9 @@ char *path_mac_to_unix (char *path);
 /* field seperator should be / */
 char *path_unix_to_mac (char *path);
 
-#define DEBUG
+char *db_get_path(ipod_t *ipod, song_ref_t *ref);
 
-#if defined(DEBUG)
-#define UPOD_DEBUG printf
-#else
-#define UPOD_DEBUG
-#endif
+/* libupod/mp3.c */
+int ref_fill_mp3 (char *, song_ref_t *);
+void ref_clear (song_ref_t *);
+#endif /* __UPODI_H */

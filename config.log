@@ -1,0 +1,106 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:556: checking for a BSD compatible install
+configure:609: checking whether build environment is sane
+configure:666: checking whether make sets ${MAKE}
+configure:712: checking for working aclocal
+configure:725: checking for working autoconf
+configure:738: checking for working automake
+configure:751: checking for working autoheader
+configure:764: checking for working makeinfo
+configure:794: checking host system type
+configure:827: checking for a BSD compatible install
+configure:882: checking for gcc
+configure:995: checking whether the C compiler (gcc  ) works
+configure:1011: gcc -o conftest    conftest.c  1>&5
+configure:1037: checking whether the C compiler (gcc  ) is a cross-compiler
+configure:1042: checking whether we are using GNU C
+configure:1051: gcc -E conftest.c
+configure:1070: checking whether gcc accepts -g
+configure:1104: checking how to run the C preprocessor
+configure:1125: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1184: checking for ANSI C header files
+configure:1197: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1264: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:1291: checking for unistd.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for sys/param.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for sys/time.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for time.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for sys/mkdev.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1297: sys/mkdev.h: No such file or directory
+configure: failed program was:
+#line 1296 "configure"
+#include "confdefs.h"
+#include <sys/mkdev.h>
+configure:1291: checking for sys/sysmacros.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for string.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for memory.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for fcntl.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for dirent.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for sys/ndir.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1297: sys/ndir.h: No such file or directory
+configure: failed program was:
+#line 1296 "configure"
+#include "confdefs.h"
+#include <sys/ndir.h>
+configure:1291: checking for ndir.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1297: ndir.h: No such file or directory
+configure: failed program was:
+#line 1296 "configure"
+#include "confdefs.h"
+#include <ndir.h>
+configure:1291: checking for alloca.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1291: checking for locale.h
+configure:1301: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1329: checking whether time.h and sys/time.h may both be included
+configure:1343: gcc -c -g -O2  conftest.c 1>&5
+configure:1368: checking for utime.h
+configure:1378: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1406: checking for struct utimbuf
+configure:1432: gcc -c -g -O2  conftest.c 1>&5
+configure:1455: checking whether sys/types.h defines makedev
+configure:1467: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:1563: checking for working alloca.h
+configure:1596: checking for alloca
+configure:1629: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:1795: checking whether struct tm is in sys/time.h or time.h
+configure:1808: gcc -c -g -O2  conftest.c 1>&5
+configure:1829: checking for st_blocks in struct stat
+configure:1842: gcc -c -g -O2  conftest.c 1>&5
+configure:1869: checking for dirent.h that defines DIR
+configure:1882: gcc -c -g -O2  conftest.c 1>&5
+configure:1907: checking for opendir in -ldir
+configure:1926: gcc -o conftest -g -O2   conftest.c -ldir   1>&5
+/usr/bin/ld: cannot find -ldir
+collect2: ld returned 1 exit status
+configure: failed program was:
+#line 1915 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char opendir();
+
+int main() {
+opendir()
+; return 0; }
+configure:1990: checking whether closedir returns void
+configure:2004: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:2029: checking for mkfifo
+configure:2057: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:2082: checking for mknod
+configure:2110: gcc -o conftest -g -O2   conftest.c  1>&5

@@ -25,10 +25,19 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 
+#include <stdarg.h>
+#include <libgen.h>
+#include <string.h>
+
+#include <errno.h>
+
 #include <byteswap.h>
 
 #include "upod.h"
 #include "upodi.h"
+
+int upod_debug(char *fmt, ...) {
+}
 
 int open_itunesdb (char *device, char *mnt_path) {
   char tmp[strlen(mnt_path) + 29];
@@ -69,20 +78,20 @@ int ipod_copy (ipod_t *ipod, char *src, char *dst, int add_to_db) {
     return db_add(ipod, dst);
   }
 
-  return SUCCESS;
+  return 0;
 }
 
 int ipod_copy_to (ipod_t *ipod, char *src) {
   char *src_name = basename(src);
   char dst[strlen(ipod->path) + strlen(src_name) + 2];
 
-  sprintf(dst, "%s/%s", ipod->mnt_path, src_name);
+  sprintf(dst, "%s/%s", ipod->path, src_name);
 
   return ipod_copy(ipod, src, dst, 1);
 }
 
 int ipod_copy_from (ipod_t *ipod, song_ref_t *ref, char *dst) {
-  return NO_IMPL;
+  return -1;
 }
 
 int ipod_delete (ipod_t *ipod, song_ref_t *ref) {
