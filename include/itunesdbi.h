@@ -430,11 +430,11 @@ struct tree_node {
 #define DOHM string_to_int("dohm")
 
 
-
 #define UPOD_NOT_IMPL(s) do {\
   fprintf(stderr, "Error -1: function %s not implemented\n", s);\
   return -1;\
 } while(0);
+
 
 /* libupod/endian.c */
 #if defined (__linux__)
@@ -473,22 +473,21 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 /* db.c */
 void    db_free_tree (tree_node_t *ptr);
 
-int     db_attach    (tree_node_t *parent, tree_node_t *new_child);
-int     db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);
-int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
-int     db_node_allocate (tree_node_t **entry, unsigned long type,
-			  size_t size, int subtree);
+int db_attach    (tree_node_t *parent, tree_node_t *new_child);
+int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);
+int db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
+int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int subtree);
 
 /* tihm.c */
-int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t **entry, tihm_t *tihm, int flags);
-tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
-tihm_t *db_tihm_fill     (tree_node_t *entry);
-int     db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
-			  tree_node_t **parent, int tihm_num);
-int     tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path,
-			     int stars, int tihm_num);
-void    tihm_free        (tihm_t *tihm);
+int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num);
+int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags);
+int db_tihm_fill (tree_node_t *tihm_header, tihm_t *tihm);
+int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **parent, int tihm_num);
+
+tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num);
+int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, int stars, int tihm_num);
+void    tihm_free (tihm_t *tihm);
+
 
 /* pihm.c */
 int     db_pihm_search   (tree_node_t *entry, u_int32_t tihm_num);
@@ -499,27 +498,32 @@ int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
 int db_aihm_search (struct tree_node *entry, u_int32_t image_id);
 int db_aihm_create (struct tree_node **entry, u_int32_t image_id);
 
+
 /* pyhm.c */
 int db_pyhm_create (tree_node_t **entry, int is_visible);
 int db_pyhm_set_id (tree_node_t *entry, int id);
 int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
+
 
 /* abhm.c */
 int db_abhm_create (tree_node_t **entry);
 int db_abhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
 int db_abhm_aihm_attach (tree_node_t *entry, tree_node_t *aihm);
 
+
 /* dohm.c */
-int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header,
-                      int dohm_type);
 dohm_t *dohm_create     (tihm_t *tihm, int data_type);
 void    dohm_destroy    (tihm_t *tihm);
-int     db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
-int     db_dohm_create_pihm (tree_node_t **entry, int order);
-int     db_dohm_create_eq (tree_node_t **entry, u_int8_t eq);
-int     db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, int flags);
-dohm_t *db_dohm_fill    (tree_node_t *entry);
 void    dohm_free       (dohm_t *dohm, int num_dohm);
+
+
+int db_dohm_retrieve (tree_node_t *tihm_header, tree_node_t **dohm_header, int dohm_type);
+int db_dohm_fill (tree_node_t *entry, dohm_t **dohms);
+int db_dohm_create_generic (tree_node_t **entry, size_t size, int type);
+int db_dohm_create_pihm (tree_node_t **entry, int order);
+int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq);
+int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, int flags);
+
 /* Operations on a wierd dohm */
 int db_dohm_itunes_create (tree_node_t **entry);
 int db_dohm_itunes_show (tree_node_t *entry, int column_id, int column_width);
@@ -527,9 +531,9 @@ int db_dohm_itunes_hide (tree_node_t *entry, int column_id);
 
 
 /* dshm.c */
-int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header,
-		      int type);
+int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header, int type);
 int db_dshm_create (tree_node_t **entry, int type);
+
 
 /* unicode.c */
 void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
