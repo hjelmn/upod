@@ -114,6 +114,9 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
 
   dirp = opendir (path);
 
+  if (dirp == NULL)
+    return 0;
+
   sprintf (scratch, "%s/.hidden_songs", path);
   if (stat (scratch, &statinfo) == 0) {
     fh = fopen (scratch, "r");

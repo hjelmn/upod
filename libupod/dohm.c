@@ -67,8 +67,8 @@ int db_dohm_retrieve (tree_node_t *entry, tree_node_t **dohm_header, int dohm_ty
 
 /* Assumes a non-null string */
 int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2) {
-  u_int8_t *utf8_1;
-  u_int8_t *utf8_2;
+  u_int8_t *utf8_1, *utf8_1p;
+  u_int8_t *utf8_2, *utf8_2p;
 
   size_t length_1;
   size_t length_2;
@@ -87,16 +87,28 @@ int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2) {
 
   db_dohm_get_string (dohm_header1, &utf8_1);
   db_dohm_get_string (dohm_header2, &utf8_2);
-  
-  length_1 = strlen (utf8_1);
-  length_2 = strlen (utf8_2);
+
+  /* Ignore leading "the " in strings */
+  if (strlen (utf8_1) > 4 && strncasecmp (utf8_1, "the ", 4) == 0)
+    utf8_1p = &utf8_1[4];
+  else
+    utf8_1p = utf8_1;
+
+  if (strlen (utf8_2) > 4 && strncasecmp (utf8_2, "the ", 4) == 0)
+    utf8_2p = &utf8_2[4];
+  else
+    utf8_2p = utf8_2;
+
+
+  length_1 = strlen (utf8_1p);
+  length_2 = strlen (utf8_2p);
 
   shortest_string = ((length_1 < length_2) ? length_1 :length_2) + 1;
 
   for (i = 0 ; !cmp && i < shortest_string ; i++)
-    if (tolower (utf8_1[i]) > tolower (utf8_2[i]))
+    if (tolower (utf8_1p[i]) > tolower (utf8_2p[i]))
       cmp = 1;
-    else if (tolower(utf8_1[i]) < tolower(utf8_2[i]))
+    else if (tolower(utf8_1p[i]) < tolower(utf8_2p[i]))
       cmp = -1;
 
   free (utf8_1);
