@@ -197,7 +197,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	return;
       
       if (id3v2_majorversion > 2) {
-	if (id3v2_majorversion == 4)
+	if (strncmp (tag_data, "APIC", 4) == 0)
 	  length = *((int *)&tag_data[4]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
@@ -211,7 +211,10 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 
 	i += 10 + length;
       } else {
-	length = synchsafe_to_int (&tag_data[3], 3);
+	if (strncmp (tag_data, "PIC", 3) == 0)
+	  length = (tag_data[3] << 16) | (tag_data[4] << 8) | tag_data[5];
+	else
+	  length = synchsafe_to_int (&tag_data[3], 3);
 
 	for (field = 0 ; fields[field] != NULL ; field++)
 	  if (strncmp(tag_data, fields[field], 3) == 0) {
@@ -261,7 +264,7 @@ static void one_pass_parse_id3 (FILE *fh, char *tag_data, int tag_datalen, int v
 	sprintf (encoding, "UTF-8");
 	break;
       default:
-	continue;
+	sprintf (encoding, "ISO-8859-1");
       }
       
       for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
