@@ -9,6 +9,7 @@ void usage(void) {
   printf("  db_pl <db> list\n");
   printf("  db_pl <db> songs <int>\n");
   printf("  db_pl <db> create <name>\n");
+  printf("  db_pl <db> rename <int> <name>\n");
 
   exit(1);
 }
@@ -20,8 +21,9 @@ int main(int argc, char *argv[]) {
   int ret;
   int qlist = 0;
   int cr = 0;
+  int rn = 0;
 
-  if (argc < 3 || argc > 4)
+  if (argc < 3 || argc > 5)
     usage();
 
   if (strstr (argv[2], "list") != NULL)
@@ -30,6 +32,8 @@ int main(int argc, char *argv[]) {
     qlist = 0;
   else if (strstr (argv[2], "create") != NULL && argc == 4)
     cr = 1;
+  else if (strstr (argv[2], "rename") != NULL && argc == 5)
+    rn = 1;
   else
     usage();
 
@@ -51,6 +55,10 @@ int main(int argc, char *argv[]) {
       db_write (ipod, argv[1]);
     }
 
+  } else if (rn) {
+    if (db_playlist_rename (&ipod, strtol(argv[3], NULL, 10), argv[4], strlen(argv[4])) == 0) {
+      db_write (ipod, argv[1]);
+    }
   } else {
     int i;
     if ((ret = db_playlist_list_songs (&ipod, atoi(argv[3]), &reflist)) > 0) {
