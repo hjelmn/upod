@@ -1,8 +1,8 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a db_lookup.c
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.1.2 db_lookup.c
  *
- *   Contains function for looking up an tihm entry in the iTunesDB
+ *   Contains function for looking up a tihm entry in the iTunesDB
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -33,7 +33,7 @@
   db_lookup:
 
   Returns the tihm identifier of the first match to data.
-  The data field can either be in unicode or character format.
+  The data field is in UTF-8 format
 
   Returns:
      -1 if not found
@@ -41,63 +41,103 @@
    >= 0 if found
 */
 
-int db_lookup (itunesdb_t itunesdb, int dohm_type, char *data, int data_len) {
-  struct tree_node **master, *root, *entry;
-  int i, j, ret = -1;
+int db_lookup (itunesdb_t *itunesdb, int dohm_type, char *data, int data_len) {
+  struct tree_node *dshm, *tihm, *dohm;
+  int i, j, ret;
+
+  /* simpifies code */
+  struct db_tlhm *tlhm_data;
+  struct db_tihm *tihm_data;
+  struct db_dohm *dohm_data;
+
   size_t unicode_data_len;
   u_int16_t *unicode_data;
 
-  /* simpifies code */
-  struct db_tlhm *tlhm;
-  struct db_tihm *tihm;
-  struct db_dohm *dohm;
+  if (db_dshm_retrieve (itunesdb, &dshm, 0x1) != 0)
+    return -1;
 
-  root = itunesdb.tree_root;
-  if (root == NULL) return -1;
+  unicode_check_and_copy (&unicode_data, &unicode_data_len, data, data_len);
 
-  if (data[1] != 0){ /* Data is not in unicode format */
-    unicode_data_len = data_len * 2;
-    unicode_data = malloc (data_len * 2);
-    char_to_unicode(unicode_data, data, data_len);
-  } else {
-    unicode_data_len = data_len;
-    unicode_data = malloc (data_len);
-    memcpy (unicode_data, data, data_len);
-  }
+  tlhm_data = (struct db_tlhm *)dshm->children[0]->data;
 
-  /* the playlist that contains the song entries is the first one that
-     will be encountered by this loop */
-  for (master = &(root->children[0]) ;
-       !strstr((*master)->data, "dshm") ; master++);
-
-  tlhm = (struct db_tlhm *)(*master)->children[0]->data;
-
-  for (i = 1 ; i <= tlhm->num_tihm ; i++) {
-    entry = (*master)->children[i];
-
-    tihm = (struct db_tihm *)entry->data;
+  for (i = 1 ; i <= tlhm_data->num_tihm ; i++) {
+    tihm = dshm->children[i];
+    tihm_data = (struct db_tihm *)tihm->data;
 
     /* since there is no garuntee that the dohm entries are
        in any order, do a linear traversal of the list looking for the
        data */
-    for (j = 0 ; j < tihm->num_dohm ; j++) {
-      dohm = (struct db_dohm *)entry->children[j]->data;
+    for (j = 0 ; j < tihm_data->num_dohm ; j++) {
+      dohm = tihm->children[j];
+      dohm_data = (struct db_dohm *)dohm->data;
       
-      if (dohm->type != dohm_type)
+      if ((dohm_type > -1 && dohm_data->type != dohm_type) ||
+	  unicode_data_len != dohm_data->len)
 	continue;
 
-      if (unicode_data_len > dohm->len)
-	continue;
-
-      if (memmem (&entry->children[j]->data[0x28], dohm->len, unicode_data, unicode_data_len) != 0) {
-	ret = tihm->identifier;
+      if (memcmp (&dohm->data[0x28], unicode_data, unicode_data_len) == 0) {
+	ret = tihm_data->identifier;
 	goto found;
       }
     }
   }
-
- notfound: /* if ret == -1 */
+ notfound:
+  ret = -1;
  found:
   free(unicode_data);
+  return ret;
+}
+
+/*
+  db_lookup_tihm:
+
+  Returns the tihm identifier of the first tihm with a dohm entry of any type
+  that exactly matches data.
+
+  The data field can either be in unicode or character format.
+
+  Returns:
+     -1 on not found
+   < -1 on any error occurred
+   >= 0 on found
+*/
+int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
+  return db_lookup (itunesdb, -1, data, data_len);
+}
+
+int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
+  tree_node_t *dshm_header, *plhm_header, *dohm_header;
+  int i, j, ret;
+  size_t unicode_data_len;
+  u_int16_t *unicode_data;
+
+  /* simpifies code */
+  struct db_plhm *plhm_data;
+  struct db_dohm *dohm_data;
+
+  if (db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header) != 0)
+    return -1;
+
+  unicode_check_and_copy (&unicode_data, &unicode_data_len, data, data_len);
+
+  plhm_data = (struct db_plhm *)plhm_header->data;
+
+  for (i = 1 ; i < plhm_data->num_pyhm ; i++) {
+    dohm_header = dshm_header->children[i+1]->children[1];
+    dohm_data = (struct db_dohm *)dohm_header->data;
+   
+    /* again, exact matches only */
+    if (unicode_data_len != dohm_data->len)
+      continue;
+    
+    if (memcmp (&dohm_header->data[0x28], unicode_data, unicode_data_len) == 0) {
+      ret = i;
+      goto found_playlist;
+    }
+  }
+
+ notfound_playlist:
+  ret = -1;
+ found_playlist:
   return ret;
 }

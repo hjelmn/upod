@@ -462,6 +462,9 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   /* allocate memory for the new tree node */
   new_tihm_header = (tree_node_t *)calloc(1, sizeof(tree_node_t));
   new_tihm_header->parent = dshm_header;
+
+  if (db_lookup (itunesdb, IPOD_PATH, mac_path, mac_path_len) > -1)
+    return -1; /* A song already exists in the database with this path */
   
   if ((tihm_num = db_tihm_create (new_tihm_header, path, mac_path, mac_path_len, stars)) < 0) {
     db_log (itunesdb, tihm_num, "Could not create tihm entry\n");
