@@ -47,7 +47,8 @@ enum dohm_types_t {
   IPOD_ARTIST,
   IPOD_GENRE,
   IPOD_TYPE, IPOD_EQ,
-  IPOD_COMMENT
+  IPOD_COMMENT,
+  IPOD_COMPOSER=12
 };
 
 enum show_entries {

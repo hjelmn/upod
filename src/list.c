@@ -10,8 +10,8 @@ void usage (void) {
   exit(1);
 }
 
-char *str_type(int file_type) {
-  switch (file_type) {
+char *str_type(int dohm_type) {
+  switch (dohm_type) {
   case IPOD_TITLE:
     return "Title";
   case IPOD_PATH:
@@ -28,7 +28,10 @@ char *str_type(int file_type) {
     return "Comment";
   case IPOD_EQ:
     return "Equilizer";
+  case IPOD_COMPOSER:
+    return "Composer";
   default:
+    printf ("%i\n", dohm_type);
     return "Unknown";
   }
 }
