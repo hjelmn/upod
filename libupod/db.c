@@ -143,20 +143,27 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   if ( (iptr[0] == DOHM) && (cell_size != entry_size) ) {
     struct db_dohm *dohm_data = (struct db_dohm *)*buffer;
 
+    /* A dohm cell can hold a string, data, or a sub-tree. Process data/string
+       dohm cells in a different way than those that have subtrees. */
     if (!((iptr[6] & 0x6d680000) == 0x6d680000)) {
       copy_size = entry_size;
 
       if (dohm_contains_string(dohm_data) == 0) {
+	/* Read a data dohm */
 	copy_size = entry_size;
 	bswap_block (&((*buffer)[0x18]), 4, entry_size/4 - 6);
       } else {
+	/* Read a string dohm */
 	if (iptr[9] == 0)
 	  tnode_0->string_header_size = 16;
 	else
+	  /* ArtworkDB string dohms are smaller by four bytes than the comparable
+	     iTunesdb string dohm. */
 	  tnode_0->string_header_size = 12;
 
 	bswap_block (&((*buffer)[0x18]), 4, tnode_0->string_header_size/4);
 
+	/* Swap UTF-16 strings */
 	if (tnode_0->string_header_size == 16) {
 	  struct string_header_16 *string_header = (struct string_header_16 *)&((*buffer)[0x18]);
 	  if (string_header->format != 1)
