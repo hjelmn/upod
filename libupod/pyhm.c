@@ -60,8 +60,7 @@ int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
   pyhm_data = (struct db_pyhm *)entry->data;
   pyhm_data->num_dohm++;
 
-  db_attach (entry, dohm);
+  db_attach_at (entry, dohm, pyhm_data->num_dohm - 1);
 
   return 0;
 }
-

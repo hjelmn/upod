@@ -128,7 +128,7 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *
   }
 
   if (artworkdb && tihm.image_data)
-    db_artwork_add (artworkdb, tihm.image_data, tihm.image_size, tihm.artwork_id1, tihm.artwork_id2);
+    db_photo_add (artworkdb, tihm.image_data, tihm.image_size, tihm.artwork_id1, tihm.artwork_id2);
 
   tihm_free (&tihm);
   
