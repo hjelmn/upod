@@ -126,10 +126,13 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
 	   extended header is present */
 	if (id3v2_flags & 0x40) {
 	  /* Skip extended header */
-	  id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
-	  
-	  fseek(fh, 0xa + id3v2_extendedlen, SEEK_SET);
-	  *tag_datalen = id3v2_len - id3v2_extendedlen;
+	  if (*major_version != 3)
+	    id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
+	  else
+	    id3v2_extendedlen = big32_2_arch32 (((int *)&data[6])[0]);
+
+	  fseek(fh, 0xa + 0x4 + id3v2_extendedlen, SEEK_SET);
+	  *tag_datalen = id3v2_len - 0x4 - id3v2_extendedlen;
 	} else {
 	  /* Skip standard header */
 	  fseek(fh, 0xa, SEEK_SET);
@@ -209,8 +212,10 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       if (id3v2_majorversion > 2) {
 	/* id3v2.3 does not use synchsafe integers in frame headers (BAD IDEA) */
+	/* I have no idea about the "COM " frame, it's an oddball (the spec
+	   exists for a reason.) */
 	if (id3v2_majorversion == 3 || strcmp (identifier, "APIC") == 0 ||
-	    strcmp (identifier, "COMM") == 0)
+	    strcmp (identifier, "COMM") == 0 || strcmp (identifier, "COM ") == 0)
 	  length = big32_2_arch32 (((int *)tag_data)[1]);
 	else
 	  length = synchsafe_to_int (&tag_data[4], 4);
