@@ -4,10 +4,6 @@
  *
  *   Routines for reading/writing the iPod's iTunesDB.
  *
- *   Quick Note: I use the words: entry and record interchangably.
- *    Eventually I will clean this up and try to be a little more consistant
- *    with my language, so keep that in mind while reading this code.
- *
  *   Changes:
  *    (7-8-2002)
  *     - modified to fit with ipod-on-linux project
@@ -118,9 +114,8 @@ static int dohm_contains_string (struct db_dohm *dohm_data) {
 
   Purpose is to build up the iTunesDB tree from a buffer.
 */
-static tree_node_t *db_build_tree (size_t *bytes_read,
-					tree_node_t *parent,
-					char **buffer) {
+static tree_node_t *db_build_tree (itunesdb_t *itunesdb, size_t *bytes_read,
+				   tree_node_t *parent, char **buffer) {
   tree_node_t *tnode_0;
   int *iptr = (int *)*buffer;
   int i;
@@ -160,6 +155,14 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
     /* this line is correct if we assume that the rest of the cell
        contains only 32-bit integers */
     bswap_block(&((*buffer)[0xc]), sizeof(u_int32_t), cell_size/4 - 3);
+
+    if (iptr[0] == TIHM) {
+      struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
+
+      itunesdb->last_tihm = ((itunesdb->last_tihm < tihm_data->identifier)
+			     ? tihm_data->identifier
+			     : itunesdb->last_tihm);
+    }
     
     copy_size = cell_size;
   }
@@ -202,7 +205,7 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
       exit(1);
     }
 
-    tnode_0->children[tnode_0->num_children-1] = db_build_tree(bytes_read, tnode_0, buffer);
+    tnode_0->children[tnode_0->num_children-1] = db_build_tree(itunesdb, bytes_read, tnode_0, buffer);
   }
 
  dbbt_done:
@@ -300,7 +303,7 @@ int db_load (itunesdb_t *itunesdb, char *path, int flags) {
   close (iTunesDB_fd);
 
   /* do the work of building the itunesdb structure */
-  itunesdb->tree_root = db_build_tree(&bytes_read, NULL, &buffer);
+  itunesdb->tree_root = db_build_tree(itunesdb, &bytes_read, NULL, &buffer);
   itunesdb->flags = flags;
 
   free(tmp);
@@ -450,7 +453,8 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
    < 0 on error
    >=0 on success
 */
-int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars, int show) {
+int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path,
+	    size_t mac_path_len, int stars, int show) {
   tree_node_t *dshm_header, *new_tihm_header, *root;
 
   struct db_tlhm *tlhm_data;
@@ -459,16 +463,17 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   tihm_t tihm;
 
   /* find the song list */
-  if (db_dshm_retrieve (itunesdb, &dshm_header, 1) < 0)
-    return -1;
+  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0)
+    return ret;
 
   if (db_lookup (itunesdb, IPOD_PATH, mac_path, mac_path_len) > -1)
     return -1; /* A song already exists in the database with this path */
   
-  /* Set the new tihm entries number to 1 + the previous one */
-  tihm_num = ((int *)(dshm_header->children[dshm_header->num_children - 1]->data))[4] + 1;
+  /* Set the new tihm entry's number to 1 + the previous one */
+  tihm_num = itunesdb->last_tihm + 1;
 
-  if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len, stars, tihm_num, itunesdb->flags & 0x1)) < 0) {
+  if ((ret = tihm_fill_from_file (&tihm, path, mac_path, mac_path_len,
+				  stars, tihm_num, itunesdb->flags & 0x1)) < 0) {
     db_log (itunesdb, ret, "Could not fill tihm structure from file.\n");
     return ret;
   }
@@ -501,6 +506,8 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
   tlhm_data = (struct db_tlhm *)dshm_header->children[0]->data;
   tlhm_data->num_tihm += 1;
 
+  itunesdb->last_tihm++;
+
   return tihm_num;
 }
 
@@ -521,20 +528,21 @@ int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_pat
 int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
   tree_node_t *tihm_header, *dohm_header;
   struct db_tihm *tihm_data;
+  int ret;
 
-  if (db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num) < 0) {
-    db_log (itunesdb, -2, "db_song_modify_eq %i: no song found\n", tihm_num);
+  if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0) {
+    db_log (itunesdb, ret, "db_song_modify_eq %i: no song found\n", tihm_num);
 
-    return -2;
+    return ret;
   }
 
   /* see if an equilizer entry already exists */
-  if (db_dohm_retrieve (tihm_header, &dohm_header, 0x7) < 0) {
+  if ((ret = db_dohm_retrieve (tihm_header, &dohm_header, 0x7)) < 0) {
     dohm_header = calloc (1, sizeof(tree_node_t));
 
     if (dohm_header == NULL) {
       perror ("db_song_modify_eq|calloc");
-      return -1;
+      return -errno;
     }
 
     db_attach (tihm_header, dohm_header);
@@ -543,8 +551,8 @@ int db_modify_eq (itunesdb_t *itunesdb, u_int32_t tihm_num, int eq) {
     tihm_data->num_dohm ++;
   }
 
-  if (db_dohm_create_eq (dohm_header, eq) < 0)
-    return -1;
+  if ((ret = db_dohm_create_eq (dohm_header, eq)) < 0)
+    return ret;
 
   return 0;
 }

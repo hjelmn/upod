@@ -135,7 +135,8 @@ int db_create (itunesdb_t *itunesdb, char *db_name, int name_len, int flags) {
   db_attach (entry, entry2);
 
   itunesdb->flags = flags;
-
+  itunesdb->last_tihm = 0;
+  
   ret = db_playlist_create (itunesdb, db_name, name_len);
 
   db_log (itunesdb, 0, "db_create: complete\n");

@@ -85,6 +85,7 @@ typedef struct _itunesdb {
   int log_level;
   FILE *log;
   int flags;
+  int last_tihm;
 } itunesdb_t;
 
 typedef struct tree_node tree_node_t;

@@ -1,6 +1,10 @@
 /**
  *   (c) 2002-2004 Nathan Hjelm <hjelmn@cs.unm.edu>
- *   v0.2 mp3.c 
+ *   v0.3 mp3.c 
+ *
+ *   (2004-10-28) : Correctly parses files with LYRICS tags now.
+ *
+ *   ID3/LYRIC Tag information can be found at http://www.id3.org.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -38,12 +42,25 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <stdarg.h>
+
 /* from mpg123 */
 #include "genre.h"
 
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>
 #endif
+
+/* #define MP3_DEBUG 1 */
+
+void mp3_debug (char *format, ...) {
+#if defined(MP3_DEBUG)
+  va_list arg;
+  va_start (arg, format);
+  vfprintf (stderr, format, arg);
+  va_end (arg);
+#endif
+}
 
 struct mp3_file {
   FILE *fh;
@@ -115,7 +132,10 @@ static int find_first_frame (struct mp3_file *mp3) {
 static int mp3_open (char *file_name, struct mp3_file *mp3) {
   struct stat statinfo;
 
-  char buffer[5];
+  char buffer[10];
+  int has_v1 = 0;
+
+  mp3_debug ("mp3_open: Entering...\n");
 
   memset (mp3, 0 , sizeof (struct mp3_file));
 
@@ -133,9 +153,35 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
   memset (buffer, 0, 5);
 
   fread (buffer, 1, 3, mp3->fh);
-  if (strncmp (buffer, "TAG", 3) == 0)
+  if (strncmp (buffer, "TAG", 3) == 0) {
     mp3->data_size -= 128;
+
+    has_v1 = 1;
+
+    mp3_debug ("mp3_open: Found id3v1 tag.\n");
+  }
   /*                                          */
+
+  /* Check for Lyrics v2.00 */
+  fseek (mp3->fh, -9 - (has_v1 ? 128 : 0), SEEK_END);
+  memset (buffer, 0, 10);
+  fread (buffer, 1, 9, mp3->fh);
+
+  if (strncmp (buffer, "LYRICS200", 9) == 0) {
+    int lyrics_size;
+    mp3_debug ("mp3_open: Found Lyrics v2.00\n");
+
+    /* Get the size of the Lyrics */
+    fseek (mp3->fh, -15, SEEK_CUR);
+    memset (buffer, 0, 7);
+    fread (buffer, 1, 6, mp3->fh);
+
+    /* Include the size if LYRICS200 (9) and the size field (6) */
+    lyrics_size = strtol (buffer, NULL, 10) + 15;
+    mp3->data_size -= lyrics_size;
+
+    mp3_debug ("mp3_open: Lyrics are 0x%x Bytes in length.\n", lyrics_size);
+  }
 
   fseek (mp3->fh, 0, SEEK_SET);
 
@@ -146,15 +192,19 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
     fseek (mp3->fh, 6, SEEK_SET);
     fread (buffer, 1, 4, mp3->fh);
     
-    mp3->tagv2_size = synchsafe_to_int (buffer, 4);
+    mp3->tagv2_size = synchsafe_to_int (buffer, 4) + 10;
 
-    fseek (mp3->fh, mp3->tagv2_size + 10, SEEK_SET);
+    fseek (mp3->fh, mp3->tagv2_size, SEEK_SET);
+
+    mp3_debug ("mp3_open: Found id3v2 tag, size = %i Bytes\n", mp3->tagv2_size);
   } else
     fseek (mp3->fh, 0, SEEK_SET);
 
   /*                                      */
 
   mp3->vbr = 0;
+
+  mp3_debug ("mp3_open: Complete\n");
 
   return find_first_frame (mp3);
 }
@@ -170,6 +220,8 @@ static int mp3_scan (struct mp3_file *mp3) {
   size_t bitrate, samplerate;
   double frame_size;
 
+  mp3_debug ("mp3_scan: Entering...\n");
+
   while (ftell (mp3->fh) < mp3->data_size) {
     fread (&header, 4, 1, mp3->fh);
 
@@ -179,8 +231,13 @@ static int mp3_scan (struct mp3_file *mp3) {
     if ((header & 0xffea0000) != 0xffea0000) {
       frames = 0;
 
-      if (find_first_frame (mp3) < 0)
+      mp3_debug ("mp3_scan: Invalid header %08x\n", header);
+
+      if (find_first_frame (mp3) < 0) {
+	mp3_debug ("mp3_scan: An error occured at line: %i\n", __LINE__);
 	return -1;
+      }
+
       continue;
     }
 
@@ -193,6 +250,7 @@ static int mp3_scan (struct mp3_file *mp3) {
 
     frames++;
 
+    /* The number of frames used to scan for a vbr of 4 is arbitrary. */
     if (frames == 4 && mp3->vbr == 0) {
       total_framesize = (double)(mp3->data_size - mp3->tagv2_size - mp3->skippage);
 
@@ -206,7 +264,10 @@ static int mp3_scan (struct mp3_file *mp3) {
   mp3->bitrate    = (int)(total_bitrate/(double)frames * 1000.0);
   mp3->length     = (int)(1000.0 * (total_framesize)/(total_bitrate/frames * 125.0));
 
-  if (mp3->samplerate <= 0 || mp3->bitrate <= 0 || mp3->length <= 0)
+  mp3_debug ("mp3_scan: Finished. SampleRate: %i, BitRate: %i, Length: %i\n", mp3->samplerate,
+	     mp3->bitrate, mp3->length);
+
+  if (mp3->samplerate <= 0 || mp3->bitrate <= 0.0 || mp3->length <= 0.0)
     return -1;
 
   return 0;

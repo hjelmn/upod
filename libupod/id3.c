@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.3 id3.c 
+ *   v1.0u id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -383,6 +383,10 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	copy_from = &tag_data[93];
 	data_type = IPOD_COMMENT;
 	break;
+      case ID3_TRACK:
+	if (tag_data[126] != 0xff)
+	  tihm->track = tag_data[126];
+	continue;
       case ID3_GENRE:
 	if ((signed char)tag_data[127] == -1)
 	  continue;
