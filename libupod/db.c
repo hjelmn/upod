@@ -337,7 +337,6 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
 static int db_write_tree (int fd, tree_node_t *entry) {
   static int ret;
-  int *iptr;
   int i, swap;
   struct db_dohm *dohm_data;
 
@@ -345,7 +344,6 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   dohm_data = (struct db_dohm *) entry->data;
 
   if (dohm_data->dohm == DOHM) {
-    iptr = (int *)dohm_data;
     if (entry->string_header_size == 16) {
       struct string_header_16 *string_header;
 
@@ -354,7 +352,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
       swap = 10;
 
       if (string_header->format != 1)
-	bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
     } else if (entry->string_header_size == 12) {
       struct string_header_12 *string_header;
 
@@ -363,7 +361,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
       swap = 9;
       
       if (string_header->format != 1)
-	bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
+	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
     } else
       swap = entry->size/4;
 
@@ -375,25 +373,26 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 
   ret += write (fd, entry->data, entry->size);
 
+
 #if BYTE_ORDER == BIG_ENDIAN
+  bswap_block(entry->data, 4, swap);
+
   if (dohm_data->dohm == DOHM && (dohm_data->type & 0x01000000) == 0) {
     if (entry->string_header_size == 16) {
       struct string_header_16 *string_header;
       string_header = (struct string_header_16 *)&entry->data[0x18];
 
       if (string_header->format != 1)
-	bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
     } else if (entry->string_header_size == 12) {
       struct string_header_12 *string_header;
       string_header = (struct string_header_12 *)&entry->data[0x18];
 
       if (string_header->format != 1)
-	bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
+	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
     }
   }
 #endif
-
-  bswap_block(entry->data, 4, swap);
 
   for (i = 0 ; i < entry->num_children ; i++)
     db_write_tree (fd, entry->children[i]);

@@ -262,15 +262,10 @@ void db_playlist_song_list_free (GList **head) {
 int db_playlist_create (ipoddb_t *itunesdb, char *name, int name_len) {
   tree_node_t *plhm_header, *new_pyhm, *new_dohm, *dshm_header;
   struct db_plhm *plhm;
-  struct db_dohm *dohm;
 
-  struct db_wierd_dohm *wierd_dohm_data;
+  int ret;
 
-  struct db_pyhm *pyhm;
-  size_t unicode_len;
-  u_int16_t *unicode_data;
-
-  int ret, *iptr;
+  dohm_t dohm;
 
   if (itunesdb == NULL || name == NULL || name_len == 0)
     return -EINVAL;
@@ -280,74 +275,47 @@ int db_playlist_create (ipoddb_t *itunesdb, char *name, int name_len) {
   if ((ret = db_playlist_retrieve_header (itunesdb, &plhm_header, &dshm_header)) < 0)
     return ret;
 
-  to_unicode (&unicode_data, &unicode_len, name, name_len, "UTF-8");
+  to_unicode (&dohm.data, &dohm.size, name, name_len, "UTF-8");
 
   plhm = (struct db_plhm *) plhm_header->data;
 
-  if ((ret = db_pyhm_create (&new_pyhm)) < 0)
+  if ((ret = db_pyhm_create (&new_pyhm, plhm->num_pyhm == 0)) < 0)
     return ret;
 
-  pyhm = (struct db_pyhm *) new_pyhm->data;
+  /* Give the playlist a random ID */
+  db_pyhm_set_id (new_pyhm, rand ());
 
-  if (plhm->num_pyhm == 0) {
-    pyhm->is_visible = 1;
-    pyhm->unk0       = 0xb94613e8;
-  }
-
-  /* I dont know what this dohm entry does */
-  if ((ret = db_dohm_create_generic (&new_dohm, 0x288, 0x64)) < 0)
+  if ((ret = db_dohm_itunes_create (&new_dohm)) < 0)
     return ret;
 
-  wierd_dohm_data = (struct db_wierd_dohm *)new_dohm->data;
+  db_dohm_itunes_show (new_dohm, SHOW_PLAYING    , 0x12);
+  db_dohm_itunes_show (new_dohm, SHOW_TITLE      , 0x9d);
+  db_dohm_itunes_show (new_dohm, SHOW_TIME       , 0x35);
 
-  /* i dont know what these two are about, but they need to be set like this */
-  wierd_dohm_data->unk6 = 0x00010000;
-  wierd_dohm_data->unk7 = 0x00000004;
+  db_dohm_itunes_show (new_dohm, SHOW_DISK_NUMBER, 0x2e);
+  db_dohm_itunes_show (new_dohm, SHOW_TRACK_NUM  , 0x3c);
+  db_dohm_itunes_show (new_dohm, SHOW_ALBUM      , 0x9d);
+  db_dohm_itunes_show (new_dohm, SHOW_ARTIST     , 0x9d);
+  db_dohm_itunes_show (new_dohm, SHOW_YEAR       , 0x25);
+  db_dohm_itunes_show (new_dohm, SHOW_BITRATE    , 0x5d);
+  db_dohm_itunes_show (new_dohm, SHOW_SAMPLERATE , 0x4e);
 
-  /* but, I now know what this is */
-  wierd_dohm_data->shows[0].unk10[0] = 10;
-
-  /* show playing column */
-  wierd_dohm_data->shows[0].show = SHOW_PLAYING     | 0x00120000;
-
-  wierd_dohm_data->shows[1].show = SHOW_TITLE       | 0x009d0000;
-  wierd_dohm_data->shows[2].show = SHOW_TIME        | 0x00350000;
-
-  wierd_dohm_data->shows[3].show = SHOW_DISK_NUMBER | 0x002e0000;
-  wierd_dohm_data->shows[4].show = SHOW_TRACK_NUM   | 0x003c0000;
-  
-  wierd_dohm_data->shows[5].show = SHOW_ALBUM       | 0x009d0000; 
-  wierd_dohm_data->shows[6].show = SHOW_ARTIST      | 0x009d0000; 
-
-  wierd_dohm_data->shows[7].show = SHOW_YEAR        | 0x00250000;
-  wierd_dohm_data->shows[8].show = SHOW_BITRATE     | 0x005d0000; 
-  wierd_dohm_data->shows[9].show = SHOW_SAMPLERATE  | 0x004e0000;
-
-  db_attach (new_pyhm, new_dohm);
+  db_pyhm_dohm_attach (new_pyhm, new_dohm);
 
   /* create the title entry for the new playlist */
-  if ((ret = db_dohm_create_generic (&new_dohm, 0x28 + unicode_len, IPOD_TITLE)) < 0)
+  dohm.type = IPOD_TITLE;
+  if ((ret = db_dohm_create (&new_dohm, dohm, 16)) < 0)
     return ret;
 
-  new_dohm->string_header_size = 16;
-
-  dohm       = (struct db_dohm *)new_dohm->data;
-
-  iptr = (int *)dohm;
-
-  iptr[6] = 0x00000001;
-  iptr[7] = unicode_len;
-  
-  memcpy (&new_dohm->data[0x28], unicode_data, unicode_len);
-
-  db_attach (new_pyhm, new_dohm);
+  db_pyhm_dohm_attach (new_pyhm, new_dohm);
 
   /* this MUST be done last to avoid adding the sizes it's children twice */
   db_attach (dshm_header, new_pyhm);
 
+  dohm_free (&dohm, 1);
+
   db_log (itunesdb, 0, "db_playlist_create: complete\n");
 
-  free (unicode_data);
   return plhm->num_pyhm++;
 }
 
@@ -702,11 +670,8 @@ int db_playlist_remove_all (ipoddb_t *itunesdb, int tihm_num) {
 }
 
 int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column, u_int16_t width) {
-  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
+  tree_node_t *dshm_header, *plhm_header;
 
-  int num_shown;
-
-  struct db_wierd_dohm *wierd_dohm_data;
   struct db_plhm *plhm_data;
 
   int ret;
@@ -719,26 +684,11 @@ int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column, u_int
   if (playlist >= plhm_data->num_pyhm)
     return -EINVAL;
 
-  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
-  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
-  num_shown = wierd_dohm_data->shows[0].unk10[0];
-
-  if (num_shown > 36)
-    return -EINVAL;
-
-  wierd_dohm_data->shows[num_shown].show = column | width << 16;
-  wierd_dohm_data->shows[0].unk10[0] = num_shown + 1;
-
-  return 0;
+  return db_dohm_itunes_show (dshm_header->children[playlist + 1]->children[0], column, width);
 }
 
 int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column) {
-  tree_node_t *dshm_header, *wierd_dohm_header, *plhm_header;
-  int i, j;
-
-  int num_shown;
-
-  struct db_wierd_dohm *wierd_dohm_data;
+  tree_node_t *dshm_header, *plhm_header;
   struct db_plhm *plhm_data;
 
   int ret;
@@ -751,27 +701,7 @@ int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column) {
   if (playlist >= plhm_data->num_pyhm)
     return -EINVAL;
 
-  wierd_dohm_header = dshm_header->children[playlist + 1]->children[0];
-  wierd_dohm_data = (struct db_wierd_dohm *) wierd_dohm_header->data;
-  num_shown = wierd_dohm_data->shows[0].unk10[0];
-
-  if (num_shown == 0)
-    return -EINVAL;
-
-  for (i = 0 ; i < num_shown ; i++) {
-    if ((wierd_dohm_data->shows[i].show & 0xff) == column)
-      break;
-  }
-
-  if (i == num_shown)
-    return -EINVAL;
-
-  for (j = i + 1 ; j < num_shown ; j++)
-    wierd_dohm_data->shows[j-1] = wierd_dohm_data->shows[j];
-
-  wierd_dohm_data->shows[0].unk10[0] = num_shown - 1;;
-
-  return 0;
+  return db_dohm_itunes_hide (dshm_header->children[playlist + 1]->children[0], column);
 }
 
 /*
@@ -893,11 +823,9 @@ int db_playlist_get_name (ipoddb_t *itunesdb, int playlist,
 
   iptr = (int *)dohm_data;
 
-  if (dohm_header != NULL) {
-    /* one extra byte is needed to hold the terminating \0 */
+  if (dohm_header != NULL)
     unicode_to_utf8 (name, &length, (u_int16_t *)&dohm_header->data[0x28],
 		     iptr[7]);
-  }
 
   db_log (itunesdb, 0, "db_playlist_get_name: complete\n");
 

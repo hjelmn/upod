@@ -29,25 +29,13 @@
 #define const /* get rid of const (useless in c anyway?) */
 #endif
 #include <iconv.h>
-
-/* -- XXX -- Not used --- XXX --- */
 void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length) {
   int i;
-
+ 
   memset (dst, 0, src_length * 2);
-
+  
   for (i = 0 ; i < src_length ; i++)
     dst[i] = src[i];
-}
-
-/* -- XXX -- this will be changed to be Unicode -> UTF8 -- XXX -- */
-void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length) {
-  int i;
-  
-  memset(dst, 0, src_length/2 + 1);
-
-  for (i = 0 ; i < src_length/2 ; i++)
-    dst[i] = (u_int8_t)src[i];
 }
 
 void unicode_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
@@ -163,64 +151,6 @@ void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
   *dst_len = final_size;
 }
 
-/*
-void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
-			     size_t src_len) {
-  int i, x;
-  int length = 0;
-  u_int8_t scratch[512];
-  
-  if (dst == NULL || dst_len == NULL || src_len == 0)
-    return;
-
-  *dst_len = 0;
-
-   unicode id3 tags create by iTunes start with the 24 bit tag 0x01fffe (or, so I have noticed)
-  if (src_len > 3 && (((int *)src)[0] & 0x01fffe00) == 0x01fffe00) {
-    *dst_len = src_len-3;
-    *dst = calloc (2, *dst_len/2);
-    memmove (*dst, &src[3], *dst_len);
-
-    bswap_block ((u_int8_t *)*dst, 2, *dst_len/2);
-  } else {
-    u_int16_t *dst16;
-
-    dst16 = (u_int16_t *)scratch;
-    
-    for (i = 0, x = 0 ; i < src_len ; i++) {
-      u_int8_t  onebyte    = src[i];
-      
-      if (src[i] == 0)
-	continue;
-      
-      
-      if (((src[i] & 0xe0) == 0xe0) &&
-	  (i < (src_len - 1) && (src[i+1] & 0x80) == 0x80)) {
-	dst16[x] = src[i+2] & 0x3f | ((src[i+1] & 0x3f) << 6) |
-	  ((src[i] & 0x0f) << 12);
-	i += 2;
-      } else if (((src[i] & 0xc0) == 0xc0) &&
-		 (i < (src_len - 1) && (src[i+1] & 0x80) == 0x80)) {
-	dst16[x] = src[i+1] & 0x3f | ((src[i] & 0x1f) << 6);
-	i += 1;
-      } else
-	dst16[x] = src[i];
-      
-      x++;
-    }
-    
-    *dst_len = 2*x;
-    *dst = calloc (2, x);
-    if (*dst == NULL) {
-      perror ("unicode_check_and_copy|calloc");
-      *dst_len = 0;
-      return;
-    }
-
-    memcpy (*dst, scratch, 2*x);
-  }
-}
-*/  
 int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len) {
   size_t i;
 

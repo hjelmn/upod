@@ -42,9 +42,9 @@ static int db_dbhm_create (tree_node_t **entry) {
   dbhm_data = (struct db_dbhm *) (*entry)->data;
 
   /* these are the values seen in iTunes iTunesDBs */
-  dbhm_data->unk0 = 0x1;
-  dbhm_data->unk1 = 0x1;
-  dbhm_data->unk2 = 0x2;
+  dbhm_data->unk0     = 0x1;
+  dbhm_data->unk1     = 0x1;
+  dbhm_data->num_dshm = 0x2;
 
   return 0;
 }
@@ -58,8 +58,10 @@ static int db_dfhm_create (tree_node_t **entry) {
 
   dfhm_data = (struct db_dfhm *) (*entry)->data;
 
-  dfhm_data->unk1 = 0x00000001;
-  dfhm_data->unk2 = 0x00000003;
+  dfhm_data->unk1      = 0x00000001;
+  dfhm_data->num_dshm  = 0x00000003;
+
+  /* This is the value used by iTunes */
   dfhm_data->next_iihm = 0x00000064;
 
   return 0;
@@ -113,14 +115,14 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
   db_dbhm_create (&root);
 
   /* create song list */
-  db_dshm_create (&entry, 1); /* type 1 is song list */
+  db_dshm_create (&entry, 1); /* type 1 is the track list */
   db_attach (root, entry);
 
   db_tlhm_create (&entry2);
   db_attach (entry, entry2);
 
   /* create master playlist */
-  db_dshm_create (&entry, 2); /* type 2 is playlist list */
+  db_dshm_create (&entry, 2); /* type 2 is the playlist list */
   db_attach (root, entry);
 
   db_plhm_create (&entry2);
@@ -149,21 +151,21 @@ int db_photo_create (ipoddb_t *photodb) {
   db_dfhm_create (&root);
 
   /* create image list */
-  db_dshm_create (&entry, 1); /* type 1 is an image list */
+  db_dshm_create (&entry, 1); /* type 1 is the image list */
   db_attach (root, entry);
 
   db_ilhm_create (&entry2);
   db_attach (entry, entry2);
 
   /* create album list */
-  db_dshm_create (&entry, 2); /* type 2 is playlist list */
+  db_dshm_create (&entry, 2); /* type 2 is the album list */
   db_attach (root, entry);
 
   db_alhm_create (&entry2);
   db_attach (entry, entry2);
 
   /* create photo list */
-  db_dshm_create (&entry, 3); /* type 2 is playlist list */
+  db_dshm_create (&entry, 3); /* type 3 is the fileid list */
   db_attach (root, entry);
 
   db_flhm_create (&entry2);

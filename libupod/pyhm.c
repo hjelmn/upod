@@ -29,7 +29,7 @@
 
 #define PYHM_HEADER_SIZE 0x6c
 
-int db_pyhm_create (tree_node_t **entry) {
+int db_pyhm_create (tree_node_t **entry, int is_visible) {
   struct db_pyhm *pyhm_data;
   int ret;
 
@@ -37,7 +37,27 @@ int db_pyhm_create (tree_node_t **entry) {
     return ret;
 
   pyhm_data = (struct db_pyhm *)(*entry)->data;
-  pyhm_data->name_index  = 0x2;
+  pyhm_data->is_visible  = (is_visible) ? 1 : 0;
+
+  return 0;
+}
+
+int db_pyhm_set_id (tree_node_t *entry, int id) {
+  struct db_pyhm *pyhm_data;
+
+  pyhm_data = (struct db_pyhm *)entry->data;
+  pyhm_data->playlist_id = id;
+
+  return 0;
+}
+
+int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
+  struct db_pyhm *pyhm_data;
+  
+  pyhm_data = (struct db_pyhm *)entry->data;
+  pyhm_data->num_dohm++;
+
+  db_attach (entry, dohm);
 
   return 0;
 }

@@ -214,6 +214,8 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
   cksum = crc32 (image_data, length);
 
   tihm->has_artwork = 1;
+  
+  /* By using a checksum we can garuntee no duplicate artwork */
   tihm->artwork_id1 = cksum;
 
   tihm->image_data  = image_data;

@@ -256,8 +256,6 @@ void parse_stsz (FILE *fh, double *bits, int time_scale, int faac) {
 
     fread (buffer, 4, 1, fh);
 
-    /* mp3_debug ("Sample %i is %i bits\n", i, buffer[0]); */
-
     sample_size = big32_2_arch32 (buffer[0]);
 
     if (sample_size > 7)
@@ -273,9 +271,10 @@ void parse_stsz (FILE *fh, double *bits, int time_scale, int faac) {
 
   mp3_debug ("Bit_rate is: %i\n", bit_rate);
 
-  /* No idea why this works (or if it works on all lossless cases) */
+  /* I have no idea why this works for apple lossless (or if it works in all cases) */
   if ((bit_rate - 32) > m4a_bitrates[14])
     avg /= 4.096;
+
 
   mp3_debug ("Total sample size = %f\n", totalby=avg);
 
@@ -306,7 +305,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   long int time_scale = 0, bit_rate;
   struct qt_atom atom;
 
-  double duration;
+  double duration = 0.0;
 
   int meta = string_to_int ("meta");
   int mdat = string_to_int ("mdat");

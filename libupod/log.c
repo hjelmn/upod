@@ -23,7 +23,7 @@
 
 #include "itunesdbi.h"
 
-int db_set_debug (ipoddb_t *itunesdb, int level, FILE *out) {
+int db_set_debug (ipoddb_t *db, int level, FILE *out) {
   int slevel;
 
   if (out == NULL)
@@ -38,27 +38,23 @@ int db_set_debug (ipoddb_t *itunesdb, int level, FILE *out) {
 
   fprintf (out, "Setting log level to %i\n", slevel);
 
-  itunesdb->log_level = slevel;
-  itunesdb->log       = out;
+  db->log_level = slevel;
+  db->log       = out;
 
   return slevel;
 }
 
-void db_log (ipoddb_t *itunesdb, int error, char *format, ...) {
-  if ( (itunesdb->log_level > 0) && (itunesdb->log != NULL) ) {
+void db_log (ipoddb_t *db, int error, char *format, ...) {
+  if ( (db->log_level > 0) && (db->log != NULL) ) {
     va_list arg;
 
+    if (error != 0)
+      fprintf  (db->log, "error %i: ", error);
+
     va_start (arg, format);
-
-    if (error == 0) {
-      vfprintf (itunesdb->log, format, arg);
-    } else {
-      fprintf(itunesdb->log, "Error %i| ", error);
-      vfprintf (itunesdb->log, format, arg);
-    }
-
-    fflush (itunesdb->log);
-
+    vfprintf (db->log, format, arg);
     va_end (arg);
+
+    fflush (db->log);
   }
 }

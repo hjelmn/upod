@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include <string.h>
+#include <errno.h>
 
 #define DOHM_HEADER_SIZE   0x18
 
@@ -143,6 +144,76 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
 
   dohm_data = (struct db_dohm *)(*entry)->data;
   dohm_data->type        = type;
+
+  return 0;
+}
+
+int db_dohm_itunes_create (tree_node_t **entry) {
+  struct db_wierd_dohm *wierd_dohm_data;
+
+  if (entry == NULL)
+    return -EINVAL;
+
+  db_dohm_create_generic (entry, 0x288, 0x64);
+
+  wierd_dohm_data = (struct db_wierd_dohm *)(*entry)->data;
+
+  /* i dont know what these two are about, but they need to be set like this */
+  wierd_dohm_data->unk6 = 0x00010000;
+  wierd_dohm_data->unk7 = 0x00000004;
+
+  return 0;
+}
+						
+int db_dohm_itunes_show (tree_node_t *entry, int column_id, int column_width) {
+  struct db_wierd_dohm *wierd_dohm_data;
+  int num_shown;
+
+  if (entry == NULL)
+    return -EINVAL;
+
+  wierd_dohm_data = (struct db_wierd_dohm *)entry->data;
+  
+  /* This value stores the number of columns show */
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  if (num_shown == 37)
+    /* No more columns can be shown */
+    return -EINVAL;
+
+  wierd_dohm_data->shows[0].unk10[0] += 1;
+
+  wierd_dohm_data->shows[num_shown].show = column_id | (column_width << 16);
+
+  return 0;
+}
+
+int db_dohm_itunes_hide (tree_node_t *entry, int column_id) {
+  struct db_wierd_dohm *wierd_dohm_data;
+  int num_shown;
+  int i, j;
+
+  if (entry == NULL)
+    return -EINVAL;
+
+  wierd_dohm_data = (struct db_wierd_dohm *)entry->data;
+  num_shown = wierd_dohm_data->shows[0].unk10[0];
+
+  if (num_shown == 0)
+    return -EINVAL;
+
+  for (i = 0 ; i < num_shown ; i++) {
+    if ((wierd_dohm_data->shows[i].show & 0xff) == column_id)
+      break;
+  }
+
+  if (i == num_shown)
+    return -EINVAL;
+
+  for (j = i + 1 ; j < num_shown ; j++)
+    wierd_dohm_data->shows[j-1] = wierd_dohm_data->shows[j];
+
+  wierd_dohm_data->shows[0].unk10[0] -= 1;
 
   return 0;
 }
