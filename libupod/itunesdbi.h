@@ -29,12 +29,6 @@
 
 #include "itunesdb.h"
 
-#if defined(DEBUG)
-#define UPOD_DEBUG(x, format, args...) do {fprintf (stderr, format, ## args);}while(0);
-#else
-#define UPOD_DEBUG(x, format, args...)
-#endif
-
 void db_log (itunesdb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
@@ -200,10 +194,6 @@ struct db_wierd_dohm {
 #define PLHM 0x706c686d
 #define PYHM 0x7079686d
 
-#define UPOD_ERROR(x, format, args...) do {\
-  fprintf(stderr, format, ## args);\
-  exit(x);\
-} while(0);
 
 #define UPOD_NOT_IMPL(s) do {\
   fprintf(stderr, "Error -1: function %s not implemented\n", s);\

@@ -29,11 +29,7 @@
 
 #include "itunesdb.h"
 
-#if defined(DEBUG)
-#define UPOD_DEBUG(x, format, args...) do {fprintf (stderr, format, ## args);}while(0);
-#else
-#define UPOD_DEBUG(x, format, args...)
-#endif
+void db_log (itunesdb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
 #define   free(x) do {printf ("freeing %08x from line %i in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
@@ -241,6 +237,7 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 void    db_free_tree (tree_node_t *ptr);
 
 int     db_attach    (tree_node_t *parent, tree_node_t *new_child);
+int     db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);
 int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
 
 /* tihm.c */
@@ -281,8 +278,10 @@ void char_to_unicode (char *dst, char *src, size_t src_length);
 void unicode_to_char (char *dst, char *src, size_t src_length);
 void unicode_check_and_copy (char **dst, int *dst_len, char *src,
 			    int src_len);
+int unicodencasecmp (char *string1, char *string2, int length);
 
 int mp3_fill_tihm (char *, tihm_t *);
+int aac_fill_tihm (char *, tihm_t *);
 
 /* playlist.c */
 int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);

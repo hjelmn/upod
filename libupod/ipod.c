@@ -46,7 +46,7 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
   sprintf (testpath, "%s/iPod_control", dir);
   if ((test_fd = open (testpath, O_RDONLY)) < 0) {
     /* create iPod folder */
-    UPOD_DEBUG(0, "Creating dir %s\n", testpath);
+    fprintf(stderr, "Creating dir %s\n", testpath);
     if (mkdir (testpath, fold_perms) < 0)
       perror("mkdir");
   } else
@@ -56,7 +56,7 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
   sprintf (testpath, "%s/iPod_control/iTunes", dir);
   if ((test_fd = open (testpath, O_RDONLY)) < 0) {
     /* create iPod/iTunes */
-    UPOD_DEBUG(0, "Creating dir %s\n", testpath);
+    fprintf(stderr, "Creating dir %s\n", testpath);
     if (mkdir (testpath, fold_perms) < 0)
       perror("mkdir");
   } else
@@ -65,7 +65,7 @@ static int ipod_init_files (ipod_t *ipod, char *dir) {
   /* try iPod_control/iTunes/iTunesDB */
   sprintf (testpath, "%s/%s", dir, ITUNESDB_PATH);
   if (db_load (&(ipod->itunesdb), testpath) < 0) {
-    UPOD_DEBUG(0, "iTunesDB not found, creating one\n");
+    fprintf(stderr, "iTunesDB not found, creating one\n");
     db_create (&(ipod->itunesdb), "iPod", 4);
   }
 

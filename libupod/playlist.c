@@ -364,7 +364,7 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
 
   plhm = (struct db_plhm *) plhm_header->data;
   if (plhm->num_pyhm <= playlist || playlist < 0) {
-    UPOD_DEBUG(0, "Invalid playlist number\n");
+    db_log (itunesdb, -1, "Invalid playlist number\n");
     return -1;
   }
   

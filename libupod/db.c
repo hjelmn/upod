@@ -243,7 +243,7 @@ int db_load (itunesdb_t *itunesdb, char *path) {
     return -1;
   }
 
-  UPOD_DEBUG(0, "Attempting to load an iTunesDB\n");
+  db_log (itunesdb, 0, "Attempting to open and load iTunesDB %s\n", path);
 
   if ((iTunesDB_fd = open (path, O_RDONLY)) < 0) {
     db_log (itunesdb, errno, "db_load|open: %s\n", strerror(errno));
@@ -264,7 +264,12 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   }
   
   buffer = (char *)calloc(ibuffer[2], 1);
-  if (buffer == NULL) UPOD_ERROR(errno, "Could not allocate memory\n");
+  if (buffer == NULL) {
+    db_log (itunesdb, errno, "Could not allocate memory\n");
+    close (iTunesDB_fd);
+
+    return -errno;
+  }
 
   /* keep track of where buffer starts */
   tmp = (int *)buffer;
@@ -272,15 +277,15 @@ int db_load (itunesdb_t *itunesdb, char *path) {
   /* read in the rest of the database */
   if ((ret = read (iTunesDB_fd, buffer + 12, ibuffer[2] - 12)) <
       (ibuffer[2] - 12)) {
-    UPOD_ERROR(errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2],
-	       ret);
+    db_log (itunesdb, errno, "Short read: %i bytes wanted, %i read\n", ibuffer[2],
+	    ret);
     
     free(buffer);
     close(iTunesDB_fd);
     return -1;
   }
 
-  UPOD_DEBUG(0, "Loaded... %i bytes\n", ibuffer[2]);
+  db_log (itunesdb, 0, "Loaded... %i bytes\n", ibuffer[2]);
 
   bswap_block((char *)ibuffer, 4, 3);
   memcpy (buffer, ibuffer, 12);
