@@ -1,3 +1,24 @@
+/**
+ *   (c) 2003 Nathan Hjelm <hjelmn@unm.edu>
+ *   v0.2 aac.c
+ *
+ *   Parses Quicktime AAC files for bitrate, samplerate, etc.
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *   
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *   
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ **/
+
 #if defined(HAVE_CONFIG_H)
 #include "config.h"
 #endif
@@ -68,7 +89,7 @@ int is_media_header (int type) {
   return 0;
 }
 
-int parse_meta (char *buffer, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
+int parse_meta (char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
   
   fseek (fd, 46, SEEK_CUR);
@@ -76,14 +97,23 @@ int parse_meta (char *buffer, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   while (1) {
     struct qt_meta meta;
     int data_type;
+    int size;
     
     fread (&meta, sizeof(struct qt_meta), 1, fd);
     
     seeked += meta.offset;
+
+    size = meta.offset - sizeof(struct qt_meta);
     
-    fread (buffer, meta.offset - sizeof(struct qt_meta), 1, fd);
-    buffer[meta.offset - sizeof(struct qt_meta)] = '\0';
+    if (size > buffer_size || strncmp(meta.identifier, "ree",3) == 0)
+      /* it is unlikely that any data we want will be larger than the buffer */
+      fseek (fd, size, SEEK_CUR);
+    else {
+      fread (buffer, meta.offset - sizeof(struct qt_meta), 1, fd);
     
+      buffer[meta.offset - sizeof(struct qt_meta)] = '\0';
+    }
+
     if (strncmp (meta.identifier, "ree", 3) == 0)
       /* catch the free atom to exit */
       break;
@@ -97,6 +127,8 @@ int parse_meta (char *buffer, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
       data_type = IPOD_GENRE;
       dohm_add(tihm, genre_table[*(short *)buffer - 1],
 	       strlen(genre_table[*(short *)buffer - 1]), data_type);
+
+      break;
     } else if (strncmp (meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
     else
@@ -119,9 +151,11 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   char type_string[] = "AAC audio file";
 
   FILE *fd;
-  char buffer[200000];
+  int buffer_size = 2000;
+  char buffer[buffer_size];
+
   int i;
-  int duration, time_scale, bit_rate;
+  long long int duration, time_scale, bit_rate;
   struct qt_atom atom;
 
   memset (tihm, 0, sizeof(tihm_t));
@@ -170,15 +204,15 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 	  
 	  fread (buffer, atom.size - sizeof(atom), 1, fd);
 
-	  duration = mdhd->duration;
 	  time_scale = mdhd->time_scale;
+	  duration = mdhd->duration/time_scale;
 	} else if (atom.type == meta)
-	  parse_meta (buffer, fd, atom, tihm);
+	  parse_meta (buffer, buffer_size, fd, atom, tihm);
 	else if (!is_container(atom.type))
 	  fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
       } else {
 	if (atom.type == meta)
-	  parse_meta (buffer, fd, atom, tihm);
+	  parse_meta (buffer, buffer_size, fd, atom, tihm);
 	else if (!is_container(atom.type))
 	  fseek (fd, atom.size - sizeof(atom), SEEK_CUR);
       }
@@ -188,7 +222,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   fseek (fd, 16, SEEK_CUR);
 
-  bit_rate = ((atom.size / 128) * time_scale) / duration;
+  bit_rate = (atom.size / 128) / duration;
+
   for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
     int temp = m4a_bitrates[i-1] - bit_rate;
     int temp2 = m4a_bitrates[i] - bit_rate;
@@ -201,7 +236,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     }
   }
 
-  tihm->time = (duration / time_scale) * 1000;
+  tihm->time = duration * 1000;
   tihm->samplerate = time_scale;
   tihm->bitrate = bit_rate;
 
