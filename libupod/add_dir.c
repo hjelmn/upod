@@ -17,10 +17,10 @@ void usage(void) {
 }
 
 char *path_unix_mac_root (char *path) {
-  char *mac_path = malloc (strlen(path) + 1);
+  char *mac_path = malloc (strlen(path) + 2);
   int i;
 
-  memset (mac_path, 0, strlen(path) + 1);
+  memset (mac_path, 0, strlen(path) + 2);
   mac_path[0] = ':';
 
   for (i = 0 ; i < strlen (path) ; i++)

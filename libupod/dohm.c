@@ -107,7 +107,7 @@ int db_dohm_create_eq (struct tree_node *entry, int eq) {
   iptr[6] = long_big_host (0x01);
   iptr[7] = long_big_host (0x12);
   memcpy (&entry->data[0x28],
-	  "\23x\00x\21x\00x\23x\00x\31x\00x\30x\00x\00x\00x\23x\00x\21x\00x\23x\00",
+	  "\x23\x00\x21\x00\x23\x00\x31\x00\x30\x00\x00\x00\x23\x00\x21\x00\x23\x00",
 	  0x12);
 
   entry->data[0x28 + 0xb] = eq;
