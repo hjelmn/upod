@@ -143,6 +143,8 @@ static tree_node_t *db_build_tree (size_t *bytes_read,
     if (entry_size == 0x288) {
       /* "Wierd" dohm entry */
       bswap_block(&(*buffer)[0xc], 4, 0x288/4 - 3);
+    } else if ((*buffer)[12] == 0x33) {
+      bswap_block (&(*buffer)[0xc], 4, entry_size/ - 3);
     } else {
       bswap_block(&((*buffer)[0xc]), 4, 7);
       bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);

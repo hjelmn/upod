@@ -195,6 +195,7 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
   struct db_pihm *pihm_data;
 
   int i;
+  int num_entries;
 
   if (itunesdb == NULL || list == NULL) return -1;
 
@@ -208,14 +209,20 @@ int db_playlist_list_songs (itunesdb_t *itunesdb, int playlist, int **list) {
   pyhm_header = dshm_header->children[playlist + 1];
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
-  *list = calloc (pyhm_data->num_pihm, sizeof (int));
+  if (pyhm_data->num_pihm > 0) {
+    num_entries = (pyhm_header->num_children - 2)/2;
+    *list = calloc (num_entries, sizeof (int));
+    
+    for (i = 0 ; i < num_entries ; i++) {
+      pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
+      (*list)[i] = pihm_data->reference;
+    }
 
-  for (i = 0 ; i < (pyhm_header->num_children - 2)/2 ; i++) {
-    pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
-    (*list)[i] = pihm_data->reference;
+    return num_entries;
   }
 
-  return (pyhm_header->num_children - 2)/2;
+  *list = NULL;
+  return 0;
 }
 
 /**
@@ -592,8 +599,6 @@ int db_playlist_clear (itunesdb_t *itunesdb, int playlist) {
     db_free_tree (pihm);
     db_free_tree (dohm);
   }
-
-  pyhm_data->num_pihm = 0;
 }
 
 /*

@@ -1,6 +1,8 @@
-#include "itunesdbi.h"
-
 #include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "itunesdbi.h"
 
 int db_set_debug (itunesdb_t *itunesdb, int level, FILE *out) {
   int slevel;

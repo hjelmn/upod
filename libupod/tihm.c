@@ -217,7 +217,8 @@ int db_song_modify (itunesdb_t *itunesdb, int tihm_num, tihm_t *tihm) {
 }
 
 void tihm_free (tihm_t *tihm) {
-  if (tihm == NULL) return;
+  if (tihm == NULL)
+    return;
 
   dohm_free (tihm->dohms, tihm->num_dohm);
 }

@@ -36,8 +36,9 @@
    >= 0 on found
 */
 
-int db_lookup_tihm (itunesdb_t *itunesdb, int dohm_type, char *data,
-		    int data_len) {
+#include "hexdump.c"
+
+int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
   struct tree_node *dshm_header, *tihm_header, *root, *dohm_header;
   int i, j, ret = -1, unicode_data_len;
   char *unicode_data;
@@ -71,23 +72,20 @@ int db_lookup_tihm (itunesdb_t *itunesdb, int dohm_type, char *data,
 
     tihm_data = (struct db_tihm *)tihm_header->data;
 
-    /* try to retrive the dohm we want */
-    if (db_dohm_retrieve (tihm_header, &dohm_header, dohm_type) < 0)
-      continue;
+    for (j = 0 ; j < tihm_header->num_children ; j++) {
+      dohm_header = tihm_header->children[j];
 
-    dohm_data = (struct db_dohm *)dohm_header->data;
-
-    /* we are looking for exact matches */
-    if (dohm_data->len != unicode_data_len) continue;
-
-    if (memmem (&dohm_header->data[0x28], dohm_data->len,
-		unicode_data, unicode_data_len) != 0) {
-      ret = tihm_data->identifier;
-      goto found_tihm;
+      dohm_data = (struct db_dohm *)dohm_header->data;
+      
+      if (unicodencasecmp (&dohm_header->data[0x28], dohm_data->len,
+		       unicode_data, unicode_data_len) == 0) {
+	ret = tihm_data->identifier;
+	goto found_tihm;
+      }
     }
   }
 
- notfound_tihm: /* if ret == -1 */
+ notfound_tihm:
  found_tihm:
   free(unicode_data);
   return ret;

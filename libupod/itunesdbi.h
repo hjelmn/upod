@@ -284,6 +284,7 @@ void char_to_unicode (char *dst, char *src, size_t src_length);
 void unicode_to_char (char *dst, char *src, size_t src_length);
 void unicode_check_and_copy (char **dst, int *dst_len, char *src,
 			    int src_len);
+int unicodencasecmp (char *string1, int string1_len, char *string2, int string2_len);
 
 int mp3_fill_tihm (char *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);

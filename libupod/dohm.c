@@ -189,8 +189,12 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
 void dohm_free (dohm_t *dohm, int num_dohms) {
   int i;
 
+  if (dohm == NULL)
+    return;
+
   for (i = 0 ; i < num_dohms ; i++)
-    free(dohm[i].data);
+    if (dohm[i].data != NULL)
+      free(dohm[i].data);
 
   free(dohm);
 }
