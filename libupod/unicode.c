@@ -74,15 +74,15 @@ void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 	continue;
       
       
-      if (((src[i] & 0xc0) == 0xc0) &&
+      if (((src[i] & 0xe0) == 0xe0) &&
 	  (i < (src_len - 1) && (src[i+1] & 0x80) == 0x80)) {
-	dst16[x] = src[i+1] & 0x3f | ((src[i] & 0x1f) << 6);
-	i += 1;
-      } else if (((src[i] & 0xe0) == 0xe0) &&
-		 (i < (src_len - 1) && (src[i+1] & 0x80) == 0x80)) {
-	dst16[x] = src[i+2] & 0x3f | ((src[i+1] & 0x3f00) >> 6) |
+	dst16[x] = src[i+2] & 0x3f | ((src[i+1] & 0x3f) << 6) |
 	  ((src[i] & 0x0f) << 12);
 	i += 2;
+      } else if (((src[i] & 0xc0) == 0xc0) &&
+		 (i < (src_len - 1) && (src[i+1] & 0x80) == 0x80)) {
+	dst16[x] = src[i+1] & 0x3f | ((src[i] & 0x1f) << 6);
+	i += 1;
       } else
 	dst16[x] = src[i];
       
@@ -98,7 +98,6 @@ void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
     }
 
     memcpy (*dst, scratch, 2*x);
-    pretty_print_block ((char *)*dst, 2*x);
   }
 }
   

@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2a ipod.h
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.1.3 itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -19,6 +19,10 @@
 
 #ifndef _ITUNESDB_H
 #define _ITUNESDB_H
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -107,6 +111,7 @@ typedef struct tihm {
   int num;
 
   u_int32_t type;
+  u_int32_t vbr;
   u_int32_t bitrate;
   u_int32_t samplerate;
   u_int32_t length;
@@ -214,5 +219,9 @@ void   tihm_free             (tihm_t *tihm);
 void   db_free               (itunesdb_t *itunesdb);
 void   db_song_list_free     (GList *head);
 void   db_playlist_list_free (GList *head);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

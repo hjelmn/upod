@@ -66,16 +66,26 @@ static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
 
   get_mp3_info(&mp3, scantype, fullscan_vbr);
   if(!mp3.header_isvalid) {
-    fprintf(stderr,"%s is corrupt or is not a standard MP3 file.\n",
-	    mp3.filename);
+    get_mp3_info (&mp3, SCAN_FULL, 1);
 
-    return -1;
+    if (!mp3.header_isvalid) {
+      fprintf(stderr,"%s is corrupt or is not a standard MP3 file.\n",
+	      mp3.filename);
+      
+      return -1;
+    }
   }
   
   /* the ipod wants time in thousands of seconds */
   tihm->time        = mp3.seconds * 1000;
   tihm->samplerate  = header_frequency(&mp3.header);  
-  tihm->bitrate     = header_bitrate(&mp3.header); 
+
+  tihm->vbr = mp3.vbr;
+
+  if (mp3.vbr)
+    tihm->bitrate   = (int)mp3.vbr_average;
+  else
+    tihm->bitrate   = header_bitrate(&mp3.header); 
 
   fseek (fd, 0, SEEK_SET);
 

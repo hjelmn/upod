@@ -210,7 +210,10 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
       tag_temp = NULL;
 
       if (id3v2_majorversion > 2) {
-	length = synchsafe_to_int (&tag_data[i + 4], 4);
+	if (id3v2_majorversion == 4)
+	  length = *((int *)&tag_data[i+4]);
+	else
+	  length = synchsafe_to_int (&tag_data[i + 4], 4);
 
 	if (strncmp(&tag_data[i], fourfields[field], 4) == 0)
 	  tag_temp = &tag_data[i + 10];
@@ -225,7 +228,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 	i += 6 + length;
       }
 
-      length -= 2;
+      length -= 1;
 
       if (tag_temp == NULL || length < 1)
 	continue;

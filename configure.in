@@ -40,10 +40,28 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 
 dnl Checks for library functions.
 
+
+AC_MSG_CHECKING(whether to build for macosx)
+case $host in
+  *-darwin*)
+    osx_support=yes
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(__MacOSX__)
+    AC_SUBST(MACOSX)
+    ;;
+  *)
+    osx_support=no
+    AC_MSG_RESULT(no)
+    ;;
+esac
+
+AM_CONDITIONAL(MACOSX, test "$osx_support" = "yes")
+
 AC_OUTPUT(
 Makefile
 libupod/Makefile
 include/Makefile
+include/itunesdb.h
 src/Makefile
 share/Makefile
 upod.lsm

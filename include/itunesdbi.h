@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 upodi.h
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.0.2 itunesdbi.h
  *
  *   Internal functions. Do not include upodi.h in any end software.
  *
