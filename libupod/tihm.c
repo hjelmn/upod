@@ -1,5 +1,5 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.1.0a tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -109,12 +109,14 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
      which */
 }
 
-int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_len, int stars) {
+int db_tihm_create (tree_node_t *entry, char *path, u_int8_t *ipod_path, size_t path_len, int stars) {
   tree_node_t *dohm;
   dohm_t *dohm_data;
   tihm_t tihm;
   int tihm_num = ((int *)(entry->parent->children[entry->parent->num_children - 1]->data))[4] + 1;
   int i;
+
+  memset (&tihm, 0, sizeof (tihm_t));
 
   memset (entry, 0, sizeof (tree_node_t));
   if (strcasecmp (path + (strlen(path) - 3), "mp3") == 0) {
@@ -139,7 +141,7 @@ int db_tihm_create (tree_node_t *entry, char *path, char *ipod_path, int path_le
 
   dohm_data = dohm_create (&tihm);
   dohm_data->type = IPOD_PATH;
-  unicode_check_and_copy ((char **)&(dohm_data->data), &dohm_data->size, ipod_path, path_len);
+  unicode_check_and_copy (&(dohm_data->data), &dohm_data->size, ipod_path, path_len);
 
   tihm_db_fill (entry, &tihm);
 

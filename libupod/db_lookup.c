@@ -43,8 +43,9 @@
 
 int db_lookup (itunesdb_t itunesdb, int dohm_type, char *data, int data_len) {
   struct tree_node **master, *root, *entry;
-  int i, j, ret = -1, unicode_data_len;
-  char *unicode_data;
+  int i, j, ret = -1;
+  size_t unicode_data_len;
+  u_int16_t *unicode_data;
 
   /* simpifies code */
   struct db_tlhm *tlhm;

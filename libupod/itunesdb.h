@@ -70,24 +70,21 @@ enum show_entries {
   SHOW_STARS      = 0x17
 };
 
-struct _itunesdb {
+typedef struct _itunesdb {
   struct tree_node {
     struct tree_node *parent;
 
-    char *data;
+    u_int8_t *data;
     size_t size;
 
     int num_children;
     struct tree_node **children;
-  };
-
-  struct tree_node *tree_root;
+  } *tree_root;
 
   int log_level;
   FILE *log;
-};
+} itunesdb_t;
 
-typedef struct _itunesdb itunesdb_t;
 typedef struct tree_node tree_node_t;
 
 typedef struct _ipod {
@@ -95,10 +92,10 @@ typedef struct _ipod {
   char *dir;
   char *itunesdb_path;
 } ipod_t;
-
+ 
 typedef struct dohm {
   u_int32_t type;
-  u_int32_t size;
+  size_t size;
 
   /* unicode string */
   u_int16_t *data;
@@ -158,7 +155,7 @@ int    db_load  (itunesdb_t *itunesdb, char *path);
 int    db_write (itunesdb_t itunesdb, char *path);
 int    db_write_unix (itunesdb_t itunesdb, char *path);
 int    db_remove(itunesdb_t *itunesdb, u_int32_t tihm_num);
-int    db_add   (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, int stars);
+int    db_add   (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars);
 int    db_dohm_tihm_modify (itunesdb_t *itunesdb, int tihm_num, dohm_t *dohm);
 
 int    db_set_debug (itunesdb_t *itunesdb, int level, FILE *out);

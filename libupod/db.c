@@ -449,7 +449,7 @@ int db_remove (itunesdb_t *itunesdb, u_int32_t tihm_num) {
    < 0 on error
      0 on success
 */
-int db_add (itunesdb_t *itunesdb, char *path, char *mac_path, int mac_path_len, int stars) {
+int db_add (itunesdb_t *itunesdb, char *path, u_int8_t *mac_path, size_t mac_path_len, int stars) {
   tree_node_t *dshm_header, *new_tihm_header, *root;
 
   struct db_tlhm *tlhm_data;

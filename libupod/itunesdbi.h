@@ -186,13 +186,16 @@ struct db_wierd_dohm {
   u_int32_t unk13;
 };
 
-#define DBHM 0x6462686d
-#define DSHM 0x6473686d
-#define TLHM 0x746c686d
-#define TIHM 0x7469686d
-#define DOHM 0x646f686d
-#define PLHM 0x706c686d
-#define PYHM 0x7079686d
+static int string_to_int (char *string) {
+  return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
+}
+#define DBHM string_to_int("dbhm")  /* 0x6462686d */
+#define DSHM string_to_int("dshm")  /* 0x6473686d */
+#define TLHM string_to_int("tlhm") /* 0x746c686d */
+#define TIHM string_to_int("tihm") /* 0x7469686d */
+#define DOHM string_to_int("dohm") /* 0x646f686d */
+#define PLHM string_to_int("plhm") /* 0x706c686d */
+#define PYHM string_to_int("pyhm") /* 0x7079686d */
 
 
 #define UPOD_NOT_IMPL(s) do {\
@@ -238,7 +241,7 @@ int     db_detach    (tree_node_t *parent, int child_num, tree_node_t **entry);
 
 /* tihm.c */
 int     db_tihm_search   (tree_node_t *entry, u_int32_t tihm_num);
-int     db_tihm_create   (tree_node_t *entry, char *path, char *mac_path, int path_len, int stars);
+int     db_tihm_create   (tree_node_t *entry, char *path, u_int8_t *mac_path, size_t path_len, int stars);
 tihm_t *tihm_create      (tihm_t *tihm, char *filename, char *path, int num);
 tihm_t *db_tihm_fill     (tree_node_t *entry);
 int     db_tihm_retrieve (itunesdb_t *itunesdb, tree_node_t **entry,
@@ -270,15 +273,19 @@ int db_dshm_retrieve (itunesdb_t *itunesdb, tree_node_t **dshm_header,
 int db_dshm_create (tree_node_t *entry, int type);
 
 /* unicode.c */
-void char_to_unicode (char *dst, char *src, size_t src_length);
-void unicode_to_char (char *dst, char *src, size_t src_length);
-void unicode_check_and_copy (char **dst, int *dst_len, char *src,
-			    int src_len);
-int unicodencasecmp (char *string1, int string1_len, char *string2, int string2_len);
+void char_to_unicode (u_int16_t *dst, u_int8_t *src, size_t src_length);
+void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length);
+void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
+			    size_t src_len);
+int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len);
 
-int mp3_fill_tihm (char *, tihm_t *);
+int mp3_fill_tihm (u_int8_t *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);
+
+/* id3.c */
+int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
 int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
+
 #endif /* __ITUNESDBI_H */

@@ -55,23 +55,20 @@
   MP3Info 0.8.4 was created by Cedric Tefft <cedric@earthling.net> 
   and Ricardo Cerqueira <rmc@rccn.net>
 */
-static int get_mp3_header_info (char *file_name, tihm_t *tihm) {
+static int get_mp3_header_info (FILE *fd, char *file_name, tihm_t *tihm) {
   int scantype=SCAN_QUICK, fullscan_vbr=1;
   mp3info mp3;
 
   memset(&mp3,0,sizeof(mp3info));
   mp3.filename=file_name;
 
-  if ( !( mp3.file=fopen(file_name,"r") ) ) {
-    fprintf(stderr,"Error opening MP3 file: %s\n",file_name);
-    return -1;
-  } 
+  mp3.file = fd;
 
   get_mp3_info(&mp3, scantype, fullscan_vbr);
   if(!mp3.header_isvalid) {
-    fclose(mp3.file);
     fprintf(stderr,"%s is corrupt or is not a standard MP3 file.\n",
 	    mp3.filename);
+
     return -1;
   }
   
@@ -79,8 +76,9 @@ static int get_mp3_header_info (char *file_name, tihm_t *tihm) {
   tihm->time        = mp3.seconds * 1000;
   tihm->samplerate  = header_frequency(&mp3.header);  
   tihm->bitrate     = header_bitrate(&mp3.header); 
-  
-  fclose(mp3.file);
+
+  fseek (fd, 0, SEEK_SET);
+
   return 0;
 }
 
@@ -93,15 +91,12 @@ static int get_mp3_header_info (char *file_name, tihm_t *tihm) {
    < 0 if any error occured
      0 if successful
 */
-int mp3_fill_tihm (char *file_name, tihm_t *tihm){
+int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
   struct stat statinfo;
   int ret;
+  FILE *fd;
 
-  char type_string[] = "MPEG audio file";
-
-  /* zero the structure to avoid getting any weird values for
-     data not found (such as track number) */
-  memset (tihm, 0, sizeof(tihm_t));
+  u_int8_t type_string[] = "MPEG audio file";
 
   ret = stat(file_name, &statinfo);
 
@@ -112,15 +107,26 @@ int mp3_fill_tihm (char *file_name, tihm_t *tihm){
 
   tihm->size = statinfo.st_size;
 
-  if (get_id3_info(file_name, tihm) < 0)
+  if ((fd = fopen(file_name,"r")) == NULL ) {
+    fprintf(stderr,"Error opening MP3 file: %s\n", file_name);
     return -1;
-  
-  if (get_mp3_header_info(file_name, tihm) < 0) {
-    tihm_free (tihm);
+  } 
+
+  if (get_mp3_header_info(fd, file_name, tihm) < 0) {
+    fclose (fd);
+
     return -1;
   }
 
+  if (get_id3_info(fd, file_name, tihm) < 0) {
+    fclose (fd);
+
+    return -1;
+  }
+  
   dohm_add (tihm, type_string, strlen (type_string), IPOD_TYPE);
+
+  fclose (fd);
 
   return 0;
 }

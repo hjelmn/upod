@@ -78,7 +78,7 @@ int dohm_add (tihm_t *timh, char *data, int data_len, int data_type) {
     return -1;
 
   dohm->type = data_type;
-  unicode_check_and_copy ((char **)&(dohm->data), &(dohm->size), data, data_len);
+  unicode_check_and_copy (&(dohm->data), &(dohm->size), data, data_len);
 
   return 0;
 }
@@ -159,7 +159,7 @@ int db_dohm_create_eq (tree_node_t *entry, int eq) {
   iptr[7] = 0x12;
 
   ceq[5] = eq;
-  char_to_unicode (&entry->data[0x28], ceq, 9);
+  char_to_unicode ((u_int16_t *)&entry->data[0x28], ceq, 9);
 
   return 0;
 }

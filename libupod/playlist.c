@@ -130,7 +130,7 @@ GList *db_playlist_list (itunesdb_t *itunesdb) {
     pyhm->name_len = dohm_data->len/2;
     pyhm->num = i - 1;
 
-    unicode_to_char (pyhm->name, &dohm_header->data[0x28], dohm_data->len);
+    unicode_to_char (pyhm->name, (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
 
     (*current)->data = (void *)pyhm;
     
@@ -247,8 +247,8 @@ int db_playlist_create (itunesdb_t *itunesdb, char *name, int name_len) {
   struct db_wierd_dohm *wierd_dohm_data;
 
   struct db_pyhm *pyhm;
-  int unicode_len;
-  char *unicode_data;
+  size_t unicode_len;
+  u_int16_t *unicode_data;
 
   int i;
 
@@ -353,8 +353,8 @@ int db_playlist_rename (itunesdb_t *itunesdb, int playlist, char *name, int name
 
   int ds, i, size;
 
-  int unicode_len;
-  char *unicode_data;
+  size_t unicode_len;
+  u_int16_t *unicode_data;
 
   if (name == NULL || name_len == 0) return -1;
   if (itunesdb == NULL) return -1;
@@ -830,7 +830,7 @@ int db_playlist_get_name (itunesdb_t *itunesdb, int playlist, char **name) {
   /* one extra byte is needed to hold the terminating \0 */
   *name = calloc (1, dohm_data->len/2 + 1);
 
-  unicode_to_char (*name, &dohm_header->data[0x28], dohm_data->len);
+  unicode_to_char (*name, (u_int16_t *)&dohm_header->data[0x28], dohm_data->len);
 
   return dohm_data->len/2;
 }

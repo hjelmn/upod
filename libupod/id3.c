@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a id3.c 
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.1.0b id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@
 #define ID3_ENCODER           7
 #define ID3_COMMENT           8
 
-static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_version);
+static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_version);
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_majorversion, int field, tihm_t *tihm);
 static void cleanup_id3 (char *tag_data, int tag_datalen, int version);
 
@@ -83,7 +83,7 @@ static int synchsafe_to_int (char *buf, int nbytes) {
 
   The file descriptor is reset to the start of the file on completion.
 */
-static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_version) {
+static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_version) {
     int head;
     char data[10];
 
@@ -91,7 +91,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
     int  id3v2_len;
     int  id3v2_extendedlen;
 
-    read(fd, &head, 4);
+    fread(&head, 4, 1, fd);
     
 #if BYTE_ORDER == LITTLE_ENDIAN
     head = bswap_32(head);
@@ -99,7 +99,7 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
 
     /* version 2 */
     if ((head & 0xffffff00) == 0x49443300) {
-	read(fd, data, 10);
+	fread(data, 1, 10, fd);
 
 	*major_version = head & 0xff;
 
@@ -113,30 +113,30 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
 	  /* Skip extended header */
 	  id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
 
-	  lseek(fd, 0xa + id3v2_extendedlen, SEEK_SET);
+	  fseek(fd, 0xa + id3v2_extendedlen, SEEK_SET);
 	  *tag_datalen = id3v2_len - id3v2_extendedlen;
 	} else {
 	  /* Skip standard header */
-	  lseek(fd, 0xa, SEEK_SET);
+	  fseek(fd, 0xa, SEEK_SET);
 	  *tag_datalen = id3v2_len;
 	}
 
 	*tag_data = calloc(*tag_datalen, sizeof(char));
 
-	read(fd, *tag_data, *tag_datalen);
-	lseek(fd, 0, SEEK_SET);
+	fread(*tag_data, 1, *tag_datalen, fd);
+	fseek(fd, 0, SEEK_SET);
 
 	return 2;
     }
 
-    lseek(fd, 0, SEEK_SET);
+    fseek(fd, 0, SEEK_SET);
 
     /* tag not at beginning? */
     if ((head & 0xffffff00) != 0x54414700) {
 	/* maybe end */
-	lseek(fd, -128, SEEK_END);
-	read(fd, &head, 4);
-	lseek(fd, -128, SEEK_END);
+	fseek(fd, -128, SEEK_END);
+	fread(&head, 1, 4, fd);
+	fseek(fd, -128, SEEK_END);
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 	head = bswap_32(head);
@@ -148,14 +148,14 @@ static int find_id3 (int fd, char **tag_data, int *tag_datalen, int *major_versi
 	*tag_datalen = 128;
 	*tag_data = calloc(128, sizeof(char));
 
-	read(fd, *tag_data, 128);
-	lseek(fd, 0, SEEK_SET);
+	fread(*tag_data, 1, 128, fd);
+	fseek(fd, 0, SEEK_SET);
 
 	return 1;
     }
 
     /* no id3 found */
-    lseek(fd, 0, SEEK_SET);
+    fseek(fd, 0, SEEK_SET);
 
     return 0;
 }
@@ -205,6 +205,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 
     for (i = 0 ; i < tag_datalen ; ) {
       int length = 0;
+      u_int8_t *tmp;
 
       tag_temp = NULL;
 
@@ -224,13 +225,17 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 	i += 6 + length;
       }
 
+      length -= 2;
+
       if (tag_temp == NULL || length < 1)
 	continue;
 
+      for ( ; *tag_temp == '\0' ; tag_temp++);
+
       if ((field != ID3_TRACK) &&
-	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) )
+	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) ) {
 	dohm_add (tihm, tag_temp, length, data_type);
-      else if (field == ID3_TRACK) {
+      } else if (field == ID3_TRACK) {
 	char *slash;
 
 	/* some id3 tags have track/total tracks in the TRK field */
@@ -307,15 +312,11 @@ static void cleanup_id3 (char *tag_data, int tag_datalen, int version) {
     free (tag_data);
 }
 
-int get_id3_info (char *file_name, tihm_t *tihm) {
-  int fd;
+int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
   int tag_datalen = 0;
   char *tag_data = NULL;
   int version;
   int id3v2_majorversion;
-  
-  if ((fd = open (file_name, O_RDONLY)) < 0)
-    return -errno;
   
   /* built-in id3tag reading -- id3v2, id3v1 */
   if ((version = find_id3(fd, &tag_data, &tag_datalen, &id3v2_majorversion)) != 0) {
@@ -347,8 +348,6 @@ int get_id3_info (char *file_name, tihm_t *tihm) {
   }
   
   cleanup_id3 (tag_data, tag_datalen, version);
-
-  close(fd);
   
   return 0;
 }

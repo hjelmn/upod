@@ -40,8 +40,9 @@
 
 int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
   struct tree_node *dshm_header, *tihm_header, *root, *dohm_header;
-  int i, j, ret = -1, unicode_data_len;
-  char *unicode_data;
+  int i, j, ret = -1;
+  size_t unicode_data_len;
+  u_int16_t *unicode_data;
 
   /* simpifies code */
   struct db_tlhm *tlhm_data;
@@ -78,7 +79,7 @@ int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
       dohm_data = (struct db_dohm *)dohm_header->data;
       
       if (unicodencasecmp (&dohm_header->data[0x28], dohm_data->len,
-		       unicode_data, unicode_data_len) == 0) {
+			   (u_int8_t *)unicode_data, unicode_data_len) == 0) {
 	ret = tihm_data->identifier;
 	goto found_tihm;
       }
@@ -93,8 +94,9 @@ int db_lookup_tihm (itunesdb_t *itunesdb, char *data, int data_len) {
 
 int db_lookup_playlist (itunesdb_t *itunesdb, char *data, int data_len) {
   tree_node_t *dshm_header, *plhm_header, *dohm_header;
-  int i, j, ret = -1, unicode_data_len;
-  char *unicode_data;
+  int i, j, ret = -1;
+  size_t unicode_data_len;
+  u_int16_t *unicode_data;
 
   /* simpifies code */
   struct db_plhm *plhm_data;
