@@ -194,6 +194,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   memset (tihm, 0, sizeof(tihm_t));
 
   ret = stat(file_name, &statinfo);
+
   if (ret < 0) {
     perror("aac_fill_tihm");
     return -errno;
@@ -232,7 +233,10 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     int meta = type_int ("meta");
     int mdat = type_int ("mdat");
 
-    fread (&atom, sizeof(atom), 1, fd);
+    if (fread (&atom, sizeof(atom), 1, fd) != 1) {
+      fclose (fd);
+      return -1;
+    }
 
     if (atom.type == mdat || atom.size == 0)
       break;

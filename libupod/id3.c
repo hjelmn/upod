@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2004 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2 id3.c 
+ *   v0.1.3 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -262,22 +262,26 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       switch (*tag_temp) {
       case 0x00:
 	sprintf (encoding, "ISO-8859-1");
+	tag_temp++;
 	break;
       case 0x01:
-	sprintf (encoding, "UTF-16");
+	sprintf (encoding, "UTF-16LE");
+	tag_temp += 3;
 	break;
       case 0x03:
 	sprintf (encoding, "UTF-16BE");
+	tag_temp++;
 	break;
       case 0x04:
 	sprintf (encoding, "UTF-8");
+	tag_temp++;
 	break;
       default:
 	sprintf (encoding, "ISO-8859-1");
       }
       
       for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
-
+      for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
       /*      length--; */
 
       if (length <= 0)

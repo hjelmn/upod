@@ -100,7 +100,7 @@ int main (int argc, char *argv[]) {
 	if (tihm->dohms[i].type == IPOD_EQ)
 	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), buffer[5]);
 	else
-	  fprintf (stdout, " %10s : %s\n", str_type(tihm->dohms[i].type), buffer);
+	  fprintf (stdout, " %10s : **%s**\n", str_type(tihm->dohms[i].type), buffer);
 	
 	if (buffer)
 	  free (buffer);

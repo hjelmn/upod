@@ -586,7 +586,7 @@ int db_song_list (itunesdb_t *itunesdb, GList **head) {
   if (tlhm_data->num_tihm == 0)
     return -1;
 
-  for (i = dshm_header->num_children-1 ; i > 0 ; i--) {
+  for (i = dshm_header->num_children - 1 ; i > 0 ; i--) {
     tihm_header = dshm_header->children[i];
     iptr = (int *)tihm_header->data;
 

@@ -189,11 +189,12 @@ int get_first_header(mp3info *mp3, long startpos) {
   unsigned char buffer[4];
 
   fseek(mp3->file,startpos,SEEK_SET);
-  while (1) {
+  while (1 && ftell (mp3->file) < mp3->datasize) {
     mp3->header_isvalid = 0;
   
     while (ftell (mp3->file) < mp3->datasize) {
-      fread (buffer, 1, 4, mp3->file);
+      if (fread (buffer, 1, 4, mp3->file) != 4)
+	return 0;
 
       if (strncmp (buffer, "ID3", 3) == 0) {
 	fseek (mp3->file, 2, SEEK_CUR);
@@ -263,42 +264,37 @@ int get_next_header(mp3info *mp3)
   mp3header h;
   unsigned char buffer[4];
   
-  while(1) {
-    while (ftell (mp3->file) < mp3->datasize) {
+  while(ftell(mp3->file) < mp3->datasize) {
+    if (fread (buffer, 1, 4, mp3->file) != 4)
+      break;
+    
+    if (strncmp (buffer, "ID3", 3) == 0) {
+      fseek (mp3->file, 2, SEEK_CUR);
       fread (buffer, 1, 4, mp3->file);
+      fseek (mp3->file, synchsafe_to_int (buffer, 4), SEEK_CUR);
+      skip_bytes += 0x10 + synchsafe_to_int (buffer, 4) - 1;
+    } else if(buffer[0] == 0xff) {
+      fseek (mp3->file, -4, SEEK_CUR);
 
-      if (strncmp (buffer, "ID3", 3) == 0) {
-	fseek (mp3->file, 2, SEEK_CUR);
-	fread (buffer, 1, 4, mp3->file);
-	fseek (mp3->file, synchsafe_to_int (buffer, 4), SEEK_CUR);
-	skip_bytes += 0x10 + synchsafe_to_int (buffer, 4) - 1;
-      } else if (buffer[0] == 0xff) {
-	fseek (mp3->file, -4, SEEK_CUR);
-	break;
-      } else
-	fseek (mp3->file, -3, SEEK_CUR);
-
-      skip_bytes++;
-    }
-
-    if(buffer[0] == 0xff) {
       if((l=get_header(mp3->file, &h))) {
 	if(skip_bytes)
 	  mp3->badframes++;
-
+	
 	fseek(mp3->file, l-FRAME_HEADER_SIZE, SEEK_CUR);
 	return 15 - h.bitrate;
       } else {
 	skip_bytes += FRAME_HEADER_SIZE;
       }
     } else {
-      if(skip_bytes)
-	mp3->badframes++;
-      return 0;
+      fseek (mp3->file, -3, SEEK_CUR);
+      
+      skip_bytes++;
     }
-
+    
     memset (buffer, 0, 4);
   }
+  
+  return 0;
 }
 
 
