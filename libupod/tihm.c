@@ -173,64 +173,51 @@ int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags) {
   return 0;
 }
 
-static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
-  struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
+int db_tihm_fill (tree_node_t *tihm_header, tihm_t *tihm) {
+  struct db_tihm *tihm_data;
   
-  tihm->num_dohm  = dbtihm->num_dohm;
-  tihm->num       = dbtihm->identifier;
-  tihm->size      = dbtihm->file_size;
-  tihm->time      = dbtihm->duration;
-  tihm->samplerate= dbtihm->sample_rate >> 16;
-  tihm->bitrate   = dbtihm->bit_rate;
-  tihm->times_played = dbtihm->num_played[0];
+  if (tihm_header == NULL || tihm == NULL)
+    return -EINVAL;
 
-  tihm->stars     = (dbtihm->flags >> 24) / 0x14;
+  tihm_data = (struct db_tihm *)tihm_header->data;
 
-  tihm->type      = dbtihm->type;
-  tihm->album_tracks= dbtihm->album_tracks;
+  if (tihm_data->tihm != TIHM)
+    return -EINVAL;
 
-  tihm->disk_num  = dbtihm->disk_num;
-  tihm->disk_total= dbtihm->disk_total;
+  tihm->num_dohm  = tihm_data->num_dohm;
+  tihm->num       = tihm_data->identifier;
+  tihm->size      = tihm_data->file_size;
+  tihm->time      = tihm_data->duration;
+  tihm->samplerate= tihm_data->sample_rate >> 16;
+  tihm->bitrate   = tihm_data->bit_rate;
+  tihm->times_played = tihm_data->num_played[0];
 
-  tihm->track     = dbtihm->order;
-  tihm->volume_adjustment = dbtihm->volume_adjustment;
-  tihm->start_time= dbtihm->start_time;
-  tihm->stop_time = dbtihm->stop_time;
-  tihm->bpm       = dbtihm->unk1 >> 16;
+  tihm->stars     = (tihm_data->flags >> 24) / 0x14;
 
-  tihm->year        = dbtihm->year;
+  tihm->type      = tihm_data->type;
+  tihm->album_tracks= tihm_data->album_tracks;
 
-  tihm->mod_date      = dbtihm->modification_date;
-  tihm->played_date   = dbtihm->last_played_date;
-  tihm->creation_date = dbtihm->creation_date;
+  tihm->disk_num  = tihm_data->disk_num;
+  tihm->disk_total= tihm_data->disk_total;
 
-  tihm->has_artwork = (dbtihm->has_artwork != 0xffffffff) ? 1 : 0;
-  tihm->artwork_id  = dbtihm->iihm_id;
+  tihm->track     = tihm_data->order;
+  tihm->volume_adjustment = tihm_data->volume_adjustment;
+  tihm->start_time= tihm_data->start_time;
+  tihm->stop_time = tihm_data->stop_time;
+  tihm->bpm       = tihm_data->unk1 >> 16;
+
+  tihm->year        = tihm_data->year;
+
+  tihm->mod_date      = tihm_data->modification_date;
+  tihm->played_date   = tihm_data->last_played_date;
+  tihm->creation_date = tihm_data->creation_date;
+
+  tihm->has_artwork = (tihm_data->has_artwork != 0xffffffff) ? 1 : 0;
+  tihm->artwork_id  = tihm_data->iihm_id;
   
-  tihm->dohms     = db_dohm_fill (entry);
+  db_dohm_fill (tihm_header, &(tihm->dohms));
 
   return 0;
-}
-
-
-tihm_t *db_tihm_fill (tree_node_t *entry) {
-  tihm_t *tihm;
-  int ret;
-
-  tihm = (tihm_t *) calloc (1, sizeof(tihm_t));
-  if (tihm == NULL) {
-    perror ("db_tihm_fill|calloc");
-
-    return NULL;
-  }
-
-  if ((ret = tihm_fill_from_database_entry (tihm, entry)) != 0) {
-    free (tihm);
-
-    return NULL;
-  }
-
-  return tihm;
 }
 
 /**

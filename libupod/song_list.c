@@ -253,6 +253,7 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
   struct db_tlhm *tlhm_data;
   int i, *iptr;
   int ret;
+  tihm_t *tihm;
 
   if (head == NULL || itunesdb == NULL || itunesdb->type != 0)
     return -EINVAL;
@@ -279,7 +280,15 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
     if (iptr[0] != TIHM)
       continue;
 
-    *head = g_list_prepend (*head, db_tihm_fill (tihm_header));
+    tihm = calloc (1, sizeof (tihm_t));
+
+    if (db_tihm_fill (tihm_header, tihm) < 0) {
+      free (tihm);
+
+      continue;
+    }
+
+    *head = g_list_prepend (*head, (gpointer)tihm);
   }
 
   return 0;

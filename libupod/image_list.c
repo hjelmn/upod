@@ -283,28 +283,6 @@ void db_photo_list_free (GList **head) {
   *head = NULL;
 }
 
-static dohm_t *db_dohm_fill_art (tree_node_t *entry) {
-  dohm_t *dohms;
-  struct db_dohm *dohm_data;
-  tree_node_t **dohm_list;
-  int i, *iptr;
-
-  dohms = (dohm_t *) calloc (entry->num_children, sizeof(dohm_t));
-
-  dohm_list = entry->children;
-
-  for (i = 0 ; i < entry->num_children ; i++) {
-    dohm_data = (struct db_dohm *)dohm_list[i]->data;
-
-    iptr = (int *)dohm_list[i]->data;
-    
-    dohms[i].type = dohm_data->type;
-    to_utf8 (&(dohms[i].data), &(dohm_list[i]->data[0x24]), iptr[6], "UTF-16BE");
-  }
-
-  return dohms;
-}
-
 static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
   tree_node_t *inhm_header;
 
@@ -341,7 +319,7 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
 
     iihm->inhms[i].num_dohm    = inhm_data->num_dohm;
     
-    iihm->inhms[i].dohms       = db_dohm_fill_art (inhm_header);
+    db_dohm_fill (inhm_header, &(iihm->inhms[i].dohms));
   }
 
   return iihm;

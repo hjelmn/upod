@@ -289,8 +289,7 @@ int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq) {
   return 0;
 }
 
-dohm_t *db_dohm_fill (tree_node_t *entry) {
-  dohm_t *dohms;
+int db_dohm_fill (tree_node_t *entry, dohm_t **dohms) {
   struct db_dohm *dohm_data;
   tree_node_t *dohm_header;
   int i, *iptr;
@@ -298,7 +297,10 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
   int string_length;
   u_int8_t *string_start;
 
-  dohms = (dohm_t *) calloc (entry->num_children, sizeof(dohm_t));
+  if (entry == NULL || dohms == NULL)
+    return -EINVAL;
+
+  *dohms = (dohm_t *) calloc (entry->num_children, sizeof(dohm_t));
 
   iptr = (int *)entry->data;
 
@@ -321,17 +323,17 @@ dohm_t *db_dohm_fill (tree_node_t *entry) {
 
       string_start  = &(dohm_header->data[0x28]);
     } else {
-      dohms[i].type = -1;
+      (*dohms)[i].type = -1;
 
       continue;
     }
 
-    dohms[i].type = dohm_data->type;
+    (*dohms)[i].type = dohm_data->type;
 
-    to_utf8 (&(dohms[i].data), string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
+    to_utf8 (&((*dohms)[i].data), string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
   }
 
-  return dohms;
+  return 0;
 }
 
 void dohm_free (dohm_t *dohm, int num_dohms) {
