@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.1 create.c
+ *   v0.2.0 create.c
  *
  *   Contains db_create and various node creation routines (that dont have another home).
  *
@@ -19,32 +19,28 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdbi.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 
+#include "itunesdbi.h"
+
 #define DBHM_HEADER_SIZE 0x68
+#define DFHM_HEADER_SIZE 0x84
+#define ILHM_HEADER_SIZE 0x5c
+#define ALHM_HEADER_SIZE 0x5c
+#define FLHM_HEADER_SIZE 0x5c
 #define TLHM_HEADER_SIZE 0x5c
 #define PLHM_HEADER_SIZE 0x5c
 
-static int db_dbhm_create (tree_node_t *entry) {
+static int db_dbhm_create (tree_node_t **entry) {
   struct db_dbhm *dbhm_data;
+  int ret;
 
-  if (entry == NULL) return -1;
+  if ((ret = db_node_allocate (entry, DBHM, DBHM_HEADER_SIZE, DBHM_HEADER_SIZE)) < 0)
+    return ret;
+  dbhm_data = (struct db_dbhm *) (*entry)->data;
 
-  memset (entry, 0, sizeof (tree_node_t));
-  
-  entry->size = DBHM_HEADER_SIZE;
-  entry->data = calloc (entry->size, sizeof(char));
-  memset (entry->data, 0, entry->size);
-  dbhm_data = (struct db_dbhm *) entry->data;
-
-  dbhm_data->dbhm = DBHM;
-  dbhm_data->header_size = DBHM_HEADER_SIZE;
-  dbhm_data->db_size = DBHM_HEADER_SIZE;
-  
   /* these are the values seen in iTunes iTunesDBs */
   dbhm_data->unk0 = 0x1;
   dbhm_data->unk1 = 0x1;
@@ -53,40 +49,36 @@ static int db_dbhm_create (tree_node_t *entry) {
   return 0;
 }
 
-static int db_tlhm_create (tree_node_t *entry) {
-  struct db_tlhm *tlhm_data;
+static int db_dfhm_create (tree_node_t **entry) {
+  struct db_dfhm *dfhm_data;
+  int ret;
 
-  if (entry == NULL) return -1;
+  if ((ret = db_node_allocate (entry, DFHM, DFHM_HEADER_SIZE, DFHM_HEADER_SIZE)) < 0)
+    return ret;
 
-  memset (entry, 0, sizeof (tree_node_t));
-  
-  entry->size = TLHM_HEADER_SIZE;
-  entry->data = calloc (entry->size, sizeof(char));
-  memset (entry->data, 0, entry->size);
-  tlhm_data = (struct db_tlhm *) entry->data;
-
-  tlhm_data->tlhm = TLHM;
-  tlhm_data->header_size = TLHM_HEADER_SIZE;
+  dfhm_data = (struct db_dfhm *) (*entry)->data;
 
   return 0;
 }
 
-static int db_plhm_create (tree_node_t *entry) {
-  struct db_plhm *plhm_data;
+static int db_ilhm_create (tree_node_t **entry) {
+  return db_node_allocate (entry, ILHM, ILHM_HEADER_SIZE, 0);
+}
 
-  if (entry == NULL) return -1;
+static int db_alhm_create (tree_node_t **entry) {
+  return db_node_allocate (entry, ALHM, ALHM_HEADER_SIZE, 0);
+}
 
-  memset (entry, 0, sizeof (tree_node_t));
-  
-  entry->size = PLHM_HEADER_SIZE;
-  entry->data = calloc (entry->size, sizeof(char));
-  memset (entry->data, 0, entry->size);
-  plhm_data = (struct db_plhm *) entry->data;
+static int db_flhm_create (tree_node_t **entry) {
+  return db_node_allocate (entry, FLHM, FLHM_HEADER_SIZE, 0);
+}
 
-  plhm_data->plhm = PLHM;
-  plhm_data->header_size = PLHM_HEADER_SIZE;
+static int db_tlhm_create (tree_node_t **entry) {
+  return db_node_allocate (entry, TLHM, TLHM_HEADER_SIZE, 0);
+}
 
-  return 0;
+static int db_plhm_create (tree_node_t **entry) {
+  return db_node_allocate (entry, PLHM, PLHM_HEADER_SIZE, 0);
 }
 
 /**
@@ -112,34 +104,25 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   db_log (itunesdb, 0, "db_create: entering (itunesdb = %08x, db_name = %s, name_len = %i)...\n", itunesdb, db_name, name_len);
 
-  root = itunesdb->tree_root;
-
-  if (root != NULL)
-    db_free (itunesdb);
-
   memset (itunesdb, 0, sizeof (ipoddb_t));
 
-  root = itunesdb->tree_root = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-  db_dbhm_create (root);
+  db_dbhm_create (&root);
 
   /* create song list */
-  entry = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-  db_dshm_create (entry, 1); /* type 1 is song list */
+  db_dshm_create (&entry, 1); /* type 1 is song list */
   db_attach (root, entry);
 
-  entry2 = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-  db_tlhm_create (entry2);
+  db_tlhm_create (&entry2);
   db_attach (entry, entry2);
 
   /* create master playlist */
-  entry = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-  db_dshm_create (entry, 2); /* type 2 is playlist list */
+  db_dshm_create (&entry, 2); /* type 2 is playlist list */
   db_attach (root, entry);
 
-  entry2 = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-  db_plhm_create (entry2);
+  db_plhm_create (&entry2);
   db_attach (entry, entry2);
 
+  itunesdb->tree_root = root;
   itunesdb->flags = flags;
   itunesdb->last_tihm = 0;
 
@@ -149,3 +132,45 @@ int db_create (ipoddb_t *itunesdb, char *db_name, int name_len, int flags) {
 
   return ret;
 }
+
+int db_photo_create (ipoddb_t *photodb) {
+  tree_node_t *root, *entry, *entry2;
+  int ret;
+
+  if (photodb == NULL)
+    return -EINVAL;
+
+  db_log (photodb, 0, "db_photo_create: entering (photodb = %08x)...\n", photodb);
+
+  memset (photodb, 0, sizeof (ipoddb_t));
+
+  db_dfhm_create (&root);
+
+  /* create image list */
+  db_dshm_create (&entry, 1); /* type 1 is an image list */
+  db_attach (root, entry);
+
+  db_ilhm_create (&entry2);
+  db_attach (entry, entry2);
+
+  /* create album list */
+  db_dshm_create (&entry, 2); /* type 2 is playlist list */
+  db_attach (root, entry);
+
+  db_alhm_create (&entry2);
+  db_attach (entry, entry2);
+
+  /* create photo list */
+  db_dshm_create (&entry, 3); /* type 2 is playlist list */
+  db_attach (root, entry);
+
+  db_flhm_create (&entry2);
+  db_attach (entry, entry2);
+
+  photodb->tree_root = root;
+
+  db_log (photodb, 0, "db_photo_create: complete\n");
+
+  return 0;
+}
+

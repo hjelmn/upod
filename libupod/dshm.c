@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.2a dshm.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 dshm.c
  *
  *   Contains functions for getting and creating a dshm node.
  *
@@ -57,19 +57,15 @@ int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header,
   return 0;
 }
 
-int db_dshm_create (tree_node_t *entry, int type) {
+int db_dshm_create (tree_node_t **entry, int type) {
   struct db_dshm *dshm_data;
+  int ret;
 
-  if (entry == NULL) return -1;
+  if ((ret = db_node_allocate (entry, DSHM, DSHM_HEADER_SIZE, DSHM_HEADER_SIZE)) < 0)
+    return ret;
 
-  memset (entry, 0, sizeof (tree_node_t));
-  
-  entry->size = DSHM_HEADER_SIZE;
-  entry->data = calloc (entry->size, 1);
-  dshm_data = (struct db_dshm *) entry->data;
+  dshm_data = (struct db_dshm *)(*entry)->data;
+  dshm_data->type  = type;
 
-  dshm_data->dshm = DSHM;
-  dshm_data->header_size = DSHM_HEADER_SIZE;
-  dshm_data->record_size = DSHM_HEADER_SIZE;
-  dshm_data->type        = type;
+  return 0;
 }

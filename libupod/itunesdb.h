@@ -111,6 +111,23 @@ typedef struct dohm {
 
 typedef dohm_t mhod_t;
 
+typedef struct inhm {
+  u_int32_t file_offset;
+  u_int32_t image_size;
+  u_int16_t height;
+  u_int16_t width;
+
+  u_int32_t num_dohm;
+  dohm_t *dohms;
+} inhm_t;
+
+typedef struct iihm {
+  int identifier;
+
+  u_int32_t num_inhm;
+  inhm_t *inhms;
+} iihm_t;
+
 typedef struct tihm {
   int num;
 
@@ -167,10 +184,12 @@ int    ipod_copy_to   (ipod_t *ipod, char *topath, char *frompath);
 int    ipod_rename    (ipod_t *ipod, char *name, int name_len);
 
 /* itunesdb2/db.c */
-int    db_create(ipoddb_t *ipoddb, char *db_name, int name_len, int flags);
 int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
 
+/* itunesdb2/create.c */
+int    db_create (ipoddb_t *ipoddb, char *db_name, int name_len, int flags);
+int    db_photo_create (ipoddb_t *photodb);
 
 /* itunesdb2/song_list.c */
 int    db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
@@ -228,8 +247,10 @@ int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_t
 int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
 
 /* functions for cleaning up memory */
-void tihm_free             (tihm_t *tihm);
-void db_free               (ipoddb_t *itunesdb);
+void tihm_free (tihm_t *tihm);
+void iihm_free (iihm_t *iihm);
+void inhm_free (inhm_t *inhm);
+void db_free   (ipoddb_t *itunesdb);
 
 void db_playlist_list_free (GList **head);
 void db_playlist_song_list_free (GList **head);

@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.0a tihm.c
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 pihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -22,10 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define PIHM               0x7069686d
-
 #define PIHM_HEADER_SIZE   0x4c
-#define PIHM_TOTAL_SIZE    0x4c
 
 int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   int i;
@@ -37,23 +34,19 @@ int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   return -1;
 }
 
-int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num,
+int db_pihm_create (struct tree_node **entry, u_int32_t tihm_num,
 		    u_int32_t junk) {
-  int *iptr;
+  struct db_pihm *pihm_data;
+  int ret;
+
+  if ((ret = db_node_allocate (entry, PIHM, PIHM_HEADER_SIZE, PIHM_HEADER_SIZE)) < 0)
+    return ret;
+
+  pihm_data = (struct db_pihm *)(*entry)->data;
   
-  entry->size = PIHM_HEADER_SIZE;
-  entry->data = calloc (1, PIHM_HEADER_SIZE);
-  entry->num_children = 0;
-  entry->children     = NULL;
-
-  iptr = (int *)entry->data;
-
-  iptr[0] = PIHM;
-  iptr[1] = PIHM_HEADER_SIZE;
-  iptr[2] = PIHM_TOTAL_SIZE;
-  iptr[3] = 1;
-  iptr[5] = junk + 1;
-  iptr[6] = tihm_num;
+  pihm_data->unk[0] = 1;
+  pihm_data->unk[2] = junk + 1;
+  pihm_data->reference = tihm_num;
 
   return 0;
 }

@@ -1,8 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.1.1a pyhm.c
- *
- *   Functions for managing playlists on the iPod.
+ *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.2.0 iihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -18,26 +16,20 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-
-#include "itunesdbi.h"
-
-
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <errno.h>
+#include "itunesdbi.h"
 
-#define PYHM_HEADER_SIZE 0x6c
+#define IIHM_HEADER_SIZE 0x98
 
-int db_pyhm_create (tree_node_t **entry) {
-  struct db_pyhm *pyhm_data;
+int db_iihm_create (tree_node_t **entry, int identifier) {
+  struct db_iihm *iihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, PYHM, PYHM_HEADER_SIZE, PYHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, IIHM, IIHM_HEADER_SIZE, IIHM_HEADER_SIZE)) < 0)
     return ret;
 
-  pyhm_data = (struct db_pyhm *)(*entry)->data;
-  pyhm_data->name_index  = 0x2;
-
-  return 0;
+  iihm_data = (struct db_iihm *)(*entry)->data;
+  iihm_data->identifier  = identifier;
 }

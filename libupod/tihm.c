@@ -71,21 +71,8 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 /* fills a tree_node with the data from a tihm_t structure */
 int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   struct db_tihm *tihm_data;
-  int *iptr;
-
-  if (tihm_header->data)
-    free (tihm_header->data);
-
-  tihm_header->size = TIHM_HEADER_SIZE;
-  tihm_header->data = calloc (1, TIHM_HEADER_SIZE);
-  memset (tihm_header->data, 0, TIHM_HEADER_SIZE);
-  
-  iptr = (int *)tihm_header->data;
 
   tihm_data = (struct db_tihm *)tihm_header->data;
-  tihm_data->tihm        = TIHM;
-  tihm_data->header_size = TIHM_HEADER_SIZE;
-  tihm_data->record_size = TIHM_HEADER_SIZE;
   tihm_data->num_dohm    = tihm->num_dohm;
   tihm_data->identifier  = tihm->num;
   tihm_data->type        = 0x001;
@@ -163,34 +150,27 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, size_t p
  Creates a database entry from a structure describing the song and stores the
  data into the location pointed to by entry.
 */
-int db_tihm_create (tree_node_t *entry, tihm_t *tihm) {
+int db_tihm_create (tree_node_t **entry, tihm_t *tihm) {
   tree_node_t *dohm;
   dohm_t *dohm_data;
-  int i;
+  int i, ret;
+
+  if ((ret = db_node_allocate (entry, TIHM, TIHM_HEADER_SIZE, TIHM_HEADER_SIZE)) < 0)
+    return ret;
   
-  memset (entry, 0, sizeof (tree_node_t));
-  
-  tihm_db_fill (entry, tihm);
+  tihm_db_fill (*entry, tihm);
   
   for (i = 0 ; i < tihm->num_dohm ; i++) {
-    dohm = (tree_node_t *) calloc (1, sizeof(tree_node_t));
-
-    if (dohm == NULL) {
-      perror ("db_create_tihm|calloc");
-      return -1;
-    }
-
-    if (db_dohm_create (dohm, tihm->dohms[i]) < 0)
+    if (db_dohm_create (&dohm, tihm->dohms[i]) < 0)
       return -1;
 
-    db_attach (entry, dohm);
+    db_attach (*entry, dohm);
   }
   
   return 0;
 }
 
 static int tihm_fill_from_database_entry (tihm_t *tihm, tree_node_t *entry) {
-  int *iptr = (int *)entry->data;
   struct db_tihm *dbtihm = (struct db_tihm *)entry->data;
   
   tihm->num_dohm  = dbtihm->num_dohm;

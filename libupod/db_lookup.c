@@ -52,6 +52,7 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
 
   size_t unicode_data_len;
   u_int16_t *unicode_data;
+  int *iptr;
 
   db_log (itunesdb, 0, "db_lookup: entering...\n");
 
@@ -75,9 +76,10 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data, int data_len) {
     for (j = 0 ; j < tihm_data->num_dohm ; j++) {
       dohm = tihm->children[j];
       dohm_data = (struct db_dohm *)dohm->data;
-      
+      iptr = (int *)dohm_data;
+
       if ((dohm_type > -1 && dohm_data->type != dohm_type) ||
-	  unicode_data_len != dohm_data->len)
+	  unicode_data_len != iptr[7])
 	continue;
 
       if (memcmp (&dohm->data[0x28], unicode_data, unicode_data_len) == 0) {
@@ -120,6 +122,8 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
   size_t unicode_data_len;
   u_int16_t *unicode_data;
 
+  int *iptr;
+
   /* simpifies code */
   struct db_plhm *plhm_data;
   struct db_dohm *dohm_data;
@@ -147,11 +151,13 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data, int data_len) {
 	break;
     }
 
+    iptr = (int *)dohm_data;
+
     if (itunesdb->log_level > 1)
-      pretty_print_block (&dohm_header->data[0x28], (dohm_data->len == 0) ? 2 : dohm_data->len);
+      pretty_print_block (&dohm_header->data[0x28], (iptr[7] == 0) ? 2 : iptr[7]);
 
     /* again, exact matches only */
-    if (unicode_data_len != dohm_data->len)
+    if (unicode_data_len != iptr[7])
       continue;
     
     if (memcmp (&dohm_header->data[0x28], unicode_data, unicode_data_len) == 0) {

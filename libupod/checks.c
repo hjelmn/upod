@@ -32,9 +32,9 @@ int db_sanity_tree (tree_node_t *node) {
       if (node->children[i]->parent != node) return -20;
 
       /* check to see if the data is any good */
-      if ((iptr[0] == DOHM && node->size != iptr[2]) ||
-	  (node->size != iptr[1]))
-	  return -45;
+      //if ((iptr[0] == DOHM && node->size != iptr[2]) ||
+      //  (node->size != iptr[1]))
+      //  return -45;
 
       ret = db_sanity_tree (node->children[i]);
 

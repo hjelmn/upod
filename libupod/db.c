@@ -89,12 +89,19 @@ void db_free (ipoddb_t *itunesdb) {
 
 static int dohm_contains_string (struct db_dohm *dohm_data) {
   if (dohm_data->type != 0x64 &&
-      dohm_data->type != 0x33)
+      dohm_data->type != 0x33 &&
+      dohm_data->type != 0x34)
     return 1;
 
   return 0;
 }
 
+static int dohm_contains_string_art (struct db_dohm *dohm_data) {
+  if (dohm_data->type == 0x03)
+    return 1;
+
+  return 0;
+}
 /*
   db_build_tree:
 
@@ -109,8 +116,6 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 
   int current_bytes_read = *bytes_read;
   int entry_size, cell_size, copy_size;
-
-  struct db_dohm *dohm_data;
 
   tnode_0 = calloc (1, sizeof(tree_node_t));
 
@@ -127,56 +132,62 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   entry_size = iptr[2];
   cell_size  = iptr[1];
 
-  if (iptr[0] == DOHM) {
-    dohm_data = (struct db_dohm *)*buffer;
+  bswap_block (&((*buffer)[0x0c]), 4, cell_size/4 - 3);
 
-    bswap_block (&((*buffer)[0xc]), 4, 7);
+  copy_size = cell_size;
 
-    if (dohm_contains_string(dohm_data))
-      bswap_block(&((*buffer)[0x28]), 2, dohm_data->len / 2);
-    else
-      bswap_block(&((*buffer)[0x28]), 4, entry_size/4 - 10);
+  if ( (iptr[0] == DOHM) && (cell_size != entry_size) ) {
+    struct db_dohm *dohm_data = (struct db_dohm *)*buffer;
 
-    copy_size = entry_size;
-  } else {
-    /* this line is correct if we assume that the rest of the cell
-       contains only 32-bit integers */
-    bswap_block(&((*buffer)[0xc]), sizeof(u_int32_t), cell_size/4 - 3);
+    bswap_block (&((*buffer)[0x18]), 4, 1);
 
-    if (iptr[0] == TIHM) {
-      struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
+    if (dohm_data->type & 0x01000000)
+      copy_size = entry_size;
+    else if (!dohm_contains_string(dohm_data)) {
+      copy_size = entry_size;
+      bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
+    } else if (iptr[6] == 1) {
+      bswap_block (&((*buffer)[0x1c]), 4, 3);
+      bswap_block (&((*buffer)[0x28]), 2, iptr[7]/2);
 
-      ipod_db->last_tihm = ((ipod_db->last_tihm < tihm_data->identifier)
-			    ? tihm_data->identifier
-			    : ipod_db->last_tihm);
+      copy_size = entry_size;
+    } else if ((iptr[6] % 2) == 0) {
+      bswap_block (&((*buffer)[0x1c]), 4, 2);
+      bswap_block (&((*buffer)[0x24]), 2, iptr[6]/2);
+
+      copy_size = entry_size;
     }
+
+  } else if (iptr[0] == TIHM) {
+    struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
     
-    copy_size = cell_size;
+    ipod_db->last_tihm = ((ipod_db->last_tihm < tihm_data->identifier)
+			  ? tihm_data->identifier
+			  : ipod_db->last_tihm);
   }
   
+
   tnode_0->num_children = 0;
   tnode_0->size = copy_size;
   tnode_0->data = calloc (copy_size, 1);
+
   memmove (tnode_0->data, *buffer, copy_size);
 
-#if defined(DEBUG)
-  fprintf (stderr, "New tree node, size: %i\n", copy_size);
+#if DEBUG
+  fprintf (stderr, "New tree node, ** Size: %08x, type: %s\n", copy_size, iptr);
 #endif
-  
+
   *buffer     += copy_size;
   *bytes_read += copy_size;
 
   iptr = (int *)tnode_0->data;
 
-  /* becuase the tlhm structures second field is not a total size,
-     do not do anything more with it */
-  if (cell_size == entry_size ||
-      iptr[0] == TLHM ||
-      iptr[0] == DOHM ||
-      iptr[0] == PLHM ||
-      iptr[0] == ILHM ||
+  if (copy_size == entry_size ||
       iptr[0] == ALHM ||
-      iptr[0] == FLHM)
+      iptr[0] == FLHM ||
+      iptr[0] == ILHM ||
+      iptr[0] == PLHM ||
+      iptr[0] == TLHM)
     goto dbbt_done;
 
   tnode_0->children = calloc(1, sizeof(tree_node_t *));
@@ -298,6 +309,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
   /* do the work of building the ipoddb_t structure */
   ipod_db->tree_root = db_build_tree(ipod_db, &bytes_read, NULL, &buffer);
+
   ipod_db->flags = flags;
 
   free(tmp);
@@ -307,6 +319,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
 static int db_write_tree (int fd, tree_node_t *entry) {
   static int ret;
+  int *iptr;
   int i, swap, length = 0;
   struct db_dohm *dohm_data;
 
@@ -314,11 +327,17 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   dohm_data = (struct db_dohm *) entry->data;
 
   if (dohm_data->dohm == DOHM) {
-
-    if (dohm_contains_string (dohm_data)) {
+    iptr = (int *)dohm_data;
+    if (dohm_data->type & 0x01000000)
+      swap = 9;
+    else if (!dohm_contains_string (dohm_data))
+      swap = entry->size/4;
+    else if (iptr[6] == 1) {
       swap = 10;
-      length = dohm_data->len/2;
-      bswap_block (&entry->data[0x28], 2, length);
+      bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+    } else if ((iptr[6] % 2) == 0) {
+      swap = 9;
+      bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
     } else
       swap = entry->size/4;
 
@@ -331,8 +350,13 @@ static int db_write_tree (int fd, tree_node_t *entry) {
   ret += write (fd, entry->data, entry->size);
 
 #if BYTE_ORDER == BIG_ENDIAN
-  if (dohm_data->dohm == DOHM && dohm_contains_string (dohm_data))
-    bswap_block (&entry->data[0x28], 2, length);
+  if (dohm_data->dohm == DOHM && (dohm_data->type & 0x01000000) == 0) {
+    if (iptr[6] == 1) {
+      bswap_block (&(entry->data[0x28]), 2, iptr[7]/2);
+    } else if ((iptr[6] % 2) == 0) {
+      bswap_block (&(entry->data[0x24]), 2, iptr[6]/2);
+    }
+  }
 #endif
 
   bswap_block(entry->data, 4, swap);
@@ -439,6 +463,35 @@ int db_detach (tree_node_t *parent, int child_num, tree_node_t **entry) {
     ((int *)tmp->data)[2] -= size;
 
   (*entry)->parent = NULL;
+
+  return 0;
+}
+
+struct db_generic {
+  u_int32_t type;
+  u_int32_t cell_size;
+  u_int32_t subtree_size;
+};
+
+int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int subtree) {
+  struct db_generic *data;
+  if (entry == NULL)
+    return -EINVAL;
+
+  *entry = (tree_node_t *)calloc(1, sizeof(tree_node_t));
+  if (*entry == NULL) {
+    perror ("db_node_allocate|calloc");
+
+    return errno;
+  }
+
+  (*entry)->size = size;
+  (*entry)->data = calloc ((*entry)->size, 1);
+  data = (struct db_generic *)(*entry)->data;
+  
+  data->type         = type;
+  data->cell_size    = size;
+  data->subtree_size = subtree;
 
   return 0;
 }

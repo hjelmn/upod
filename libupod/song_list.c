@@ -117,18 +117,7 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
     return ret;
   }
 
-  /* allocate memory for the new tree node */
-  new_tihm_header = (tree_node_t *)calloc(1, sizeof(tree_node_t));
-  if (new_tihm_header == NULL) {
-    perror ("db_add|calloc");
-    tihm_free (&tihm);
-
-    return errno;
-  }
-
-  new_tihm_header->parent = dshm_header;
-
-  if ((ret = db_tihm_create (new_tihm_header, &tihm)) < 0) {
+  if ((ret = db_tihm_create (&new_tihm_header, &tihm)) < 0) {
     db_log (itunesdb, ret, "Could not create tihm entry\n");
     free (new_tihm_header);
     return ret;
@@ -136,6 +125,7 @@ int db_song_add (ipoddb_t *itunesdb, char *path, u_int8_t *mac_path,
 
   tihm_free (&tihm);
   
+  new_tihm_header->parent = dshm_header;
   db_attach (dshm_header, new_tihm_header);
 
   if (show != 0)
@@ -203,21 +193,17 @@ int db_song_modify_eq (ipoddb_t *itunesdb, u_int32_t tihm_num, int eq) {
 
   /* see if an equilizer entry already exists */
   if ((ret = db_dohm_retrieve (tihm_header, &dohm_header, 0x7)) < 0) {
-    dohm_header = calloc (1, sizeof(tree_node_t));
-
-    if (dohm_header == NULL) {
-      perror ("db_song_modify_eq|calloc");
-      return -errno;
-    }
-
-    db_attach (tihm_header, dohm_header);
-
     tihm_data = (struct db_tihm *) tihm_header->data;
     tihm_data->num_dohm ++;
+  } else {
+    dohm_header->parent = NULL;
+    db_free_tree (dohm_header);
   }
 
-  if ((ret = db_dohm_create_eq (dohm_header, eq)) < 0)
+  if ((ret = db_dohm_create_eq (&dohm_header, eq)) < 0)
     return ret;
+
+  db_attach (tihm_header, dohm_header);
 
   return 0;
 }
