@@ -55,6 +55,7 @@
 #define ID3_GENRE             6
 #define ID3_ENCODER           7
 #define ID3_COMMENT           8
+#define ID3_BPM               9
 
 static int find_id3 (FILE *fd, char **tag_data, int *tag_datalen, int *major_version);
 static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_majorversion, int field, tihm_t *tihm);
@@ -185,6 +186,10 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
   case ID3_COMMENT:
     data_type = IPOD_COMMENT;
     break;
+  case ID3_BPM:
+    if (id3v2_majorversion < 3)
+      return;
+    break;
   case ID3_TRACK:
     break;
   default:
@@ -197,7 +202,7 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 			  "TEN", "COM", "TLE", "TKE"};
     /* field tags associated with id3v2 with major version > 2 */
     char *fourfields[] = {"TIT1", "TIT2", "TPE1", "TALB", "TRCK", "TYER", "TCON",
-			  "TENC", "COMM", "TLEN", "TIME"};
+			  "TENC", "COMM", "TLEN", "TIME", "TBPM"};
     
     char *tag_temp;
     char *sizeloc;
@@ -208,6 +213,9 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
       u_int8_t *tmp;
 
       tag_temp = NULL;
+
+      if (tag_data[i] == 0)
+	return;
 
       if (id3v2_majorversion > 2) {
 	if (id3v2_majorversion == 4)
@@ -235,9 +243,11 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 
       for ( ; *tag_temp == '\0' ; tag_temp++);
 
-      if ((field != ID3_TRACK) &&
+      if ((field != ID3_TRACK) && (field != ID3_BPM) &&
 	  ((field != ID3_GENRE) || ( *(tag_temp) != 40)) ) {
 	dohm_add (tihm, tag_temp, length, data_type);
+      } else if (field == ID3_BPM) {
+	tihm->bpm = strtol (tag_temp, NULL, 10);
       } else if (field == ID3_TRACK) {
 	char *slash;
 
@@ -264,6 +274,8 @@ static void parse_id3 (char *tag_data, int tag_datalen, int version, int id3v2_m
 
 	dohm_add (tihm, genre_table[atoi(genre_temp)], strlen (genre_table[atoi(genre_temp)]), data_type);
       }   
+
+      return;
     }
   } else if (version == 1) {
     int i = 29;
@@ -335,6 +347,7 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm) {
     parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_COMMENT, tihm);
     parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_GENRE  , tihm);
     parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_TRACK  , tihm);
+    parse_id3(tag_data, tag_datalen, version, id3v2_majorversion, ID3_BPM    , tihm);
   }
   
   if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {

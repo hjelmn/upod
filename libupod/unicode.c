@@ -44,6 +44,7 @@ void unicode_to_char (u_int8_t *dst, u_int16_t *src, size_t src_length) {
     dst[i] = (u_int8_t)src[i];
 }
 
+/* Converts the input from UTF8/ASCII to Unicode */
 void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 			     size_t src_len) {
   int i, x;
@@ -55,7 +56,7 @@ void unicode_check_and_copy (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 
   *dst_len = 0;
 
-  /* unicode id3 tags create by iTunes start with the 24 bit number 0x01fffe */
+  /* unicode id3 tags create by iTunes start with the 24 bit tag 0x01fffe (or, so I have noticed) */
   if (src_len > 3 && (((int *)src)[0] & 0x01fffe00) == 0x01fffe00) {
     *dst_len = src_len-3;
     *dst = calloc (2, *dst_len/2);

@@ -101,6 +101,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->order       = tihm->track;
   tihm_data->sample_rate = tihm->samplerate << 16;
   tihm_data->bit_rate    = tihm->bitrate;
+  tihm_data->bpm         = tihm->bpm;
 
   tihm_data->volume_adjustment = tihm->volume_adjustment;
   tihm_data->start_time  = tihm->start_time;

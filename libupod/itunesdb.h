@@ -129,6 +129,7 @@ typedef struct tihm {
   u_int32_t played_date;
   u_int32_t mod_date;
   u_int32_t creation_date;
+  u_int16_t bpm; /* beats/min */
 
   int num_dohm;
 

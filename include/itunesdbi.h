@@ -131,6 +131,12 @@ struct db_tihm {
   u_int32_t unk6;
   u_int32_t modification_date;
   u_int32_t unk7;
+
+  u_int32_t unk8;
+  u_int32_t unk9;
+  u_int16_t unk10;
+  u_int16_t bpm; /* beats/min */
+  u_int32_t unk11;
 };
 
 struct db_dohm {
@@ -287,8 +293,5 @@ int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
 int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
-
-/* id3.c */
-int get_id3_info (char *file_name, tihm_t *tihm);
 
 #endif /* __ITUNESDBI_H */

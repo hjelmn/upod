@@ -1,6 +1,6 @@
 /**
- *   (c) 2002 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.0.2 upodi.h
+ *   (c) 2003 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.0.2 itunesdbi.h
  *
  *   Internal functions. Do not include upodi.h in any end software.
  *
@@ -131,6 +131,12 @@ struct db_tihm {
   u_int32_t unk6;
   u_int32_t modification_date;
   u_int32_t unk7;
+
+  u_int32_t unk8;
+  u_int32_t unk9;
+  u_int16_t unk10;
+  u_int16_t bpm; /* beats/min */
+  u_int32_t unk11;
 };
 
 struct db_dohm {
