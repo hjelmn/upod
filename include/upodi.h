@@ -21,6 +21,10 @@
 #ifndef __UPODI_H
 #define __UPODI_H
 
+#include <sys/types.h>
+
+#include "upod.h"
+
 #define DEBUG
 
 #if defined(DEBUG)
@@ -32,60 +36,114 @@
 /* this definition will not be static in non-alpha release */
 #define EMPTYDB "/home/neo/cvs/upod/share/emptydb"
 
-#define UPOD_ERROR(x, s) do {fprintf(stderr, "Error %i: %s", x, s);} while(0);
+/* some structures to help clarify code */
+/* plhms are headers to pyhms */
+struct db_plhm {
+  u_int32_t header_size;
+  u_int32_t num_pyhm;
+};
 
-enum file_types_t {TITLE=1, PATH, ALBUM, ARTIST, GENRE, TYPE, COMMENT};
+/* tlhms are headers to pihms */
+struct db_tlhm {
+  u_int32_t tlhm;
+  u_int32_t header_size;
+  u_int32_t num_tihm;
+};
 
-typedef struct _ipod {
-  /* mount information */
-  char path[255];
-  char is_mounted;
+struct db_pihm {
+  u_int32_t pihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t unk[3];
+  u_int32_t reference;
+};
 
-  int db_fd;
+struct db_pyhm {
+  u_int32_t pyhm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t flags;
+  u_int32_t num_pihm;
+  u_int32_t is_visible;
+};
 
-  int db_size_current;
+struct db_tihm {
+  u_int32_t tihm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t num_dohm;
+  u_int32_t identifier;
+  u_int32_t type;
+  u_int32_t date;
+  u_int32_t file_size;
+  u_int32_t duration;
+  u_int32_t order;
+  u_int32_t encoding;
+  u_int32_t unk[4];
+  u_int32_t sample_rate;
+};
 
-  int debug;
+#define UPOD_ERROR(x, format, args...) do {\
+  fprintf(stderr, format, ## args);\
+  exit(x);\
+} while(0);
 
-  char *first_entry;
-  char *last_entry;
-  
-  int num_playlists;
-  
-  /* this pointer could possibly be huge (the size of the database) */
-  char *itunesdb;
+#define UPOD_NOT_IMPL(s) do {\
+  fprintf(stderr, "Error -1: function %s not implemented\n", s);\
+  return -1;\
+} while(0);
 
-  char *insertion_point;
-} ipod_t;
+/* libupod/endian.c */
+#if defined (__linux__)
 
-typedef struct _song_ref {
-  char *db_location;
+#include <endian.h>
+#include <byteswap.h>
 
-  int size;
-  int time;
+#elif defined (__darwin__)
 
-  int bitrate;
-  int samplerate;
+#include <machine/endian.h>
+#include <architecture/byte_order.h>
 
-  int mod_date;
-  
-  int dohm_num;
-  struct dohm {
-    int type;
-    char *data;
-  } *dohm_entries;
+#define bswap_32 NXSwapLittleLongToHost
+#define bswap_16 NXSwapLittleShortToHost
 
-  struct _song_ref *prev, *next;
-} song_ref_t;
+#endif
+void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 
-/* field seperator should be : */
-char *path_mac_to_unix (char *path);
-/* field seperator should be / */
-char *path_unix_to_mac (char *path);
+tihm_t db_song_info (ipod_t *ipod, u_int32_t mhit_num);
 
-char *db_get_path(ipod_t *ipod, song_ref_t *ref);
+/* libupod/tihm.c */
+int db_tihm_search (struct tree_node *entry, u_int32_t tihm_num);
+int db_tihm_create (struct tree_node *entry, char *filename, char *path);
+
+tihm_t *tihm_create(tihm_t *tihm, char *filename, char *path, int num);
+tihm_t *db_tihm_fill (struct tree_node *entry);
+void tihm_free (tihm_t *tihm);
+
+/* libupod/pihm.c */
+int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num);
+int db_pihm_create (struct tree_node *entry, u_int32_t tihm_num, u_int32_t junk);
+
+/* libupod/unicode.c */
+void char_to_unicode (char *dst, char *src, size_t src_length);
+void unicode_to_char (char *dst, char *src, size_t src_length);
+
+/* libupod/dohm.c */
+dohm_t *dohm_create (tihm_t *tihm);
+void    dohm_destroy(tihm_t *tihm);
+int     db_dohm_create_generic (struct tree_node *entry, size_t size, int junk);
+dohm_t *db_dohm_fill (struct tree_node *entry);
+void    dohm_free (dohm_t *dohm, int num_dohm);
+
+/* path seperator should be : */
+/* path seperator should be / */
+
 
 /* libupod/mp3.c */
-int ref_fill_mp3 (char *, song_ref_t *);
-void ref_clear (song_ref_t *);
+
+/* libupod/playlist.c */
+
+char *basename(char *);
+void *memmem(void *haystack, size_t haystack_size, void *needle, size_t needle_size);
+
 #endif /* __UPODI_H */
