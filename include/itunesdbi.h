@@ -285,4 +285,8 @@ int aac_fill_tihm (char *, tihm_t *);
 
 /* playlist.c */
 int db_playlist_retrieve_header (itunesdb_t *, tree_node_t **, tree_node_t **);
+
+/* id3.c */
+int get_id3_info (char *file_name, tihm_t *tihm);
+
 #endif /* __ITUNESDBI_H */
