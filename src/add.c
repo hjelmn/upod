@@ -17,9 +17,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdb.h"
-
 #include <stdlib.h>
+#include <string.h>
+
+#include "itunesdb.h"
 
 void usage(void) {
   printf("Usage:\n");
@@ -30,7 +31,6 @@ void usage(void) {
 
 int main(int argc, char *argv[]) {
   ipoddb_t itunesdb, artworkdb;
-  tihm_t new_entry;
   int ret;
 
   memset (&itunesdb, 0, sizeof (ipoddb_t));

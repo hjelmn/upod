@@ -21,7 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <unistd.h>
 #include <fcntl.h>
 
 void usage (void) {
@@ -72,7 +72,6 @@ int main (int argc, char *argv[]) {
   int i, ret;
   
   ipoddb_t itunesdb;
-  int fd, result;
 
   if (argc != 2)
     usage();
@@ -80,7 +79,6 @@ int main (int argc, char *argv[]) {
   db_set_debug (&itunesdb, 5, stderr);
 
   if (db_load (&itunesdb, argv[1], 0x0) < 0) {
-    close (fd);
     exit(1);
   }
 
@@ -178,7 +176,7 @@ int main (int argc, char *argv[]) {
   if (playlists == NULL) {
     fprintf (stdout, "Could not get playlist list\n");
     db_free(&itunesdb);
-    close (fd);
+
     exit(1);
   }
   
@@ -186,7 +184,7 @@ int main (int argc, char *argv[]) {
   for (tmp = g_list_first (playlists) ; tmp ; tmp = g_list_next (tmp)) {
     pyhm = (pyhm_t *)tmp->data;
     /* P(laylist) M(aster) */
-    fprintf (stdout, "playlist name: %s(%s) len=%i\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
+    fprintf (stdout, "playlist name: %s(%s) len=%lu\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
     
     db_playlist_song_list (&itunesdb, pyhm->num, &list);
     
@@ -199,8 +197,6 @@ int main (int argc, char *argv[]) {
   
   db_playlist_list_free (&playlists);
   db_free(&itunesdb);
-
-  close(fd);
 
   return 0;
 }
