@@ -115,19 +115,14 @@ int main(int argc, char *argv[]) {
     if (argc < 5) usage();
     printf ("Creating a database... ");
 
-    if ((ret = db_create(&itunesdb, "iPod", 0x1)) < 0) {
+    if ((ret = db_create(&itunesdb, "iPod", argv[2], 0x1)) < 0) {
       printf("Could not create database.\n");
       exit(2);
     }
-
-    itunesdb.path = strdup (argv[2]);
-
-    if ((ret = db_photo_create (&artworkdb)) < 0) {
+    if ((ret = db_photo_create (&artworkdb, argv[3])) < 0) {
       printf ("Could not create photodb.\n");
       exit(2);
     }
-
-    artworkdb.path = strdup (argv[3]);
 
     printf ("done.\n");
     c = 1;

@@ -64,21 +64,25 @@ static u_int8_t *path_unix_mac_root (char *path) {
 }
 
 
-static u_int8_t *path_mac_unix (char *mac_path) {
+static u_int8_t *path_mac_unix (char *mac_path, char *ipod_prefix) {
   char *path;
   int i;
 
+  if (ipod_prefix == NULL || mac_path == NULL)
+    return NULL;
+
   if (*mac_path == ':') mac_path++;
 
-  path = calloc (strlen(mac_path) + 1, 1);
+  path = calloc (strlen(mac_path) + strlen (ipod_prefix) + 2, 1);
+  sprintf (path, "%s/", ipod_prefix);
 
   for (i = 0 ; i < strlen (mac_path) ; i++)
     if (mac_path[i] == ':')
-      path[i] = '/';
+      path[i + strlen(ipod_prefix) + 1] = '/';
     else
-      path[i] = mac_path[i];
+      path[i + strlen(ipod_prefix) + 1] = mac_path[i];
 
-  path[i] = '\0';
+  path[i + strlen(ipod_prefix) + 1] = '\0';
 
   return path;
 }
@@ -97,7 +101,7 @@ void print_parsed (void) {
   fflush (stdout);
 }
 
-int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidden,
+int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidden,
 	       int playlist) {
   char scratch[1024];
 
@@ -141,7 +145,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
       GList *tmp;
 
       print_parsed ();
-      mac_path = path_unix_mac_root (scratch);
+      mac_path = path_unix_mac_root (scratch + strlen(ipod_prefix) + 1);
       if ((tmp = g_list_find_custom (hidden, scratch,
 				     (GCompareFunc)glist_cmp)) != NULL) {
 	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 0);
@@ -170,7 +174,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
 
       free (mac_path);
     } else
-      parse_dir (scratch, itunesdb, artworkdb, hidden, playlist);
+      parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, hidden, playlist);
   }
 
   closedir (dirp);
@@ -181,7 +185,7 @@ int parse_dir (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidde
   return 0;
 }
 
-int parse_playlists (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
+int parse_playlists (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
   char scratch[1024];
 
   DIR *dirp;
@@ -215,7 +219,7 @@ int parse_playlists (char *path, ipoddb_t *itunesdb, ipoddb_t *artworkdb) {
       }
     }
 
-    parse_dir (scratch, itunesdb, artworkdb, NULL, playlist);
+    parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, NULL, playlist);
     printf ("\n");
   }
   
@@ -267,7 +271,7 @@ int write_awdatabase (ipoddb_t *artworkdb) {
 }
 
 /* remove files that no longer exist from the database */
-int cleanup_database (ipoddb_t *itunesdb) {
+int cleanup_database (ipoddb_t *itunesdb, char *ipod_prefix) {
   GList *tmp, *song_list = NULL;
   tihm_t *tihm;
   char *unix_path;
@@ -289,7 +293,7 @@ int cleanup_database (ipoddb_t *itunesdb) {
     if (i == tihm->num_dohm)
       continue;
 
-    unix_path = path_mac_unix (tihm->dohms[i].data);
+    unix_path = path_mac_unix (tihm->dohms[i].data, ipod_prefix);
 
     if (stat (unix_path, &statinfo) < 0) {
       printf ("%s(%s): no longer exists. Removing from the iTunesDB\n", unix_path, tihm->dohms[i].data);
@@ -316,6 +320,7 @@ int main (int argc, char *argv[]) {
   char *ipod_prefix = NULL;
   char *itunesdb_path;
   char *artworkdb_path;
+  char *music_path;
 
   int ret;
 
@@ -350,6 +355,7 @@ int main (int argc, char *argv[]) {
       break;
     case 'p':
       ipod_prefix = strdup (optarg);
+      break;
     case 'v':
       version ();
       break;
@@ -367,17 +373,18 @@ int main (int argc, char *argv[]) {
   if (ipod_prefix == NULL)
     ipod_prefix = strdup (".");
 
-  itunesdb_path  = calloc (1, strlen (ITUNESDB) + strlen (ipod_prefix) + 1);
+  if (ipod_prefix[strlen(ipod_prefix)-1] == '/')
+    ipod_prefix[strlen(ipod_prefix)-1] = '\0';
+
+  itunesdb_path  = calloc (1, strlen (ITUNESDB) + strlen (ipod_prefix) + 2);
   sprintf (itunesdb_path, "%s/%s", ipod_prefix, ITUNESDB);
 
   if (noartwork == 0) {
     db_set_debug (&artworkdb, debug_level, stderr);
 
-    artworkdb_path  = calloc (1, strlen (ARTWORKDB) + strlen (ipod_prefix) + 1);
+    artworkdb_path  = calloc (1, strlen (ARTWORKDB) + strlen (ipod_prefix) + 2);
     sprintf (artworkdb_path, "%s/%s", ipod_prefix, ARTWORKDB);
   }
-
-  free (ipod_prefix);
 
   if (create == 0) {
     if ((ret = db_load (&itunesdb, itunesdb_path, flags)) < 0) {
@@ -419,24 +426,26 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  cleanup_database (&itunesdb);
+  cleanup_database (&itunesdb, ipod_prefix);
 
-  if (noartwork == 1)
-    parse_playlists ("Music", &itunesdb, NULL);
-  else
-    parse_playlists ("Music", &itunesdb, &artworkdb);
+
+  music_path = calloc (1, strlen(ipod_prefix) + 7);
+  sprintf (music_path, "%s/Music", ipod_prefix);
+  parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb);
 
   ret = write_itdatabase (&itunesdb);
-  printf ("%i B written to the iTunesDB: %s\n", ret, ITUNESDB);
+  printf ("%i B written to the iTunesDB: %s\n", ret, itunesdb.path);
 
   if (noartwork == 0) {
     ret = write_awdatabase (&artworkdb);
-    printf ("%i B written to the ArtworkDB: %s\n", ret, ARTWORKDB);
+    printf ("%i B written to the ArtworkDB: %s\n", ret, artworkdb.path);
   }
 
   db_free (&itunesdb);
   db_free (&artworkdb);
   
+  free (ipod_prefix);
+
   return 0;
 }
 
