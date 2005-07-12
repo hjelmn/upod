@@ -492,9 +492,9 @@ int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index) {
     return -1;
 
   /* allocate memory for the new child pointer */
-  if (parent->num_children++ == 0)
+  if (parent->num_children++ == 0) {
     parent->children = calloc (1, sizeof(tree_node_t *));
-  else
+  } else
     parent->children = realloc (parent->children, parent->num_children * 
 				sizeof (tree_node_t *));
 

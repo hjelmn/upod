@@ -130,9 +130,9 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
       if (tihm->dohms[i].type == data_type)
 	return NULL;
 
-  if (tihm->num_dohm++ == 0)
+  if (tihm->num_dohm++ == 0) {
     tihm->dohms = (dohm_t *) calloc(1, sizeof(dohm_t));
-  else
+  } else
     tihm->dohms = realloc(tihm->dohms, tihm->num_dohm * sizeof(dohm_t));
   
   if (data_type == IPOD_TITLE) {

@@ -35,7 +35,7 @@
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
 #if defined (DEBUG_MEMORY)
-#define calloc(x,y) calloc (x,y); printf ("allocating %i member of size %i from line %i in file %s.\n", x, y, __LINE__, __FILE__);
+#define calloc(x,y) calloc (x,y); printf ("allocating %i member(s) of size %i from line %i in file %s.\n", x, y, __LINE__, __FILE__);
 #define free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
 #endif
 

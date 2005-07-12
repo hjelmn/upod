@@ -134,7 +134,7 @@ int sd_load (ipoddb_t *ipod_sd, char *path, int flags) {
     return -1;
   }
 
-  ipod_sd->tree_root->size = statinfo.st_size;
+  ipod_sd->tree_root->data_size = statinfo.st_size;
 
   close (iPod_SD_fd);
 
@@ -146,36 +146,35 @@ int sd_load (ipoddb_t *ipod_sd, char *path, int flags) {
 
 int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int volume) {
   int file_type;
-  char *sd_data;
+  unsigned char *sd_data, *song_offset;
   int sd_size;
-  int song_offset;
 
-  if (ipod_sd == NULL || path == NULL || ipod_path == NULL)
+  if (ipod_sd == NULL || ipod_path == NULL || ipod_path == NULL)
     return -EINVAL;
 
   db_log (ipod_sd, 0, "sd_song_add: entering...\n");
 
-  if (ipod_sd->tree_root == NULL || ipod_sd->tree_root->data = NULL) {
+  if (ipod_sd->tree_root == NULL || ipod_sd->tree_root->data == NULL) {
     db_log (ipod_sd, -1, "sd_song_add: iTunesSD not loaded.\n");
 
     return -1;
   }
 
-  if (strncasecmp (path + (strlen(path) - 3), "mp3", 3) == 0)
-    type = 1;
-  else if ( (strncasecmp (path + (strlen(path) - 3), "m4a", 3) == 0)  ||
-	    (strncasecmp (path + (strlen(path) - 3), "m4p", 3) == 0)  ||
-	    (strncasecmp (path + (strlen(path) - 3), "aac", 3) == 0) )
-    type = 2;
-  else if (strncasecmp (path + (strlen(path) - 3), "mp3", 3) == 0)
-    type = 3;
+  if (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "mp3", 3) == 0)
+    file_type = 1;
+  else if ( (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "m4a", 3) == 0)  ||
+	    (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "m4p", 3) == 0)  ||
+	    (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "aac", 3) == 0) )
+    file_type = 2;
+  else if (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "mp3", 3) == 0)
+    file_type = 3;
   else {
     db_log (ipod_sd, -1, "sd_song_add: file type is not supported or incorrect extension.\n");
 
     return -1;
   }
 
-  sd_size = ipod_sd->tree_root->size + 0x00022e;
+  sd_size = ipod_sd->tree_root->data_size + 0x00022e;
   sd_data = realloc (ipod_sd->tree_root->data, sd_size);
 
   if (sd_data == NULL) {
@@ -185,6 +184,7 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   }
 
   song_offset = &sd_data[sd_size - 0x00022e];
+  memset (song_offset, 0, 0x00022e);
 
   set_uint24 (song_offset, 0, 0x00022e);
   set_uint24 (song_offset, 1, 0x5aa501);
@@ -195,19 +195,19 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
  
 
   set_uint24 (song_offset, 8, volume + 100);
-  set_uint24 (song_offset, 9, type);
+  set_uint24 (song_offset, 9, file_type);
   set_uint24 (song_offset, 10, 0x000200);
 
   sprintf (&song_offset[11 * 3], ipod_path);
 
-  set_uint24 (song_offset, 185, 0x000001); /* song will be included in shuffle */
-  set_uint24 (song_offset, 186, 0x000000); /* no bookmarks at this time */
-  set_uint24 (song_offset, 187, 0x000000); /* unknown */
+  song_offset[555] = 0x01; /* song will be included in shuffle */
+  song_offset[556] = 0x00; /* no bookmark support at this time */
+  song_offset[557] = 0x00; /* unknown */
 
   inc_uint24 (sd_data, 0);
   
   ipod_sd->tree_root->data = sd_data;
-  ipod_sd->tree_root->size = sd_size;
+  ipod_sd->tree_root->data_size = sd_size;
 
   db_log (ipod_sd, 0, "sd_song_add: complete\n");
 
@@ -219,7 +219,7 @@ int sd_song_remove (ipoddb_t *ipod_sd, int number) {
   int sd_size;
   unsigned char *sd_data;
 
-  if (ipod_sd == NULL || path == NULL || ipod_path == NULL)
+  if (ipod_sd == NULL || number < 0)
     return -EINVAL;
 
   db_log (ipod_sd, 0, "sd_song_remove: entering...\n");
@@ -227,12 +227,47 @@ int sd_song_remove (ipoddb_t *ipod_sd, int number) {
   return -1;
 
   sd_data = ipod_sd->tree_root->data;
-  sd_size = ipod_sd->tree_root->size;
+  sd_size = ipod_sd->tree_root->data_size;
 
   header_size = get_uint24 (sd_data, 3);
 
   if (number * 0x00022e >= (sd_size - header_size)) {
   }
+}
+
+int sd_create (ipoddb_t *ipod_sd, u_int8_t *path, int flags) {
+  if (ipod_sd == NULL)
+    return -EINVAL;
+
+  ipod_sd->tree_root = calloc (1, sizeof (struct tree_node));
+
+  if (ipod_sd->tree_root == NULL) {
+    perror ("sd_create|calloc");
+
+    return -errno;
+  }
+
+  ipod_sd->tree_root->data = calloc (18, 1);
+
+  if (ipod_sd->tree_root->data == NULL) {
+    perror ("sd_create|calloc");
+
+    free (ipod_sd->tree_root);
+
+    ipod_sd->tree_root = NULL;
+
+    return -errno;
+  }
+
+  ipod_sd->tree_root->data_size = 18;
+  ipod_sd->flags = flags;
+  ipod_sd->type  = 2;
+  ipod_sd->path  = strdup (path);
+
+  set_uint24 (ipod_sd->tree_root->data, 1, 0x010600);
+  set_uint24 (ipod_sd->tree_root->data, 2, 18);
+
+  return 0;
 }
 
 int sd_write (ipoddb_t ipod_sd, char *path) {
@@ -252,7 +287,7 @@ int sd_write (ipoddb_t ipod_sd, char *path) {
     return -errno;
   }
 
-  write (fd, ipod_sd.tree_root->data, ipod_sd.tree_root->size);
+  ret = write (fd, ipod_sd.tree_root->data, ipod_sd.tree_root->data_size);
   
   close (fd);
 

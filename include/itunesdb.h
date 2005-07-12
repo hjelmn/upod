@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.1 itunesdb.h
+ *   v0.4.0 itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -32,6 +32,7 @@ extern "C" {
 #include <glib.h>
 
 #define ITUNESDB     "iPod_Control/iTunes/iTunesDB"
+#define ITUNESSD     "iPod_Control/iTunes/iTunesSD"
 #define ARTWORKDB    "iPod_Control/Artwork/ArtworkDB"
 #define OTG_PLAYLIST "iPod_Control/iTunes/OTGPlaylist"
 #define PHOTODB      "Photos/Photo Database"
@@ -208,6 +209,13 @@ typedef pyhm_t ipod_playlist_t;
 /* itunesdb2/db.c */
 int    db_load  (ipoddb_t *ipoddb, char *path, int flags);
 int    db_write (ipoddb_t ipoddb, char *path);
+
+/* itunesdb2/itunessd.c */
+int    sd_load (ipoddb_t *ipodsd, char *path, int flags);
+int    sd_create (ipoddb_t *ipodsd, u_int8_t *path, int flags);
+
+int    sd_write (ipoddb_t ipodsd, char *path);
+int    sd_song_add (ipoddb_t *ipodsd, char *ipod_path, int start, int stop, int volume);
 
 /* itunesdb2/create.c */
 int    db_create (ipoddb_t *ipoddb, u_int8_t *db_name, u_int8_t *path, int flags);
