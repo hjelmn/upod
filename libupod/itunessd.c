@@ -239,8 +239,36 @@ int sd_song_remove (ipoddb_t *ipod_sd, int number) {
 
   header_size = get_uint24 (sd_data, 3);
 
-  if (number * 0x00022e >= (sd_size - header_size)) {
+  if ((number * 0x00022e) < (sd_size - header_size)) {
+    if ((number + 1) * 0x00022e < (sd_size - header_size)) {
+      unsigned char *tmp, *tmp2;
+
+      tmp  = &ipod_sd->tree_root->data[header_size + number * 0x00022e];
+      tmp2 = &ipod_sd->tree_root->data[header_size + (number + 1) * 0x00022e];
+
+      memmove (tmp, tmp2, 0x00022e);
+    }
+
+    /* decrease the song count */
+    dec_uint32 (sd_data, 0);
+    
+    sd_size -= 0x00022e;
+    ipod_sd->tree_root->data_size = sd_size;
+
+    sd_data = realloc (sd_data, sd_size);
+
+    if (sd_data == NULL) {
+      perror ("sd_song_remove|realloc");
+
+      return -errno;
+    }
+
+    ipod_sd->tree_root->data = sd_data;
   }
+
+  db_log (ipod_sd, 0, "sd_song_remove: complete\n");
+
+  return 0;
 }
 
 int sd_create (ipoddb_t *ipod_sd, u_int8_t *path, int flags) {
