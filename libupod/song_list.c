@@ -1,6 +1,6 @@
 /**
  *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 song_list.c
+ *   v0.3.0 song_list.c
  *   
  *   Routines for working with an iTunesDB
  *

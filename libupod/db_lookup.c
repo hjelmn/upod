@@ -51,29 +51,58 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
   struct db_tihm *tihm_data;
   dohm_t dohm;
 
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   db_log (itunesdb, 0, "db_lookup: entering...\n");
 
-  if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 0x1)) != 0)
-    return ret;
+  if (itunesdb->type == 0) {
+    /* iPod database */
 
-  dohm.data = data;
-  dohm.type = dohm_type;
+    if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 0x1)) != 0)
+      return ret;
+    
+    dohm.data = data;
+    dohm.type = dohm_type;
+    
+    db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
+    
+    tlhm_data = (db_tlhm_t *)dshm_header->children[0]->data;
+    
+    ret = -1;
+    
+    for (i = 1 ; i <= tlhm_data->list_entries ; i++) {
+      tihm_header = dshm_header->children[i];
+      tihm_data = (struct db_tihm *)tihm_header->data;
+      
+      db_dohm_retrieve (tihm_header, &dohm_header, dohm_type);
+      
+      if (db_dohm_compare (dohm_temp, dohm_header) == 0) {
+	ret = tihm_data->identifier;
+	break;
+      }
+    }
+  } else if (itunesdb->type == 2) {
+    int num_songs, header_size;
+    unsigned char *song_list_offset;
 
-  db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
+    /* iPod Shuffle database */
 
-  tlhm_data = (db_tlhm_t *)dshm_header->children[0]->data;
+    if (dohm_type != IPOD_PATH)
+      return -EINVAL;
 
-  ret = -1;
+    num_songs = get_uint24 (itunesdb->tree_root->data, 0);
+    header_size = get_uint24 (itunesdb->tree_root->data, 2);
 
-  for (i = 1 ; i <= tlhm_data->list_entries ; i++) {
-    tihm_header = dshm_header->children[i];
-    tihm_data = (struct db_tihm *)tihm_header->data;
+    song_list_offset = &itunesdb->tree_root->data[header_size];
 
-    db_dohm_retrieve (tihm_header, &dohm_header, dohm_type);
+    ret = -1;
 
-    if (db_dohm_compare (dohm_temp, dohm_header) == 0) {
-      ret = tihm_data->identifier;
-      break;
+    for (i = 0 ; i < num_songs ; i++) {
+      if (strcmp (data, &song_list_offset[i * 0x00022e + 11 * 3]) == 0) {
+	ret = i;
+	break;
+      }
     }
   }
 
@@ -82,7 +111,8 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
   else
     db_log (itunesdb, 0, "db_lookup: not found\n");
 
-  db_free_tree (dohm_temp);
+  if (itunesdb->type == 0)
+    db_free_tree (dohm_temp);
 
   return ret;
 }

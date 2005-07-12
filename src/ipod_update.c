@@ -418,7 +418,7 @@ int main (int argc, char *argv[]) {
   sprintf (itunesdb_path, "%s/%s", ipod_prefix, ITUNESDB);
 
   itunessd_path  = calloc (1, strlen (ITUNESSD) + strlen (ipod_prefix) + 2);
-  sprintf (itunesdb_path, "%s/%s", ipod_prefix, ITUNESSD);
+  sprintf (itunessd_path, "%s/%s", ipod_prefix, ITUNESSD);
 
   if (noartwork == 0) {
     db_set_debug (&artworkdb, debug_level, stderr);
@@ -430,13 +430,13 @@ int main (int argc, char *argv[]) {
   if (create == 0) {
     if (ipod_shuffle == 0) {
       if ((ret = db_load (&itunesdb, itunesdb_path, flags)) < 0) {
-	fprintf (stderr, "Could not open iTunesDB: %s\n", ITUNESDB);
+	fprintf (stderr, "Could not open iTunesDB: %s\n", itunesdb_path);
 	
 	exit (1);
       }
     } else {
       if ((ret = sd_load (&itunesdb, itunessd_path, flags)) < 0) {
-	fprintf (stderr, "Could not open iTunesSD: %s\n", ITUNESDB);
+	fprintf (stderr, "Could not open iTunesSD: %s\n", itunessd_path);
 	
 	exit (1);
       }

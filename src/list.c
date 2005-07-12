@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 list.c
+ *   v0.3.0 list.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU Public License as published by
@@ -26,7 +26,7 @@
 
 void usage (void) {
   printf("Usgae:\n");
-  printf(" db_list <database>\n");
+  printf(" db_list [--shuffle] <database>\n");
 
   exit(1);
 }
@@ -67,26 +67,39 @@ int main (int argc, char *argv[]) {
   iihm_t *iihm;
   inhm_t *inhm;
   
-  int j;
-
-  int i;
+  int i, j;
   
+  int ipod_shuffle = 0;
+
   ipoddb_t itunesdb;
 
-  if (argc != 2)
-    usage();
+  memset (&itunesdb, 0, sizeof (ipoddb_t));
+  db_set_debug (&itunesdb, 0, stderr);
 
-  db_set_debug (&itunesdb, 5, stderr);
+  if (argc == 2 && strcmp (argv[1], "--shuffle") != 0) {
+    if (db_load (&itunesdb, argv[1], 0x0) < 0) {
+      fprintf (stderr, "itdblist: could not open the iPod database %s\n", argv[1]);
 
-  if (db_load (&itunesdb, argv[1], 0x0) < 0) {
-    exit(1);
-  }
+      exit(1);
+    }
+  } else if (argc == 3 && strcmp (argv[1], "--shuffle") == 0) {
+    ipod_shuffle = 1;
 
-  fprintf (stdout, "Checking the sanity of the database...\n");
+    if (sd_load (&itunesdb, argv[2], 0x0) < 0) {
+      fprintf (stderr, "itdblist: could not open the iPod Shuffle database %s\n", argv[2]);
+
+      exit(1);
+    }
+  } else
+    usage ();
 
   /* get song lists */
   songs = NULL;
-  db_song_list (&itunesdb, &songs);
+
+  if (ipod_shuffle == 0)
+    db_song_list (&itunesdb, &songs);
+  else
+    sd_song_list (&itunesdb, &songs);
 
   if (songs == NULL) {
     fprintf (stdout, "Could not get song list\n");

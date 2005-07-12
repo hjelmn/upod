@@ -580,4 +580,6 @@ int sysinfo_read (ipod_t *ipod, char *filename);
 /* db_lookup.c */
 int db_lookup_image (ipoddb_t *photodb, u_int64_t id);
 
+
+int get_uint24 (unsigned char *buf, int block);
 #endif /* __ITUNESDBI_H */

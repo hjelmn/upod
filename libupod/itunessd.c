@@ -39,7 +39,7 @@
 
 #include "itunesdbi.h"
 
-static int get_uint24 (unsigned char *buf, int block) {
+int get_uint24 (unsigned char *buf, int block) {
   int x;
 
   x = (buf[block * 3 + 0] << 16) | (buf[block * 3 + 1] << 8) | buf[block * 3 + 2];
@@ -152,12 +152,20 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   if (ipod_sd == NULL || ipod_path == NULL || ipod_path == NULL)
     return -EINVAL;
 
-  db_log (ipod_sd, 0, "sd_song_add: entering...\n");
-
   if (ipod_sd->tree_root == NULL || ipod_sd->tree_root->data == NULL) {
     db_log (ipod_sd, -1, "sd_song_add: iTunesSD not loaded.\n");
 
     return -1;
+  }
+
+  db_log (ipod_sd, 0, "sd_song_add: entering...\n");
+  db_log (ipod_sd, 0, "sd_song_add: adding file %s to database.\n", ipod_path);
+
+  if (db_lookup (ipod_sd, IPOD_PATH, ipod_path) > -1) {
+    /* Future. Check modification date of file vs. database. */
+    db_log (ipod_sd, 0, "sd_song_add: file already exists in database.\n");
+    
+    return -1; /* A song already exists in the database with this path */
   }
 
   if (strncasecmp (ipod_path + (strlen(ipod_path) - 3), "mp3", 3) == 0)
@@ -294,4 +302,37 @@ int sd_write (ipoddb_t ipod_sd, char *path) {
   db_log (&ipod_sd, 0, "sd_write: complete. wrote %i Bytes\n", ret);
   
   return ret;
+}
+
+int sd_song_list (ipoddb_t *ipod_sd, GList **head) {
+  int i;
+  int num_songs;
+  int header_size;
+  unsigned char *song_list;
+
+  tihm_t *tihm;
+
+  if (head == NULL || ipod_sd == NULL || ipod_sd->type != 2)
+    return -EINVAL;
+
+  *head = NULL;
+
+  num_songs = get_uint24 (ipod_sd->tree_root->data, 0);
+  header_size = get_uint24 (ipod_sd->tree_root->data, 2);
+  song_list = &ipod_sd->tree_root->data[header_size];
+
+  for (i = num_songs-1 ; i >= 0 ; i--) {
+    tihm = calloc (1, sizeof (tihm_t));
+
+    tihm->num = i;
+    tihm->type = get_uint24 (&song_list[i * 0x00022e], 9);
+    tihm->num_dohm = 1;
+    tihm->dohms = calloc (1, sizeof (dohm_t));
+    tihm->dohms->type = IPOD_PATH;
+    tihm->dohms->data = strdup (&song_list[i * 0x00022e + 11 * 3]);
+
+    *head = g_list_prepend (*head, (gpointer)tihm);
+  }
+
+  return 0;
 }
