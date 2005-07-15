@@ -1,1 +1,1 @@
-SUBDIRS=libupod src
+SUBDIRS=libupod src include

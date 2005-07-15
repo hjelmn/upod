@@ -19,6 +19,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
+#if 0
+
+/* this source file is not currently being used */
+
 #if defined(HAVE_CONFIG_H)
 #include "config.h"
 #endif
@@ -174,3 +178,5 @@ int ipod_copy_to (ipod_t *ipod, char *topath, char *frompath) {
 int ipod_rename (ipod_t *ipod, u_int8_t *name) {
   return db_playlist_rename (&(ipod->itunesdb), 0, name);
 }
+
+#endif
