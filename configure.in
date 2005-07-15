@@ -10,7 +10,7 @@ AH_TOP(
 )
 
 dnl create a config.h file (Automake will add -DHAVE_CONFIG_H)
-AM_CONFIG_HEADER(config.h)
+AM_CONFIG_HEADER(include/config.h)
 
 AC_SUBST(VERSION)
 
