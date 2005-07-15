@@ -24,11 +24,11 @@
 
 void usage(void) {
   printf ("Usage:\n");
-  printf ("  db_pl <db> add <int> <tihm nums>\n");
+  printf ("  db_pl <db> add <int> <tihm ids>\n");
   printf ("  db_pl <db> clear <int>\n");
   printf ("  db_pl <db> create <name>\n");
   printf ("  db_pl <db> list\n");
-  printf ("  db_pl <db> remove <int> <tihm nums>\n");
+  printf ("  db_pl <db> remove <int> <tihm ids>\n");
   printf ("  db_pl <db> rename <int> <name>\n");
   printf ("  db_pl <db> songs <int>\n");
 
