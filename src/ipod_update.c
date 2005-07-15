@@ -39,7 +39,6 @@
 #include "itunesdb.h"
 
 #define PACKAGE "upod"
-#define VERSION "1.0"
 
 void usage (void);
 void version (void);
