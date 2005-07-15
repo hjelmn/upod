@@ -35,18 +35,28 @@ void usage(void) {
 int main(int argc, char *argv[]) {
   ipoddb_t itunesdb;
   GList *list, *reflist, *tmp;
+  int i;
   int ret;
   int qlist = 0;
   int cr = 0;
   int rn = 0;
+  int cl = 0;
+  int add = 0;
+  int remove = 0;
 
-  if (argc < 3 || argc > 5)
+  if (argc < 3)
     usage();
 
   db_set_debug (&itunesdb, 5, stderr);
 
   if (strstr (argv[2], "list") != NULL)
     qlist = 1;
+  else if (strstr (argv[2], "clear") != NULL)
+    cl = 1;
+  else if (strstr (argv[2], "add") != NULL)
+    add = 1;
+  else if (strstr (argv[2], "remove") != NULL)
+    remove = 1;
   else if (strstr (argv[2], "songs") != NULL)
     qlist = 0;
   else if (strstr (argv[2], "create") != NULL && argc == 4)
@@ -78,6 +88,20 @@ int main(int argc, char *argv[]) {
     if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4]) == 0) {
       db_write (itunesdb, argv[1]);
     }
+  } else if (cl) {
+    if (db_playlist_clear (&itunesdb, strtol(argv[3], NULL, 10)) == 0) {
+      db_write (itunesdb, argv[1]);
+    }
+  } else if (add) {
+    for (i = 4 ; i < argc ; i++)
+      db_playlist_tihm_add (&itunesdb, strtol(argv[3], NULL, 10), strtol(argv[i], NULL, 10));
+
+    db_write (itunesdb, argv[1]);
+  } else if (remove) {
+    for (i = 4 ; i < argc ; i++)
+      db_playlist_tihm_remove (&itunesdb, strtol(argv[3], NULL, 10), strtol(argv[i], NULL, 10));
+
+    db_write (itunesdb, argv[1]);
   } else {
     if ((ret = db_playlist_song_list (&itunesdb, atoi(argv[3]),
 				      &reflist)) > 0) {
