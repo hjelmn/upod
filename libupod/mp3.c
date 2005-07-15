@@ -255,7 +255,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
     return -errno;
 
   mp3->file_size = mp3->data_size = statinfo.st_size;
-  mp3->mod_date  = statinfo.st_mtimespec.tv_sec;
+  mp3->mod_date  = statinfo.st_mtime;
 
   mp3->fh = fopen (file_name, "r");
   if (mp3->fh == NULL) 

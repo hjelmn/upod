@@ -148,6 +148,8 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   int file_type;
   unsigned char *sd_data, *song_offset;
   int sd_size;
+  u_int16_t *unicode_data;
+  size_t unicode_length;
 
   if (ipod_sd == NULL || ipod_path == NULL || ipod_path == NULL)
     return -EINVAL;
@@ -160,6 +162,8 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
 
   db_log (ipod_sd, 0, "sd_song_add: entering...\n");
   db_log (ipod_sd, 0, "sd_song_add: adding file %s to database.\n", ipod_path);
+
+  to_unicode (&unicode_data, &unicode_length, ipod_path, strlen (ipod_path), "UTF-8", "UTF-16BE");
 
   if (db_lookup (ipod_sd, IPOD_PATH, ipod_path) > -1) {
     /* Future. Check modification date of file vs. database. */
@@ -206,7 +210,7 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   set_uint24 (song_offset, 9, file_type);
   set_uint24 (song_offset, 10, 0x000200);
 
-  sprintf (&song_offset[11 * 3], ipod_path);
+  memcpy(&song_offset[32], unicode_data, unicode_length);
 
   song_offset[555] = 0x01; /* song will be included in shuffle */
   song_offset[556] = 0x00; /* no bookmark support at this time */
@@ -216,6 +220,8 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   
   ipod_sd->tree_root->data = sd_data;
   ipod_sd->tree_root->data_size = sd_size;
+
+  free (unicode_data);
 
   db_log (ipod_sd, 0, "sd_song_add: complete\n");
 
@@ -357,7 +363,7 @@ int sd_song_list (ipoddb_t *ipod_sd, GList **head) {
     tihm->num_dohm = 1;
     tihm->dohms = calloc (1, sizeof (dohm_t));
     tihm->dohms->type = IPOD_PATH;
-    tihm->dohms->data = strdup (&song_list[i * 0x00022e + 11 * 3]);
+    to_utf8 (&(tihm->dohms->data), &song_list[i * 0x00022e + 32], 522, "UTF-16BE");
 
     *head = g_list_prepend (*head, (gpointer)tihm);
   }

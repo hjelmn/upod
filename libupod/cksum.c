@@ -7,8 +7,6 @@
 
 #include "itunesdbi.h"
 
-#include <machine/endian.h>
-
 #define CRC32POLY 	0x04C11DB7l
 #define CRC64POLY 	0xd800000000000000ll
 

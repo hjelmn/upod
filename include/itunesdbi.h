@@ -447,6 +447,8 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 #define big32_2_arch32(x) x
 #define big64_2_arch64(x) x
 
+#define little16_2_arch16(x) bswap_16(x)
+
 #define arch16_2_little16(x) bswap_16(x)
 #define arch32_2_little32(x) bswap_32(x)
 #define arch64_2_little64(x) bswap_64(x)
@@ -456,6 +458,8 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 #define big16_2_arch16(x) bswap_16(x)
 #define big32_2_arch32(x) bswap_32(x)
 #define big64_2_arch64(x) bswap_64(x)
+
+#define little16_2_arch16(x) x
 
 #define arch16_2_little16(x) x
 #define arch32_2_little32(x) x

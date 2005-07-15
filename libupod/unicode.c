@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.0 unicode.c
+ *   v0.2.1 unicode.c
  *
  *   convert to/from unicode/utf-8 using iconv
  *
@@ -112,7 +112,7 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 
 /* Converts the input from UTF8/ASCII to Unicode */
 void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
-		 size_t src_len, char *src_encoding) {
+		 size_t src_len, char *src_encoding, char *dst_encoding) {
   iconv_t conv;
   size_t final_size;
   char *inbuf, *outbuf;
@@ -132,7 +132,7 @@ void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
   outbytes= src_len * 2;
   *dst = (u_int16_t *)outbuf  = calloc (src_len * 2, 1);
 
-  conv = iconv_open ("UTF-16BE", src_encoding);
+  conv = iconv_open (dst_encoding, src_encoding);
   iconv (conv, &inbuf, &inbytes, &outbuf, &outbytes);
   iconv_close (conv);
  

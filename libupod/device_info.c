@@ -63,7 +63,7 @@ int device_info_write (ipod_t *ipod) {
   if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, &ipod_name)) < 0)
     return ret;
 
-  to_unicode (&unicode_name, &unicode_len, ipod_name, strlen (ipod_name), "UTF-8");
+  to_unicode (&unicode_name, &unicode_len, ipod_name, strlen (ipod_name), "UTF-8", UTF_ENC);
 
   free (ipod_name);
 
@@ -77,7 +77,7 @@ int device_info_write (ipod_t *ipod) {
   }
 
   num_chars = unicode_len / 2;
-  num_chars = NXSwapShort(num_chars);
+  num_chars = little16_2_arch16(num_chars);
 
   /* Change the endianness of the iPod's name if needbe. */
   bswap_block ((char *)unicode_name, 2, unicode_len / 2);

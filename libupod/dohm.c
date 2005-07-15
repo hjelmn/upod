@@ -324,7 +324,7 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
     if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
       to_unicode_hack (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
     else
-      to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+      to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8", UTF_ENC);
   } else {
     unicode_data   = (u_int16_t *)dohm.data;
     unicode_length = strlen (dohm.data);
@@ -364,6 +364,10 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   memcpy(&(*entry)->data[DOHM_HEADER_SIZE + string_header_size], unicode_data,
 	 unicode_length);
   
+  if (!(flags & FLAG_UTF8)) {
+    free (unicode_data);
+  }
+
   return 0;
 }
 
@@ -411,13 +415,13 @@ int db_dohm_get_string (tree_node_t *dohm_header, u_int8_t **str) {
     struct string_header_16 *string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
     
     string_length = string_header->string_length;
-    string_format = string_header->format;
+    string_format = (string_header->unk0 == 1) ? 0 : 1;
     
     string_start  = &(dohm_header->data[0x28]);
   } else
     return -1;
 
-  to_utf8 (str, string_start, string_length, (string_format == 1) ? "UTF-8" : "UTF-16BE");
+  to_utf8 (str, string_start, string_length, (string_format == 1) ? "UTF-8" : UTF_ENC);
 
   return 0;
 }

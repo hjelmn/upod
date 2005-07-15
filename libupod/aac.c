@@ -120,14 +120,17 @@ int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
 /* Parse user data's (udat) meta data (meta) section */
 int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
+  struct qt_meta meta;
+  int size;
   
-  /* skip 46 bytes of meta section (bytes before start of data -- I think) */
-  fseek (fd, 46, SEEK_CUR);
-	  
+  fseek (fd, 4, SEEK_CUR);
+  fread (&meta, sizeof(struct qt_meta), 1, fd);
+  size = meta.offset - sizeof(struct qt_meta);
+  
+  fseek (fd, size + 8, SEEK_CUR);
+
   while (1) {
-    struct qt_meta meta;
     int data_type = -1;
-    int size;
     
     fread (&meta, sizeof(struct qt_meta), 1, fd);
     
@@ -136,6 +139,9 @@ int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom
     size = meta.offset - sizeof(struct qt_meta);
 
     memset (buffer, 0, buffer_size);
+
+    mp3_debug ("Meta identifier: %c%c%c\n", meta.identifier[0], meta.identifier[1], meta.identifier[2]);
+    mp3_debug ("Meta offset: %i\n", meta.offset);
     
     if (size > buffer_size || strncmp(&meta.flag, "free",4) == 0)
       /* it is unlikely that any data we want will be larger than the buffer */
@@ -297,8 +303,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   }
 
   tihm->size		  = statinfo.st_size;
-  tihm->mod_date      = statinfo.st_mtimespec.tv_sec;
-  tihm->creation_date = statinfo.st_mtimespec.tv_sec;
+  tihm->mod_date      = statinfo.st_mtime;
+  tihm->creation_date = statinfo.st_mtime;
 
   if ((fh = fopen (file_name, "r")) == NULL)
     return -errno;
@@ -333,8 +339,8 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   while (1) {
     if (fread (&atom, sizeof(atom), 1, fh) != 1) {
-      fclose (fh);
-      return -errno;
+      mp3_debug ("aac_fill_tihm: could not get next atom header.\n");
+      break;
     }
 
     /* Stop parsing on media data atom (audio data follows) */

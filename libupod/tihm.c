@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0a tihm.c
+ *   v0.3.0b tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -83,10 +83,14 @@ static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_in
   for (i = 0, j = list_length/2, k = 0 ; (i < list_length/2) && (j < list_length) ; k++) {
     if (db_dohm_compare (dohm_header1, dohm_header2) <= 0) {
       tmp[k] = list[i++];
-      db_dohm_retrieve (dshm_header->children[1 + list[i]], &dohm_header1, sort_by);
+
+      if (i != list_length/2)
+	db_dohm_retrieve (dshm_header->children[1 + list[i]], &dohm_header1, sort_by);
     } else {
       tmp[k] = list[j++];
-      db_dohm_retrieve (dshm_header->children[1 + list[j]], &dohm_header2, sort_by);
+
+      if (j != list_length)
+	db_dohm_retrieve (dshm_header->children[1 + list[j]], &dohm_header2, sort_by);
     }
   }
 

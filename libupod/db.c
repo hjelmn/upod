@@ -179,7 +179,7 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
 	/* Swap UTF-16 strings */
 	if (tnode_0->string_header_size == 16) {
 	  struct string_header_16 *string_header = (struct string_header_16 *)&((*buffer)[0x18]);
-	  if (string_header->format != 1)
+	  if (string_header->unk0 != 0)
 	    bswap_block (&((*buffer)[0x28]), 2, string_header->string_length/2);
 	} else {
 	  struct string_header_12 *string_header = (struct string_header_12 *)&((*buffer)[0x18]);
@@ -395,7 +395,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 
       swap = 10;
 
-      if (string_header->format != 1)
+      if (string_header->unk0 != 0)
 	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
     } else if (entry->string_header_size == 12) {
       struct string_header_12 *string_header;
@@ -426,7 +426,7 @@ static int db_write_tree (int fd, tree_node_t *entry) {
       struct string_header_16 *string_header;
       string_header = (struct string_header_16 *)&entry->data[0x18];
 
-      if (string_header->format != 1)
+      if (string_header->unk0 != 0)
 	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
     } else if (entry->string_header_size == 12) {
       struct string_header_12 *string_header;

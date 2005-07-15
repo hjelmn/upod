@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.2 playlist.c
+ *   v0.3.0 playlist.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -142,7 +142,7 @@ int db_playlist_list (ipoddb_t *itunesdb, GList **head) {
     pyhm     = calloc (1, sizeof (struct pyhm));
     pyhm->num  = i;
     pyhm->name = temp;
-    pyhm->name_len = strlen (temp);
+    pyhm->name_len = strlen ((char *)temp);
 
     *head = g_list_prepend (*head, pyhm);
   }
@@ -529,12 +529,15 @@ int db_playlist_clear (ipoddb_t *itunesdb, int playlist) {
 
   pyhm_data   = (struct db_pyhm *) pyhm_header->data;
 
-  while (pyhm_data->num_pihm--) {
-    db_detach (pyhm_header, pyhm_data->num_dohm, &pihm_header);
-    db_detach (pyhm_header, pyhm_data->num_dohm, &dohm_header);
+  while (pyhm_data->num_pihm) {
+    db_detach (pyhm_header, pyhm_header->num_children, &dohm_header);
+    db_detach (pyhm_header, pyhm_header->num_children, &pihm_header);
+
 
     db_free_tree (pihm_header);
     db_free_tree (dohm_header);
+
+    pyhm_data->num_pihm--;
   }
 
   return 0;
@@ -712,8 +715,6 @@ int db_playlist_get_name (ipoddb_t *itunesdb, int playlist, u_int8_t **name) {
   struct db_pyhm *pyhm_data;
   struct db_dohm *dohm_data = NULL;
 
-  struct string_header_16 *string_header;
-
   int i;
   int ret;
 
@@ -733,12 +734,10 @@ int db_playlist_get_name (ipoddb_t *itunesdb, int playlist, u_int8_t **name) {
     }
   }
 
-  if (dohm_header != NULL) {
-    string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
-
-    to_utf8 (name, &dohm_header->data[0x28], string_header->string_length,
-	     (string_header->format == 1) ? "UTF-8" : "UTF-16");
-  }
+  if (dohm_header == NULL)
+    return -1;
+  
+  db_dohm_get_string (dohm_header, name);
 
   db_log (itunesdb, 0, "db_playlist_get_name: complete\n");
 
@@ -782,7 +781,7 @@ int db_playlist_add_indices (ipoddb_t *itunesdb) {
   int sort_by[] = {IPOD_TITLE, IPOD_ALBUM, IPOD_ARTIST, IPOD_GENRE, IPOD_COMPOSER, -1};
 
   u_int32_t *tracks;
-  int num_tracks;
+  u_int32_t num_tracks;
 
   int i, ret;
 
