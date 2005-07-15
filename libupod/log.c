@@ -35,8 +35,9 @@ int db_set_debug (ipoddb_t *db, int level, FILE *out) {
     slevel = 5;
   else
     slevel = level;
-
-  fprintf (out, "Setting log level to %i\n", slevel);
+  
+  if (slevel > 0)
+    fprintf (out, "Setting log level to %i\n", slevel);
 
   db->log_level = slevel;
   db->log       = out;
