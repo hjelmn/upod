@@ -82,4 +82,4 @@ libupod/Makefile
 include/Makefile
 src/Makefile
 upod.lsm
-upod.spec)
+)
