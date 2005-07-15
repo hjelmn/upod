@@ -450,6 +450,8 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 #define arch16_2_little16(x) bswap_16(x)
 #define arch32_2_little32(x) bswap_32(x)
 #define arch64_2_little64(x) bswap_64(x)
+
+#define UTF_ENC "UTF-16BE"
 #else
 #define big16_2_arch16(x) bswap_16(x)
 #define big32_2_arch32(x) bswap_32(x)
@@ -458,6 +460,8 @@ void bswap_block (char *ptr, size_t membsize, size_t nmemb);
 #define arch16_2_little16(x) x
 #define arch32_2_little32(x) x
 #define arch64_2_little64(x) x
+
+#define UTF_ENC "UTF-16LE"
 #endif
 
 /* 
@@ -538,7 +542,7 @@ int db_dshm_create (tree_node_t **entry, int type);
 
 /* unicode.c */
 void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
-		 size_t src_len, char *src_encoding);
+		 size_t src_len, char *src_encoding, char *dst_encoding);
 void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		      size_t src_len, char *src_encoding);
 int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len);
