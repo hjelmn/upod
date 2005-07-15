@@ -17,9 +17,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdb.h"
-
 #include <stdlib.h>
+#include <string.h>
+
+#include "itunesdb.h"
 
 void usage(void) {
   printf("Usage:\n");
@@ -35,17 +36,23 @@ int main(int argc, char *argv[]) {
   if (argc != 4)
     usage();
 
+  memset (&itunesdb, 0, sizeof (ipoddb_t));
+
   db_set_debug (&itunesdb, 5, stderr);
 
-  if (db_load (&itunesdb, argv[1], 0x1) != 0) {
+  if (db_load (&itunesdb, argv[1], 0x1) < 0) {
     printf("Could not load database.\n");
     exit(2);
   }
 
+  /*
   if (db_song_hide (&itunesdb, atoi(argv[3])) != 0) {
     printf("Song could not be hidden.\n");
     exit(2);
   }
+  */
+  
+  db_playlist_clear (&itunesdb, 0);
 
   if ((ret = db_write (itunesdb, argv[2])) < 0) {
     printf("Database could not be written to file.\n");

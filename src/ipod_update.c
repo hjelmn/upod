@@ -39,6 +39,7 @@
 #include "itunesdb.h"
 
 #define PACKAGE "upod"
+#define VERSION "1.0"
 
 void usage (void);
 void version (void);
@@ -101,8 +102,8 @@ void print_parsed (void) {
   fflush (stdout);
 }
 
-int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb, GList *hidden,
-	       int playlist, int ipod_shuffle) {
+int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb, ipoddb_t *shuffledb,
+	       GList *hidden, int playlist, int ipod_shuffle) {
   char scratch[1024];
 
   DIR *dirp;
@@ -148,31 +149,31 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
       GList *tmp;
 
       print_parsed ();
-      if (ipod_shuffle == 0) {
-	mac_path = path_unix_mac_root (scratch + strlen(ipod_prefix) + 1);
-	if ((tmp = g_list_find_custom (hidden, scratch,
-				       (GCompareFunc)glist_cmp)) != NULL) {
-	  tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 0);
-	  
-	  if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
-	    db_song_hide (itunesdb, tihm_num);
-	    tihm_num = -1;
-	  }
-	  
-	  free (tmp->data);
-	  hidden = g_list_delete_link (hidden, tmp);
-	} else {
-	  tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
-	  
-	  if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
-	    db_song_unhide (itunesdb, tihm_num);
-	    tihm_num = -1;
-	  }
+      mac_path = path_unix_mac_root (scratch + strlen(ipod_prefix) + 1);
+      if ((tmp = g_list_find_custom (hidden, scratch,
+				     (GCompareFunc)glist_cmp)) != NULL) {
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 0);
+	
+	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
+	  db_song_hide (itunesdb, tihm_num);
+	  tihm_num = -1;
 	}
+	
+	free (tmp->data);
+	hidden = g_list_delete_link (hidden, tmp);
+      } else {
+	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
+	
+	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
+	  db_song_unhide (itunesdb, tihm_num);
+	  tihm_num = -1;
+	}
+      }
+      
+      free (mac_path);
 
-	free (mac_path);
-      } else
-	tihm_num = sd_song_add (itunesdb, scratch + 1, 0, 0, 0);
+      if (shuffledb)
+	tihm_num = sd_song_add (shuffledb, scratch + 1, 0, 0, 0);
       
 
       if (tihm_num >= 0) {
@@ -182,7 +183,7 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
 	songs_added++;
       }
     } else
-      parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, hidden, playlist, ipod_shuffle);
+      parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, shuffledb, hidden, playlist, ipod_shuffle);
   }
 
   closedir (dirp);
@@ -193,7 +194,8 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
   return 0;
 }
 
-int parse_playlists (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb, int ipod_shuffle) {
+int parse_playlists (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb,
+		     ipoddb_t *shuffledb, int ipod_shuffle) {
   char scratch[1024];
 
   DIR *dirp;
@@ -229,7 +231,7 @@ int parse_playlists (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t
       }
     }
 
-    parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, NULL, playlist, ipod_shuffle);
+    parse_dir (scratch, ipod_prefix, itunesdb, artworkdb, shuffledb, NULL, playlist, ipod_shuffle);
     printf ("\n");
   }
   
@@ -340,7 +342,7 @@ int cleanup_database (ipoddb_t *itunesdb, char *ipod_prefix) {
 }
 
 int main (int argc, char *argv[]) {
-  ipoddb_t itunesdb, artworkdb;
+  ipoddb_t itunesdb, artworkdb, shuffledb;
   int option_index;
   int debug_level = 0;
   int create = 0;
@@ -404,9 +406,11 @@ int main (int argc, char *argv[]) {
   }
 
   memset (&itunesdb, 0, sizeof (ipoddb_t));
+  memset (&shuffledb, 0, sizeof (ipoddb_t));
   memset (&artworkdb, 0, sizeof (ipoddb_t));
 
   db_set_debug (&itunesdb, debug_level, stderr);
+  db_set_debug (&shuffledb, debug_level, stderr);
 
   if (ipod_prefix == NULL)
     ipod_prefix = strdup (".");
@@ -428,14 +432,14 @@ int main (int argc, char *argv[]) {
   }
 
   if (create == 0) {
-    if (ipod_shuffle == 0) {
-      if ((ret = db_load (&itunesdb, itunesdb_path, flags)) < 0) {
-	fprintf (stderr, "Could not open iTunesDB: %s\n", itunesdb_path);
-	
-	exit (1);
-      }
-    } else {
-      if ((ret = sd_load (&itunesdb, itunessd_path, flags)) < 0) {
+    if ((ret = db_load (&itunesdb, itunesdb_path, flags)) < 0) {
+      fprintf (stderr, "Could not open iTunesDB: %s\n", itunesdb_path);
+      
+      exit (1);
+    }
+
+    if (ipod_shuffle = 1) {
+      if ((ret = sd_load (&shuffledb, itunessd_path, flags)) < 0) {
 	fprintf (stderr, "Could not open iTunesSD: %s\n", itunessd_path);
 	
 	exit (1);
@@ -457,14 +461,14 @@ int main (int argc, char *argv[]) {
       free (artworkdb_path);
     }
   } else {
-    if (ipod_shuffle == 0) {
-      if ((ret = db_create (&itunesdb, ipod_name, itunesdb_path, flags)) < 0) {
-	fprintf (stderr, "Error creating iTunesDB\n");
-	
-	exit (1);
-      }
-    } else {
-      if ((ret = sd_create (&itunesdb, itunessd_path, flags)) < 0) {
+    if ((ret = db_create (&itunesdb, ipod_name, itunesdb_path, flags)) < 0) {
+      fprintf (stderr, "Error creating iTunesDB\n");
+      
+      exit (1);
+    }
+
+    if (ipod_shuffle == 1) {
+      if ((ret = sd_create (&shuffledb, itunessd_path, flags)) < 0) {
 	fprintf (stderr, "Error creating iTunesSD\n");
 	
 	exit (1);
@@ -490,13 +494,14 @@ int main (int argc, char *argv[]) {
 
   music_path = calloc (1, strlen(ipod_prefix) + 7);
   sprintf (music_path, "%s/Music", ipod_prefix);
-  parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb, ipod_shuffle);
+  parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb,
+		   (ipod_shuffle == 0) ? NULL : &shuffledb, ipod_shuffle);
+  
+  ret = write_itdatabase (&itunesdb);
+  printf ("%i B written to the iTunesDB: %s\n", ret, itunesdb.path);
 
-  if (ipod_shuffle == 0) {
-    ret = write_itdatabase (&itunesdb);
-    printf ("%i B written to the iTunesDB: %s\n", ret, itunesdb.path);
-  } else {
-    ret = write_itsd (&itunesdb);
+  if (ipod_shuffle == 1) {
+    ret = write_itsd (&shuffledb);
     printf ("%i B written to the iTunesSD: %s\n", ret, itunesdb.path);
   }
 
@@ -507,6 +512,9 @@ int main (int argc, char *argv[]) {
 
   db_free (&itunesdb);
   db_free (&artworkdb);
+
+  if (ipod_shuffle)
+    db_free (&shuffledb);
   
   free (ipod_prefix);
 
