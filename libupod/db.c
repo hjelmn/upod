@@ -288,9 +288,6 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
   return tnode_0;
 }
 
-void acall_db () {
-}
-
 /**
   db_load:
 
@@ -368,8 +365,6 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   fseek (fh, 0, SEEK_SET);
   if ((ipod_db->tree_root = db_build_tree (ipod_db, &bytes_read, NULL, fh)) == NULL)
     db_free (ipod_db);
-
-  acall_db ();
 
   fclose (fh);
 
