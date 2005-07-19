@@ -440,7 +440,7 @@ typedef struct tree_node {
 #define bswap_64 NXSwapLongLong
 
 #endif
-void bswap_block (char *ptr, size_t membsize, size_t nmemb);
+void bswap_block (void *ptr, size_t membsize, size_t nmemb);
 
 #if BYTE_ORDER == BIG_ENDIAN
 #define big16_2_arch16(x) x

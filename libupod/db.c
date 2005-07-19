@@ -110,6 +110,15 @@ static int dohm_contains_string (struct db_dohm *dohm_data) {
 
   return 0;
 }
+
+static int is_atom_label (u_int32_t atom_label) {
+  return ((atom_label & 0x0000686d) == 0x0000686d);
+}
+
+static int is_list_atom (u_int32_t atom_label) {
+  return ((atom_label & 0x006c686d) == 0x006c686d);
+}
+
 /*
   db_build_tree:
 
@@ -118,140 +127,168 @@ static int dohm_contains_string (struct db_dohm *dohm_data) {
   Purpose is to build up the iTunesDB tree from a buffer.
 */
 static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
-				   /*@null@*/tree_node_t *parent, char **buffer) {
+				   /*@null@*/tree_node_t *parent, FILE *fh) {
   tree_node_t *tnode_0;
-  int *iptr = (int *)*buffer;
+  int ibuffer[3];
+
+  int ret;
 
   int current_bytes_read = *bytes_read;
-  int entry_size, cell_size, copy_size;
+  u_int32_t atom_label;
+  char spacer1[4] = {0, 0, 0, 0};
+  u_int32_t atom_size, cell_size, copy_size;
+  u_int32_t subatom_label;
+  u_int8_t has_subatom = 0;
+  u_int32_t *iptr;
 
-  /* swap the entry label, cell size and entry size */
-  bswap_block(*buffer, 4, 3);
-
-  if ((iptr[0] & 0x0000686d) != 0x0000686d) {
-    db_log (ipod_db, -1, "db_load: Database has a major error or is unsupported\n");
+  /* read and swap the atom label, cell size and atom size */
+  if ((ret = fread ((void *)ibuffer, 4, 3, fh)) < 3) {
+    db_log (ipod_db, -1, "db_build_tree: short read while parsing atom. Wanted 12, got %i\n", ret * 4);
 
     return NULL;
   }
+  fseek (fh, -12, SEEK_CUR);
 
+  bswap_block((void *)ibuffer, 4, 3);
+
+  atom_label = ibuffer[0];
+  cell_size  = ibuffer[1];
+  atom_size  = ibuffer[2];
+
+  if (!is_atom_label (atom_label)) {
+    db_log (ipod_db, -1, "db_load: Database has a major error or is unsupported\n");
+    
+    return NULL;
+  }
+  
   tnode_0 = calloc (1, sizeof(tree_node_t));
-
+  
   if (tnode_0 == NULL) {
     perror("db_build_tree|calloc");
     exit(EXIT_FAILURE);
   }
+  
+  fseek (fh, cell_size, SEEK_CUR);
+  if ((ret = fread (&subatom_label, 4, 1, fh)) < 1) {
+    db_log (ipod_db, -1, "db_build_tree: short read while parsing atom. Wanted 4, got %i\n", ret * 4);
+
+    return NULL;
+  }
+
+  bswap_block((void *)&subatom_label, 4, 1);
+  fseek (fh, - (cell_size + 4), SEEK_CUR);
+
+  if ((cell_size != atom_size) && is_atom_label (subatom_label)) {
+    copy_size = cell_size;
+
+    if  (!is_list_atom (atom_label))
+      has_subatom = 1;
+  } else
+    copy_size = atom_size;
+
+  tnode_0->data = calloc (1, copy_size);
+  if (tnode_0->data == NULL) {
+    perror ("db_build_tree|calloc");
+    
+    exit (EXIT_FAILURE);
+  }
+
+  iptr = (u_int32_t *)tnode_0->data;
 
   tnode_0->parent = parent;
+  tnode_0->num_children = 0;
+  tnode_0->data_size = copy_size;
+  
+  if ((ret = fread (tnode_0->data, 1, copy_size, fh)) < copy_size) {
+    db_log (ipod_db, -1, "db_build_tree: short read while parsing atom. Wanted %i, got %i\n", copy_size, ret);
 
+    return NULL;
+  }
+  
+  bswap_block (tnode_0->data, 4, cell_size/4);
 
-  entry_size = iptr[2];
-  cell_size  = iptr[1];
-
-  bswap_block (&((*buffer)[0x0c]), 4, cell_size/4 - 3);
-
-  copy_size = cell_size;
-
-  if ( (iptr[0] == DOHM) && (cell_size != entry_size) ) {
-    struct db_dohm *dohm_data = (struct db_dohm *)*buffer;
+  if ( (atom_label == DOHM) && !has_subatom ) {
+    struct db_dohm *dohm_data = (struct db_dohm *)tnode_0->data;
     
-    bswap_block (&((*buffer)[0x18]), 4, 1);
+    bswap_block (&(tnode_0->data[cell_size]), 4, 1);
 
     /* A dohm cell can hold a string, data, or a sub-tree. Process data/string
        dohm cells in a different way than those that have subtrees. */
-    if ((iptr[6] & 0x0000686d) != 0x0000686d) {
-      copy_size = entry_size;
+    if (dohm_contains_string(dohm_data) != 0) {
+      /* Read a string dohm */
+      if (iptr[9] == 0)
+	tnode_0->string_header_size = 16;
+      else
+	/* ArtworkDB string dohms are four bytes smaller than the comparable
+	   iTunesdb string dohm. */
+	tnode_0->string_header_size = 12;
+      
+      bswap_block (&(tnode_0->data[0x1c]), 4, tnode_0->string_header_size/4 - 1);
+      
+      /* Swap UTF-16 strings */
+      if (tnode_0->string_header_size == 16) {
+	struct string_header_16 *string_header = (struct string_header_16 *)&(tnode_0->data[0x18]);
 
-      if (dohm_contains_string(dohm_data) == 0) {
-	/* Read a data dohm */
-	copy_size = entry_size;
-	bswap_block (&((*buffer)[0x1c]), 4, entry_size/4 - 7);
+	if (string_header->unk0 != 0)
+	  bswap_block (&(tnode_0->data[0x28]), 2, string_header->string_length/2);
       } else {
-	/* Read a string dohm */
-	if (iptr[9] == 0)
-	  tnode_0->string_header_size = 16;
-	else
-	  /* ArtworkDB string dohms are smaller by four bytes than the comparable
-	     iTunesdb string dohm. */
-	  tnode_0->string_header_size = 12;
+	struct string_header_12 *string_header = (struct string_header_12 *)&(tnode_0->data[0x18]);
 
-	bswap_block (&((*buffer)[0x1c]), 4, tnode_0->string_header_size/4 - 1);
-
-	/* Swap UTF-16 strings */
-	if (tnode_0->string_header_size == 16) {
-	  struct string_header_16 *string_header = (struct string_header_16 *)&((*buffer)[0x18]);
-	  if (string_header->unk0 != 0)
-	    bswap_block (&((*buffer)[0x28]), 2, string_header->string_length/2);
-	} else {
-	  struct string_header_12 *string_header = (struct string_header_12 *)&((*buffer)[0x18]);
-	  if (string_header->format != 1)
-	    bswap_block (&((*buffer)[0x24]), 2, string_header->string_length/2);
-	}
+	if (string_header->format != 1)
+	  bswap_block (&(tnode_0->data[0x24]), 2, string_header->string_length/2);
       }
     } else
-      bswap_block (&((*buffer)[0x18]), 4, 1);
+      /* Read a data dohm */
+      bswap_block (&(tnode_0->data[0x1c]), 4, atom_size/4 - 7);
 
-  } else if (iptr[0] == TIHM) {
-    struct db_tihm *tihm_data = (struct db_tihm *)(*buffer);
+  } else if (atom_label == TIHM) {
+    struct db_tihm *tihm_data = (struct db_tihm *)(tnode_0->data);
     
     ipod_db->last_entry = ((ipod_db->last_entry < tihm_data->identifier)
-			  ? tihm_data->identifier
-			  : ipod_db->last_entry);
-  } else if (iptr[0] == IIHM) {
-    struct db_iihm *iihm_data = (struct db_iihm *)(*buffer);
-
+			   ? tihm_data->identifier
+			   : ipod_db->last_entry);
+  } else if (atom_label == IIHM) {
+    struct db_iihm *iihm_data = (struct db_iihm *)(tnode_0->data);
+    
     ipod_db->last_entry = ((ipod_db->last_entry < iihm_data->identifier)
-			  ? iihm_data->identifier
-			  : ipod_db->last_entry);
+			   ? iihm_data->identifier
+			   : ipod_db->last_entry);
   }
   
+  /*  db_log (ipod_db, 0, "Loaded tree node: type: %s (parent %s), size: %08x\n", &atom_label,
+      (parent) ? parent->data : "none", copy_size); */
 
-  tnode_0->num_children = 0;
-  tnode_0->data_size = copy_size;
-  tnode_0->data = calloc (copy_size, 1);
-
-  if (tnode_0->data == NULL) {
-    perror("db_build_tree|calloc");
-    exit (EXIT_FAILURE);
-  }
-
-  memmove (tnode_0->data, *buffer, copy_size);
-
-  /*  db_log (ipod_db, 0, "Loaded tree node: type: %s, size: %08x\n", iptr, copy_size); */
-
-  *buffer     += copy_size;
   *bytes_read += copy_size;
 
-  iptr = (int *)tnode_0->data;
+  if (has_subatom) {
+    tnode_0->children = calloc(1, sizeof(tree_node_t *));
 
-  if (copy_size == entry_size ||
-      iptr[0] == ALHM ||
-      iptr[0] == FLHM ||
-      iptr[0] == ILHM ||
-      iptr[0] == PLHM ||
-      iptr[0] == TLHM)
-    goto dbbt_done;
-
-  tnode_0->children = calloc(1, sizeof(tree_node_t *));
-  
-  if (tnode_0->children == NULL) {
-    perror("db_build_tree|calloc");
-    exit (EXIT_FAILURE);
-  }
-
-  while (*bytes_read - current_bytes_read < entry_size) {
-    tnode_0->children = realloc(tnode_0->children, ++(tnode_0->num_children) *
-				sizeof(tree_node_t *));
-    
     if (tnode_0->children == NULL) {
-      perror("db_build_tree|realloc");
+      perror("db_build_tree|calloc");
       exit (EXIT_FAILURE);
     }
 
-    tnode_0->children[tnode_0->num_children-1] = db_build_tree(ipod_db, bytes_read, tnode_0, buffer);
+    while (*bytes_read - current_bytes_read < atom_size) {
+      tnode_0->children = realloc(tnode_0->children, ++(tnode_0->num_children) *
+				  sizeof(tree_node_t *));
+
+      if (tnode_0->children == NULL) {
+	perror("db_build_tree|realloc");
+	exit (EXIT_FAILURE);
+      }
+
+      if ((tnode_0->children[tnode_0->num_children-1] = db_build_tree(ipod_db, bytes_read, tnode_0, fh)) == NULL)
+	return NULL;
+    }
   }
 
- dbbt_done:
+  if (tnode_0 == NULL)
+    db_log (ipod_db, -1, "db_build_tree: MAJOR error, current node is NULL.\n");
+
   return tnode_0;
+}
+
+void acall_db () {
 }
 
 /**
@@ -270,7 +307,6 @@ static tree_node_t *db_build_tree (ipoddb_t *ipod_db, size_t *bytes_read,
    bytes read on success
 **/
 int db_load (ipoddb_t *ipod_db, char *path, int flags) {
-  int iPod_DB_fd;
   char *buffer;
   int ibuffer[3];
   int ret;
@@ -279,6 +315,8 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   int *tmp;
 
   size_t bytes_read  = 0;
+
+  FILE *fh;
 
   if (path == NULL || strlen(path) == 0 || ipod_db == NULL)
     return -EINVAL;
@@ -299,14 +337,14 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 
   db_log (ipod_db, 0, "db_load: Attempting to read an iPod database: %s\n", path);
 
-  if ((iPod_DB_fd = open (path, O_RDONLY)) < 0) {
+  if ((fh = fopen (path, "r")) < 0) {
     db_log (ipod_db, errno, "db_load|open: %s\n", strerror(errno));
 
     return -errno;
   }
 
   /* read in the size of the database */
-  read (iPod_DB_fd, ibuffer, 12);
+  fread (ibuffer, 4, 3, fh);
 
   bswap_block((char *)ibuffer, 4, 3);
 
@@ -318,61 +356,25 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
     ipod_db->type = 1;
   } else {
     db_log (ipod_db, -1, "db_load: %s is not a valid database. Exiting.\n", path);
-    close (iPod_DB_fd);
+    fclose (fh);
 
     return -1;
   }
-  
-  buffer = (char *)calloc(ibuffer[2], 1);
-  if (buffer == NULL) {
-    db_log (ipod_db, errno, "db_load: Could not allocate memory\n");
-    close (iPod_DB_fd);
-
-    return -errno;
-  }
-
-  /* keep track of where buffer starts */
-  tmp = (int *)buffer;
 
   if (ibuffer[2] != statinfo.st_size)
     db_log (ipod_db, -1, "db_load: File size does not match database size! Continuing anyway.\n");
 
-  /* read in the rest of the database */
-  if ((ret = read (iPod_DB_fd, buffer + 12, ibuffer[2] - 12)) <
-      (ibuffer[2] - 12)) {
-    db_log (ipod_db, errno, "db_load: Short read: %i bytes wanted, %i read\n", ibuffer[2],
-	    ret);
-    
-    free(buffer);
-    close(iPod_DB_fd);
-    return -1;
-  }
-
-  bswap_block((char *)ibuffer, 4, 3);
-  memmove (buffer, ibuffer, 12);
-  
-  close (iPod_DB_fd);
-
   /* Load the database into a tree structure. */
-  ipod_db->tree_root = db_build_tree (ipod_db, &bytes_read, NULL, &buffer);
+  fseek (fh, 0, SEEK_SET);
+  if ((ipod_db->tree_root = db_build_tree (ipod_db, &bytes_read, NULL, fh)) == NULL)
+    db_free (ipod_db);
+
+  acall_db ();
+
+  fclose (fh);
 
   ipod_db->flags = flags;
   ipod_db->path  = strdup (path);
-
-  /*
-    This pointer points to the space allocated for reading from the file.
-    Free it now as it is no longer useful.
-  */
-  free(tmp);
-
-  if (ipod_db->type == 0) {
-    /*
-      Remove index dohms from the main playlist as they will be invalid
-      after any change to the database. The indices will be generated
-      when the database is written out to a file.
-    */
-    db_playlist_strip_indices (ipod_db);
-  }
 
   db_log (ipod_db, 0, "db_load: complete. loaded %i B\n", bytes_read);
 
@@ -466,8 +468,10 @@ int db_write (ipoddb_t ipod_db, char *path) {
     return -errno;
   }
 
-  if (ipod_db.type == 0)
+  if (ipod_db.type == 0) {
+    db_playlist_strip_indices (&ipod_db);
     db_playlist_add_indices (&ipod_db);
+  }
 
   ret = db_write_tree (fd, ipod_db.tree_root);
 

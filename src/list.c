@@ -32,6 +32,8 @@ void usage (void) {
 }
 
 char *str_type(int dohm_type) {
+  static char temp_str[30];
+
   switch (dohm_type) {
   case IPOD_TITLE:
     return "Title";
@@ -54,7 +56,8 @@ char *str_type(int dohm_type) {
   case -1:
     return "Error";
   default:
-    return "Unknown";
+    sprintf (temp_str, "Unknown (%08x)", dohm_type);
+    return temp_str;
   }
 }
 

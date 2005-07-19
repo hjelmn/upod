@@ -26,7 +26,7 @@
 
 #include "itunesdbi.h"
 
-void bswap_block (char *ptr, size_t membsize, size_t nmemb) {
+void bswap_block (void *ptr, size_t membsize, size_t nmemb) {
   int i;
 
 #if BYTE_ORDER==BIG_ENDIAN

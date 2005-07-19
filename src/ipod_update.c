@@ -501,7 +501,7 @@ int main (int argc, char *argv[]) {
 
   if (ipod_shuffle == 1) {
     ret = write_itsd (&shuffledb);
-    printf ("%i B written to the iTunesSD: %s\n", ret, itunessd.path);
+    printf ("%i B written to the iTunesSD: %s\n", ret, shuffledb.path);
   }
 
   if (noartwork == 0) {
