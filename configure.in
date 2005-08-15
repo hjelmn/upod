@@ -7,6 +7,7 @@ AM_INIT_AUTOMAKE(upod, 0.1.1)
 AH_TOP(
 #undef __darwin__
 #undef HAVE_UINT64
+#undef HAVE_GLIB
 )
 
 dnl create a config.h file (Automake will add -DHAVE_CONFIG_H)
@@ -26,18 +27,77 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AM_PROG_LIBTOOL
 
-PKG_CHECK_MODULES(GLIB, glib-2.0)
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LIBS)
-LIBS="$LIBS $GLIB_LIBS"
-CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
+glib=yes
+
+AC_MSG_CHECKING(whether to use glib)
+AC_ARG_WITH(glib,
+[  --with-glib     Include glib support (default)
+  --without-glib  Don't include glib support],
+[ case "$withval" in
+  yes)
+    glib=yes
+    ;;
+  *)
+    glib=no
+    AC_MSG_RESULT(no)
+    ;;
+  esac],
+[
+  if test "x$glib" = "xno"; then
+    AC_MSG_RESULT(no)
+  fi
+]
+)
+
+if test "x$glib" = "xyes"; then
+   AC_MSG_RESULT(yes)
+
+   PKG_CHECK_MODULES(GLIB, glib-2.0)
+   AC_SUBST(GLIB_CFLAGS)
+   AC_SUBST(GLIB_LIBS)
+   if test "x$GLIB_CFLAGS" = "x"; then
+      AC_MSG_WARN(Compiling without glib)
+   else
+      AC_DEFINE_UNQUOTED(HAVE_GLIB)
+   fi
+
+   LIBS="$LIBS $GLIB_LIBS"
+   CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
+fi
 
 dnl Optional libraries
 CPPFLAGS="$CPPFLAGS -I/sw/include"
-AC_CHECK_HEADERS([magick/api.h wand/magick_wand.h iconv.h])
+AC_CHECK_HEADERS([magick/api.h wand/magick_wand.h])
 
 LIBS="$LIBS -L/sw/lib"
-AC_CHECK_LIB(iconv, libiconv_open)
+libiconv=yes
+
+AC_MSG_CHECKING(whether to use libiconv)
+AC_ARG_WITH(libiconv,
+[  --with-libiconv     Include libiconv support (default)
+  --without-libiconv  Don't include libiconv support],
+[ case "$withval" in
+  yes)
+    libiconv=yes
+    ;;
+  *)
+    libiconv=no
+    AC_MSG_RESULT(no)
+    ;;
+  esac],
+[
+  if test "x$libiconv" = "xno"; then
+    AC_MSG_RESULT(no)
+  fi
+]
+)
+
+if test "x$libiconv" = "xyes"; then
+    AC_MSG_RESULT(yes)
+
+    AC_CHECK_HEADERS([iconv.h])
+    AC_CHECK_LIB(iconv, libiconv_open)
+fi
 
 dnl libWand is needed to modify any ArtworkDB
 AC_CHECK_LIB(Magick, AppendImages)
