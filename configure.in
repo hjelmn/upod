@@ -32,13 +32,18 @@ AC_SUBST(GLIB_LIBS)
 LIBS="$LIBS $GLIB_LIBS"
 CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
 
+dnl Optional libraries
 CPPFLAGS="$CPPFLAGS -I/sw/include"
 AC_CHECK_HEADERS([magick/api.h wand/magick_wand.h iconv.h])
 
 LIBS="$LIBS -L/sw/lib"
+AC_CHECK_LIB(iconv, libiconv_open)
+
+dnl libWand is needed to modify any ArtworkDB
 AC_CHECK_LIB(Magick, AppendImages)
 AC_CHECK_LIB(Wand, DestroyMagickWand)
-AC_CHECK_LIB(iconv, libiconv_open)
+
+
 
 dnl Checks for libraries.
 
