@@ -34,8 +34,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <wand/magick_wand.h>
-
 #include "itunesdbi.h"
 
 static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
@@ -63,11 +61,12 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 
   int ret;
 
-  if ((photodb == NULL) || (iihm_identifier < 1))
+  if ((photodb == NULL) || photodb->type != 1 || (iihm_identifier < 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_thumb_add: entering...\n");
 
+#if defined(HAVE_LIBWAND)
   /* find the image list */
   if ((ret = db_iihm_retrieve (photodb, &iihm_header, &dshm_header, iihm_identifier)) < 0) {
     db_log (photodb, ret, "db_thumb_add: could not retrieve image entry\n");
@@ -141,6 +140,9 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 
   iihm_data = (struct db_iihm *)iihm_header->data;
   iihm_data->num_thumbs++;
+#else
+  db_log (photodb, 0, "db_thumb_add: nothing done, not compiled with libwand.");
+#endif
 
   db_log (photodb, 0, "db_thumb_add: complete\n");
 
@@ -154,7 +156,7 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
 
   int identifier, ret;
 
-  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1) || (photodb->type == 0))
+  if ((photodb == NULL) || (image_data == NULL) || (image_size < 1) || (photodb->type != 1))
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_add: entering...\n");
@@ -219,7 +221,7 @@ int db_photo_list (ipoddb_t *artworkdb, GList **head) {
 
   int i, ret, *iptr;
 
-  if (head == NULL || artworkdb == NULL)
+  if (head == NULL || artworkdb == NULL || artworkdb->type != 1)
     return -EINVAL;
 
   *head = NULL;

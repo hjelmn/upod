@@ -87,6 +87,9 @@ enum itunesdb_flags {
     will automatically be converted to UTF-16.
   */
   FLAG_UTF8 = 0x2,
+
+  /* this flag tells libupod to parse the database in place (speeds up loading under ipodlinux -- in theory) */
+  FLAG_INPLACE = 0x4,
 };
 
 typedef struct _ipoddatabase {

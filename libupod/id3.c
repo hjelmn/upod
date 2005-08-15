@@ -128,6 +128,10 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
 	
 	id3v2_len = *id3_len = synchsafe_to_int (&data[2], 4);
 
+#if ID3_DEBUG==1
+	fprintf (stderr, "find_id3: found id3v2 tag of size %i\n", id3v2_len);
+#endif
+
 	*id3_len += 10; /* total length = id3v2len + 010 + footer (if present) */
 	*id3_len += (id3v2_flags & 0x10) ? 10 : 0; /* ID3v2 footer */
 
@@ -167,6 +171,10 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
       
       /* version 1 */
       if ((head & 0xffffff00) == 0x54414700) {
+#if ID3_DEBUG==1
+	fprintf (stderr, "find_id3: found id3 tag.\n");
+#endif
+
 	fread(tag_data, 1, 128, fh);
 	
 	return 1;
@@ -336,6 +344,10 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       if (length <= 0)
 	continue;
+
+#if ID3_DEBUG==1
+      fprintf (stderr, "Tag: ident: %s (enc = %s), data = %s, length = %i\n", identifier, encoding, tag_temp, length);
+#endif
 
       if (strcmp (identifier, ID3_TITLE[newv]) == 0)
 	dohm_add (tihm, tag_temp, length, encoding, IPOD_TITLE);

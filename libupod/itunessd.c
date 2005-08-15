@@ -1,6 +1,6 @@
 /**
  *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.4.0 itunessd.c
+ *   v0.4.1 itunessd.c
  *
  *   Routines for reading/writing the iPod's databases.
  *
@@ -116,6 +116,7 @@ int sd_load (ipoddb_t *ipod_sd, char *path, int flags) {
   ipod_sd->tree_root->data = calloc (1, statinfo.st_size);
 
   if (ipod_sd->tree_root->data == NULL) {
+    free (ipod_sd->tree_root->data);
     free (ipod_sd->tree_root);
     close (iPod_SD_fd);
 
@@ -129,17 +130,29 @@ int sd_load (ipoddb_t *ipod_sd, char *path, int flags) {
     free (ipod_sd->tree_root);
     close (iPod_SD_fd);
 
-    db_log (ipod_sd, -1, "sd_load: short read while reading from the iTunesSD file %s\n", path);
+    db_log (ipod_sd, -1, "sd_load: short read while reading from the iTunesSD file %s.\n", path);
+
+    return -1;
+  }
+
+  close (iPod_SD_fd);
+
+  if (get_uint24 (ipod_sd->tree_root->data, 1) != 0x010600) {
+    db_log (ipod_sd, -1, "sd_load: file does not appear to be an iTunesSD file (incorrect signature).\n");
+
+    free (ipod_sd->tree_root->data);
+    free (ipod_sd->tree_root);
+    ipod_sd->tree_root = NULL;
 
     return -1;
   }
 
   ipod_sd->tree_root->data_size = statinfo.st_size;
 
-  close (iPod_SD_fd);
-
   ipod_sd->path = strdup (path);
   ipod_sd->type = 2;
+
+  db_log (ipod_sd, 0, "sd_load: complete. %i Bytes\n", statinfo.st_size);
 
   return 0;
 }

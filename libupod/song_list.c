@@ -205,6 +205,9 @@ int db_song_modify_eq (ipoddb_t *itunesdb, u_int32_t tihm_num, int eq) {
   struct db_tihm *tihm_data = NULL;
   int ret;
 
+  if (itunesdb == NULL || itunesdb->type != 0)
+    return -EINVAL;
+
   if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0) {
     db_log (itunesdb, ret, "db_song_modify_eq %i: no song found\n", tihm_num);
 
@@ -233,6 +236,9 @@ int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num,
   tree_node_t *tihm_header;
   struct db_tihm *tihm_data;
   int ret;
+
+  if (itunesdb == NULL || itunesdb->type != 0)
+    return -EINVAL;
 
   if ((ret = db_tihm_retrieve (itunesdb, &tihm_header, NULL, tihm_num)) < 0) {
     db_log (itunesdb, ret, "db_song_set_artwork %i: no song found\n", tihm_num);

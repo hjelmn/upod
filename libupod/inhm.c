@@ -35,6 +35,7 @@ static u_int16_t host16_to_little (u_int16_t x) {
   return (x & 0x00ff) << 8 | (x & 0xff00) >> 8;
 }
 
+#if defined(HAVE_LIBWAND)
 int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 		    char *rel_mac_path, MagickWand *magick_wand) {
   struct db_inhm *inhm_data;
@@ -108,3 +109,4 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 
   return 0;
 }
+#endif

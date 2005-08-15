@@ -24,11 +24,24 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <ctype.h>
+#include <time.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <unistd.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/uio.h>
+
+#if defined(HAVE_LIBWAND)
 #include <wand/magick_wand.h>
+#endif
 
 #include "itunesdb.h"
 
@@ -308,6 +321,21 @@ struct db_dohm {
   u_int32_t unk1;
 };
 
+struct db_string_dohm {
+  u_int32_t dohm;
+  u_int32_t header_size;
+  u_int32_t record_size;
+  u_int32_t type;
+
+  u_int32_t unk0;
+  u_int32_t unk1;
+  u_int32_t unk2;
+  u_int32_t unk3;
+
+  u_int32_t unk4;
+  u_int32_t unk5;
+};
+
 /* When format == 1 the string is encoded as UTF-8 */
 struct string_header_12 {
   u_int32_t string_length;
@@ -370,6 +398,7 @@ typedef struct tree_node {
   struct tree_node *parent;
   
   u_int8_t *data;
+  int data_isalloced;
   size_t data_size;
   
   int num_children;
@@ -564,8 +593,10 @@ int db_playlist_strip_indices (ipoddb_t *itunesdb);
 int db_playlist_add_indices (ipoddb_t *itunesdb);
 
 /* inhm.c */
+#if defined(HAVE_LIBWAND)
 int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
 		    char *rel_mac_path, MagickWand *magick_wand);
+#endif
 
 /* iihm.c */
 int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id);

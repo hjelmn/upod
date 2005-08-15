@@ -222,8 +222,8 @@ int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head) {
   if (pyhm_data->num_pihm > 0) {
     num_entries = (pyhm_header->num_children - 2)/2;
     
-    for (i = num_entries-1 ; i >= 0 ; i--) {
-      pihm_data = (struct db_pihm *)pyhm_header->children[i * 2 + 2]->data;
+    for (i = pyhm_header->num_children - 2 ; i >= pyhm_data->num_dohm ; i -= 2) {
+      pihm_data = (struct db_pihm *)pyhm_header->children[i]->data;
 
       (*head) = g_list_prepend (*head, (void *)pihm_data->reference);
     }
@@ -264,7 +264,7 @@ int db_playlist_create (ipoddb_t *itunesdb, u_int8_t *name) {
 
   dohm_t dohm;
 
-  if (name == NULL)
+  if (itunesdb == NULL || name == NULL)
     return -EINVAL;
 
   db_log (itunesdb, 0, "db_playlist_create: entering...\n");
@@ -333,7 +333,7 @@ int db_playlist_rename (ipoddb_t *itunesdb, int playlist, u_int8_t *name) {
 
   dohm_t dohm;
 
-  if (name == NULL)
+  if (itunesdb == NULL || name == NULL)
     return -EINVAL;
 
   db_log (itunesdb, 0, "db_playlist_rename: entering...\n");
@@ -392,7 +392,7 @@ int db_playlist_delete (ipoddb_t *itunesdb, int playlist) {
   int ret;
 
   /* Can't delete the main playlist */
-  if (playlist == 0)
+  if (itunesdb == NULL || playlist == 0)
     return -EINVAL;
 
   db_log (itunesdb, 0, "db_playlist_delete: entering...\n");
@@ -429,6 +429,9 @@ int db_playlist_tihm_add (ipoddb_t *itunesdb, int playlist, int tihm_num) {
   struct db_pyhm *pyhm_data;
 
   int entry_num, ret;
+
+  if (itunesdb == NULL)
+    return -EINVAL;
 
   db_log (itunesdb, 0, "db_playlist_tihm_add: entering...\n");
 
@@ -479,6 +482,9 @@ int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int tihm_num) {
 
   int entry_num, ret;
 
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   db_log (itunesdb, 0, "db_playlist_tihm_remove: entering...\n");
 
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, playlist, &pyhm_header)) < 0)
@@ -524,6 +530,9 @@ int db_playlist_clear (ipoddb_t *itunesdb, int playlist) {
 
   int ret;
   
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, playlist, &pyhm_header)) < 0)
     return ret;
 
@@ -589,6 +598,9 @@ int db_playlist_fill (ipoddb_t *itunesdb, int playlist) {
 int db_playlist_remove_all (ipoddb_t *itunesdb, int tihm_num) {
   int i, total;
 
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   if ((total = db_playlist_number (itunesdb)) < 0)
     return total;
   
@@ -603,6 +615,9 @@ int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column, u_int
 
   int ret;
 
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, playlist, &pyhm_header)) < 0)
     return ret;
 
@@ -613,6 +628,9 @@ int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column) {
   tree_node_t *pyhm_header;
 
   int ret;
+
+  if (itunesdb == NULL)
+    return -EINVAL;
 
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, playlist, &pyhm_header)) < 0)
     return ret;
@@ -631,7 +649,7 @@ int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int cola, int pos
   struct db_pyhm *pyhm_data;
   struct db_dohm *dohm_data;
 
-  if (cola < 0 || pos < 0 || cola == pos)
+  if (cola < 0 || pos < 0 || cola == pos || itunesdb == NULL)
     return -EINVAL;
 
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, playlist, &pyhm_header)) < 0)
@@ -751,6 +769,9 @@ int db_playlist_strip_indices (ipoddb_t *itunesdb) {
 
   int i, ret;
 
+  if (itunesdb == NULL)
+    return -EINVAL;
+
   db_log (itunesdb, 0, "db_playlist_strip_indices: entering...\n");
   
   if ((ret = db_playlist_retrieve (itunesdb, NULL, NULL, 0, &pyhm_header)) < 0)
@@ -784,6 +805,9 @@ int db_playlist_add_indices (ipoddb_t *itunesdb) {
   u_int32_t num_tracks;
 
   int i, ret;
+
+  if (itunesdb == NULL)
+    return -EINVAL;
 
   db_log (itunesdb, 0, "db_playlist_add_indices: entering...\n");
   

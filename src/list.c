@@ -77,14 +77,17 @@ int main (int argc, char *argv[]) {
   ipoddb_t itunesdb;
 
   memset (&itunesdb, 0, sizeof (ipoddb_t));
-  db_set_debug (&itunesdb, 0, stderr);
+  db_set_debug (&itunesdb, 5, stderr);
 
   if (argc == 2 && strcmp (argv[1], "--shuffle") != 0) {
-    if (db_load (&itunesdb, argv[1], 0x0) < 0) {
+    if (db_load (&itunesdb, argv[1], 0x4) < 0) {
       fprintf (stderr, "itdblist: could not open the iPod database %s\n", argv[1]);
 
       exit(1);
     }
+
+    if (itunesdb.type == 2)
+      ipod_shuffle = 1;
   } else if (argc == 3 && strcmp (argv[1], "--shuffle") == 0) {
     ipod_shuffle = 1;
 
