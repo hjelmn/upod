@@ -201,7 +201,7 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
       tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
 
       if ((tmp = db_list_find_custom (hidden, subpath, dblist_cmp)) != NULL) {
-
+	/* song appears in a .hidden_songs file. remove the song from the main playlist */
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
 	  db_song_hide (itunesdb, tihm_num);
 	  tihm_num = -1;

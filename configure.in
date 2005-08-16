@@ -27,43 +27,43 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AM_PROG_LIBTOOL
 
-glib=yes
+dnl glib=yes
 
-AC_MSG_CHECKING(whether to use glib)
-AC_ARG_WITH(glib,
-[  --with-glib     Include glib support (default)
-  --without-glib  Don't include glib support],
-[ case "$withval" in
-  yes)
-    glib=yes
-    ;;
-  *)
-    glib=no
-    AC_MSG_RESULT(no)
-    ;;
-  esac],
-[
-  if test "x$glib" = "xno"; then
-    AC_MSG_RESULT(no)
-  fi
-]
-)
+dnl AC_MSG_CHECKING(whether to use glib)
+dnl AC_ARG_WITH(glib,
+dnl [  --with-glib     Include glib support (default)
+dnl  --without-glib  Don't include glib support],
+dnl [ case "$withval" in
+dnl  yes)
+dnl    glib=yes
+dnl    ;;
+dnl  *)
+dnl    glib=no
+dnl    AC_MSG_RESULT(no)
+dnl    ;;
+dnl  esac],
+dnl [
+dnl  if test "x$glib" = "xno"; then
+dnl    AC_MSG_RESULT(no)
+dnl  fi
+dnl ]
+dnl)
 
-if test "x$glib" = "xyes"; then
-   AC_MSG_RESULT(yes)
-
-   PKG_CHECK_MODULES(GLIB, glib-2.0)
-   AC_SUBST(GLIB_CFLAGS)
-   AC_SUBST(GLIB_LIBS)
-   if test "x$GLIB_CFLAGS" = "x"; then
-      AC_MSG_WARN(Compiling without glib)
-   else
-      AC_DEFINE_UNQUOTED(HAVE_GLIB)
-   fi
-
-   LIBS="$LIBS $GLIB_LIBS"
-   CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
-fi
+dnl if test "x$glib" = "xyes"; then
+dnl   AC_MSG_RESULT(yes)
+dnl
+dnl   PKG_CHECK_MODULES(GLIB, glib-2.0)
+dnl   AC_SUBST(GLIB_CFLAGS)
+dnl   AC_SUBST(GLIB_LIBS)
+dnl   if test "x$GLIB_CFLAGS" = "x"; then
+dnl      AC_MSG_WARN(Compiling without glib)
+dnl   else
+dnl      AC_DEFINE_UNQUOTED(HAVE_GLIB)
+dnl   fi
+dnl
+dnl   LIBS="$LIBS $GLIB_LIBS"
+dnl   CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS"
+dnl fi
 
 dnl Optional libraries
 CPPFLAGS="$CPPFLAGS -I/sw/include"
