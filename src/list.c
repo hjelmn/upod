@@ -62,8 +62,8 @@ char *str_type(int dohm_type) {
 }
 
 int main (int argc, char *argv[]) {
-  GList *songs, *tmp, *tmp2, *list;
-  GList *playlists;
+  db_list_t *songs, *tmp, *tmp2, *list;
+  db_list_t *playlists;
 
   tihm_t *tihm;
   pyhm_t *pyhm;
@@ -113,7 +113,7 @@ int main (int argc, char *argv[]) {
     db_photo_list (&itunesdb, &songs);
 
     if (songs != NULL) { 
-      for (tmp = g_list_first (songs) ; tmp ; tmp = g_list_next (tmp)) {
+      for (tmp = db_list_first (songs) ; tmp ; tmp = db_list_next (tmp)) {
 	iihm = tmp->data;
 
 	fprintf (stdout, "%04x | \n", iihm->identifier);
@@ -140,7 +140,7 @@ int main (int argc, char *argv[]) {
 
   } else
     /* dump songlist contents */
-    for (tmp = g_list_first (songs) ; tmp ; tmp = g_list_next (tmp)) {
+    for (tmp = db_list_first (songs) ; tmp ; tmp = db_list_next (tmp)) {
       tihm = tmp->data;
       
       fprintf (stdout, "%04i |\n", tihm->num);
@@ -182,14 +182,14 @@ int main (int argc, char *argv[]) {
   }
   
   /* dump playlist contents */
-  for (tmp = g_list_first (playlists) ; tmp ; tmp = g_list_next (tmp)) {
+  for (tmp = db_list_first (playlists) ; tmp ; tmp = db_list_next (tmp)) {
     pyhm = (pyhm_t *)tmp->data;
     /* P(laylist) M(aster) */
     fprintf (stdout, "playlist name: %s(%s) len=%lu\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
     
     db_playlist_song_list (&itunesdb, pyhm->num, &list);
     
-    for (tmp2 = g_list_first (list) ; tmp2 ; tmp2 = g_list_next (tmp2))
+    for (tmp2 = db_list_first (list) ; tmp2 ; tmp2 = db_list_next (tmp2))
       fprintf (stdout, "%u ", (unsigned int)tmp2->data);
     
     fprintf (stdout, "\n");

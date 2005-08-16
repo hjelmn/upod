@@ -19,26 +19,13 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-
 #include "itunesdbi.h"
-
-#define DBHM_HEADER_SIZE 0x68
-#define DFHM_HEADER_SIZE 0x84
-#define ILHM_HEADER_SIZE 0x5c
-#define ALHM_HEADER_SIZE 0x5c
-#define FLHM_HEADER_SIZE 0x5c
-#define TLHM_HEADER_SIZE 0x5c
-#define PLHM_HEADER_SIZE 0x5c
 
 static int db_dbhm_create (tree_node_t **entry, int flags) {
   struct db_dbhm *dbhm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, DBHM, DBHM_HEADER_SIZE, DBHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, DBHM, DBHM_CELL_SIZE, DBHM_CELL_SIZE)) < 0)
     return ret;
   dbhm_data = (struct db_dbhm *) (*entry)->data;
 
@@ -57,7 +44,7 @@ static int db_dfhm_create (tree_node_t **entry) {
   struct db_dfhm *dfhm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, DFHM, DFHM_HEADER_SIZE, DFHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, DFHM, DFHM_CELL_SIZE, DFHM_CELL_SIZE)) < 0)
     return ret;
 
   dfhm_data = (struct db_dfhm *) (*entry)->data;
@@ -72,23 +59,23 @@ static int db_dfhm_create (tree_node_t **entry) {
 }
 
 static int db_ilhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, ILHM, ILHM_HEADER_SIZE, 0);
+  return db_node_allocate (entry, ILHM, ILHM_CELL_SIZE, 0);
 }
 
 static int db_alhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, ALHM, ALHM_HEADER_SIZE, 0);
+  return db_node_allocate (entry, ALHM, ALHM_CELL_SIZE, 0);
 }
 
 static int db_flhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, FLHM, FLHM_HEADER_SIZE, 0);
+  return db_node_allocate (entry, FLHM, FLHM_CELL_SIZE, 0);
 }
 
 static int db_tlhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, TLHM, TLHM_HEADER_SIZE, 0);
+  return db_node_allocate (entry, TLHM, TLHM_CELL_SIZE, 0);
 }
 
 static int db_plhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, PLHM, PLHM_HEADER_SIZE, 0);
+  return db_node_allocate (entry, PLHM, PLHM_CELL_SIZE, 0);
 }
 
 /**

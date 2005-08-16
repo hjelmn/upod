@@ -25,6 +25,67 @@ u_int32_t string_to_int (unsigned char *string) {
   return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
 }
 
+db_list_t *db_list_first (db_list_t *p) {
+  db_list_t *x;
+
+  for (x = p ; x && x->prev ; x = x->prev);
+
+  return x;
+}
+
+db_list_t *db_list_prepend (db_list_t *p, void *d) {
+  db_list_t *x, *y;
+
+  x = calloc (1, sizeof (db_list_t));
+  x->data = d;
+
+  y = db_list_first (p);
+
+  x->next = y;
+
+  if (y)
+    y->prev = x;
+
+  return x;
+}
+
+db_list_t *db_list_append (db_list_t *p, void *d) {
+  db_list_t *x, *y;
+
+  x = calloc (1, sizeof (db_list_t));
+  x->data = d;
+
+  for (y = db_list_first (p) ; y && y->next ; y = db_list_next (y));
+
+  x->prev = y;
+
+  if (y) {
+    y->next = x;
+    return p;
+  }
+
+  return x;
+}
+
+db_list_t *db_list_next (db_list_t *p) {
+  if (p == NULL)
+    return p;
+
+  return p->next;
+}
+
+void db_list_free (db_list_t *p) {
+  db_list_t *tmp;
+
+  p = db_list_first (p);
+
+  while (p) {
+    tmp = p->next;
+    free (p);
+    p = tmp;
+  }
+}
+
 /*
   db_size_tree:
 

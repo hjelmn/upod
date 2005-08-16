@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.4.0 itunesdb.h
+ *   v0.5.0 itunesdb.h
  *   
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -28,8 +28,18 @@ extern "C" {
 #include <stdio.h>
 
 #include <sys/types.h>
+  
+typedef struct _dblist {
+  void *data;
+  struct _dblist *prev;
+  struct _dblist *next;
+} db_list_t;
 
-#include <glib.h>
+db_list_t *db_list_first (db_list_t *);
+db_list_t *db_list_next (db_list_t *);
+db_list_t *db_list_prev (db_list_t *);
+db_list_t *db_list_prepend (db_list_t *p, void *d);
+db_list_t *db_list_append (db_list_t *p, void *d);
 
 #define ITUNESDB     "iPod_Control/iTunes/iTunesDB"
 #define ITUNESSD     "iPod_Control/iTunes/iTunesSD"
@@ -230,15 +240,15 @@ int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_
 int  db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
 int  db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
-int  db_song_list (ipoddb_t *itunesdb, GList **head);
-void db_song_list_free (GList **head);
+int  db_song_list (ipoddb_t *itunesdb, db_list_t **head);
+void db_song_list_free (db_list_t **head);
 int  db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 int  db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num);
 
 /* itunesdb2/image_list.c */
 int  db_photo_add (ipoddb_t *artworkdb, u_int8_t *image_data, size_t image_size, u_int64_t id);
-int  db_photo_list (ipoddb_t *artworkdb, GList **head);
-void db_photo_list_free (GList **head);
+int  db_photo_list (ipoddb_t *artworkdb, db_list_t **head);
+void db_photo_list_free (db_list_t **head);
 
 int    db_set_debug (ipoddb_t *itunesdb, int level, FILE *out);
 
@@ -276,11 +286,11 @@ int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list)
 
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
-int db_playlist_list (ipoddb_t *itunesdb, GList **head);
-int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head);
+int db_playlist_list (ipoddb_t *itunesdb, db_list_t **head);
+int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, db_list_t **head);
 
 int db_album_number       (ipoddb_t *photodb);
-int db_album_list         (ipoddb_t *photodb, GList **head);
+int db_album_list         (ipoddb_t *photodb, db_list_t **head);
 int db_album_image_remove (ipoddb_t *photodb, int album, int image_id);
 int db_album_image_add    (ipoddb_t *photodb, int album, int image_id);
 int db_album_create       (ipoddb_t *photodb, u_int8_t *name);
@@ -295,9 +305,9 @@ void iihm_free (iihm_t *iihm);
 void inhm_free (inhm_t *inhm);
 void db_free   (ipoddb_t *itunesdb);
 
-void db_playlist_list_free (GList **head);
-void db_album_list_free (GList **head);
-void db_playlist_song_list_free (GList **head);
+void db_playlist_list_free (db_list_t **head);
+void db_album_list_free (db_list_t **head);
+void db_playlist_song_list_free (db_list_t **head);
 
 #if defined(__cplusplus)
 }

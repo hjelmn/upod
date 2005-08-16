@@ -109,7 +109,7 @@ int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
 
   tihm->has_artwork = 1;
 
-  /* By using a checksum duplicate artwork will be avoided */
+  /* a checksum is used for the image id to avoid duplicate images in the database */
   tihm->artwork_id  = cksum;
 
   tihm->image_data  = image_data;

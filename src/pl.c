@@ -37,7 +37,7 @@ void usage(void) {
 
 int main(int argc, char *argv[]) {
   ipoddb_t itunesdb;
-  GList *list, *reflist, *tmp;
+  db_list_t *list, *reflist, *tmp;
   int i;
   int ret;
   int qlist = 0;
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
   if (qlist) {
     db_playlist_list (&itunesdb, &list);
     
-    for (tmp = g_list_first (list) ; tmp ; tmp = g_list_next (tmp))
+    for (tmp = db_list_first (list) ; tmp ; tmp = db_list_next (tmp))
       printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num,
 	      ((pyhm_t *)tmp->data)->name);
     db_playlist_list_free(&list);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
   } else {
     if ((ret = db_playlist_song_list (&itunesdb, atoi(argv[3]),
 				      &reflist)) > 0) {
-      for (tmp = g_list_first (reflist) ; tmp ; tmp = g_list_next (tmp))
+      for (tmp = db_list_first (reflist) ; tmp ; tmp = db_list_next (tmp))
 	printf("Reference: %08x\n", (unsigned int)(tmp->data));
 
       db_playlist_song_list_free (&reflist);

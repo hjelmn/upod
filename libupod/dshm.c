@@ -19,14 +19,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <errno.h>
-
 #include "itunesdbi.h"
-
-#define DSHM_HEADER_SIZE 0x60
 
 /* An itunesdb has two dshm entries. An artworkdb has three. */
 int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header,
@@ -60,7 +53,7 @@ int db_dshm_create (tree_node_t **entry, int type) {
   struct db_dshm *dshm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, DSHM, DSHM_HEADER_SIZE, DSHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, DSHM, DSHM_CELL_SIZE, DSHM_CELL_SIZE)) < 0)
     return ret;
 
   dshm_data = (struct db_dshm *)(*entry)->data;

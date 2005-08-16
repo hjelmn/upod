@@ -351,7 +351,7 @@ int sd_write (ipoddb_t ipod_sd, char *path) {
   return ret;
 }
 
-int sd_song_list (ipoddb_t *ipod_sd, GList **head) {
+int sd_song_list (ipoddb_t *ipod_sd, db_list_t **head) {
   int i;
   int num_songs;
   int header_size;
@@ -378,7 +378,7 @@ int sd_song_list (ipoddb_t *ipod_sd, GList **head) {
     tihm->dohms->type = IPOD_PATH;
     to_utf8 (&(tihm->dohms->data), &song_list[i * 0x00022e + 32], 522, "UTF-16BE");
 
-    *head = g_list_prepend (*head, (gpointer)tihm);
+    *head = db_list_prepend (*head, tihm);
   }
 
   return 0;

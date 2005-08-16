@@ -77,7 +77,7 @@ struct abhm {
   size_t name_len;
 };
 
-int db_album_list (ipoddb_t *photodb, GList **head) {
+int db_album_list (ipoddb_t *photodb, db_list_t **head) {
   tree_node_t *dshm_header, *abhm_header;
   tree_node_t *dohm_header = NULL;
   struct abhm *abhm;
@@ -109,7 +109,7 @@ int db_album_list (ipoddb_t *photodb, GList **head) {
     abhm->name_len = string_header->string_length;
     memcpy (abhm->name, &dohm_header->data[0x24], string_header->string_length);
 
-    *head = g_list_prepend (*head, abhm);
+    *head = db_list_prepend (*head, abhm);
   }
 
   db_log (photodb, 0, "db_album_list: complete\n");
@@ -117,7 +117,7 @@ int db_album_list (ipoddb_t *photodb, GList **head) {
   return 0;
 }
 
-void db_album_list_free (GList **head) {
+void db_album_list_free (db_list_t **head) {
   db_playlist_list_free (head);
 }
 

@@ -266,7 +266,7 @@ int db_song_set_artwork (ipoddb_t *itunesdb, u_int32_t tihm_num,
    NULL on error
    ptr  on success
 **/
-int db_song_list (ipoddb_t *itunesdb, GList **head) {
+int db_song_list (ipoddb_t *itunesdb, db_list_t **head) {
   tree_node_t *dshm_header, *tihm_header, *tlhm_header;
   db_tlhm_t *tlhm_data;
   int i, *iptr;
@@ -306,7 +306,7 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
       continue;
     }
 
-    *head = g_list_prepend (*head, (gpointer)tihm);
+    *head = db_list_prepend (*head, (void *)tihm);
   }
 
   return 0;
@@ -319,20 +319,20 @@ int db_song_list (ipoddb_t *itunesdb, GList **head) {
   recomend you call this to clean up at the end of execution.
 
   Arguments:
-   GList *head - pointer to allocated song list
+   db_list_t *head - pointer to allocated song list
 
   Returns:
    nothing, void function
 **/
-void db_song_list_free (GList **head) {
-  GList *tmp;
+void db_song_list_free (db_list_t **head) {
+  db_list_t *tmp;
 
-  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp)) {
+  for (tmp = db_list_first (*head) ; tmp ; tmp = db_list_next (tmp)) {
     tihm_free ((tihm_t *)(tmp->data));
     free (tmp->data);
   }
 
-  g_list_free (*head);
+  db_list_free (*head);
 
   *head = NULL;
 }

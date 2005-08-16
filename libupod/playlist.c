@@ -117,7 +117,7 @@ int db_playlist_number (ipoddb_t *itunesdb) {
    NULL on error
    pointer to head of linked list on success
 **/
-int db_playlist_list (ipoddb_t *itunesdb, GList **head) {
+int db_playlist_list (ipoddb_t *itunesdb, db_list_t **head) {
   db_plhm_t *plhm_data;
   u_int8_t *temp;
 
@@ -144,7 +144,7 @@ int db_playlist_list (ipoddb_t *itunesdb, GList **head) {
     pyhm->name = temp;
     pyhm->name_len = strlen ((char *)temp);
 
-    *head = g_list_prepend (*head, pyhm);
+    *head = db_list_prepend (*head, pyhm);
   }
 
   db_log (itunesdb, 0, "db_playlist_list: complete\n");
@@ -155,27 +155,27 @@ int db_playlist_list (ipoddb_t *itunesdb, GList **head) {
 /**
   db_playlist_list_free:
 
-  Frees the memory used by a GList containing playlist information.
+  Frees the memory used by a db_list_t containing playlist information.
 
   Arguments:
-   GList **head - pointer to head of allocated playlist list
+   db_list_t **head - pointer to head of allocated playlist list
 
   Returns:
    nothing, void function
 **/
-void db_playlist_list_free (GList **head) {
-  GList *tmp;
+void db_playlist_list_free (db_list_t **head) {
+  db_list_t *tmp;
   if (head == NULL)
     return;
 
-  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp)) {
+  for (tmp = db_list_first (*head) ; tmp ; tmp = db_list_next (tmp)) {
     struct pyhm *pyhm = (struct pyhm *)tmp->data;
 
     free (pyhm->name);
     free (tmp->data);
   }
 
-  g_list_free (*head);
+  db_list_free (*head);
 
   *head = NULL;
 }
@@ -194,7 +194,7 @@ void db_playlist_list_free (GList **head) {
    < 0 on error
      0 on success
 */
-int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head) {
+int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, db_list_t **head) {
   tree_node_t *pyhm_header;
 
   struct db_pyhm *pyhm_data;
@@ -225,7 +225,7 @@ int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head) {
     for (i = pyhm_header->num_children - 2 ; i >= pyhm_data->num_dohm ; i -= 2) {
       pihm_data = (struct db_pihm *)pyhm_header->children[i]->data;
 
-      (*head) = g_list_prepend (*head, (void *)pihm_data->reference);
+      (*head) = db_list_prepend (*head, (void *)pihm_data->reference);
     }
   }
 
@@ -234,11 +234,11 @@ int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, GList **head) {
   return num_entries;
 }
 
-void db_playlist_song_list_free (GList **head) {
+void db_playlist_song_list_free (db_list_t **head) {
   if (head == NULL)
     return;
 
-  g_list_free (*head);
+  db_list_free (*head);
   head = NULL;
 }
 

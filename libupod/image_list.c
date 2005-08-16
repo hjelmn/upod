@@ -215,7 +215,7 @@ int db_photo_remove (ipoddb_t *photodb, u_int32_t identifier) {
   return -1;
 }
 
-int db_photo_list (ipoddb_t *artworkdb, GList **head) {
+int db_photo_list (ipoddb_t *artworkdb, db_list_t **head) {
   tree_node_t *dshm_header, *iihm_header, *ilhm_header;
   db_ilhm_t *ilhm_data;
 
@@ -244,19 +244,19 @@ int db_photo_list (ipoddb_t *artworkdb, GList **head) {
     if (iptr[0] != IIHM)
       continue;
 
-    *head = g_list_prepend (*head, db_iihm_fill (iihm_header));
+    *head = db_list_prepend (*head, db_iihm_fill (iihm_header));
   }
 
   return 0;
 }
 
-void db_photo_list_free (GList **head) {
-  GList *tmp;
+void db_photo_list_free (db_list_t **head) {
+  db_list_t *tmp;
 
-  for (tmp = g_list_first (*head) ; tmp ; tmp = g_list_next (tmp))
+  for (tmp = db_list_first (*head) ; tmp ; tmp = db_list_next (tmp))
     iihm_free ((iihm_t *)(tmp->data));
 
-  g_list_free (*head);
+  db_list_free (*head);
 
   *head = NULL;
 }

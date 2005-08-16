@@ -16,20 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <fcntl.h>
-
-#include <errno.h>
-
-#include <wand/magick_wand.h>
-#include <sys/stat.h>
 
 #include "itunesdbi.h"
-
-#define INHM_HEADER_SIZE 0x4c
 
 static u_int16_t host16_to_little (u_int16_t x) {
   return (x & 0x00ff) << 8 | (x & 0xff00) >> 8;
@@ -50,7 +38,7 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
   PixelIterator *pixel_iterator;
   PixelWand **pixel_wands;
 
-  if ((ret = db_node_allocate (entry, INHM, INHM_HEADER_SIZE, INHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, INHM, INHM_CELL_SIZE, INHM_CELL_SIZE)) < 0)
     return ret;
 
   inhm_data = (struct db_inhm *)(*entry)->data;

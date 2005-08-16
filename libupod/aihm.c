@@ -21,8 +21,6 @@
 
 #include "itunesdbi.h"
 
-#define AIHM_HEADER_SIZE   0x28
-
 int db_aihm_search (struct tree_node *entry, u_int32_t image_id) {
   int i;
   struct db_aihm *aihm_data;
@@ -43,7 +41,7 @@ int db_aihm_create (struct tree_node **entry, u_int32_t image_id) {
   struct db_aihm *aihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, AIHM, AIHM_HEADER_SIZE, AIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, AIHM, AIHM_CELL_SIZE, AIHM_CELL_SIZE)) < 0)
     return ret;
 
   aihm_data = (struct db_aihm *)(*entry)->data;

@@ -447,6 +447,27 @@ typedef struct tree_node {
 #define DOHM string_to_int("dohm")
 
 
+
+#define ABHM_CELL_SIZE 0x94
+#define AIHM_CELL_SIZE 0x28
+#define ALHM_CELL_SIZE 0x5c
+#define DBHM_CELL_SIZE 0x68
+#define DFHM_CELL_SIZE 0x84
+#define DOHM_CELL_SIZE 0x18
+#define DSHM_CELL_SIZE 0x60
+#define FIHM_CELL_SIZE 0x7c
+#define FLHM_CELL_SIZE 0x5c
+#define IIHM_CELL_SIZE 0x98
+#define ILHM_CELL_SIZE 0x5c
+#define INHM_CELL_SIZE 0x4c
+#define PIHM_CELL_SIZE 0x4c
+#define PLHM_CELL_SIZE 0x5c
+#define PYHM_CELL_SIZE 0x6c
+#define TIHM_CELL_SIZE 0xf4
+#define TLHM_CELL_SIZE 0x5c
+
+
+
 #define UPOD_NOT_IMPL(s) do {\
   fprintf(stderr, "Error -1: function %s not implemented\n", s);\
   return -1;\
@@ -504,7 +525,8 @@ void bswap_block (void *ptr, size_t membsize, size_t nmemb);
 */
 
 /* db.c */
-void    db_free_tree (tree_node_t *ptr);
+void db_list_free (db_list_t *p);
+void db_free_tree (tree_node_t *ptr);
 
 int db_attach    (tree_node_t *parent, tree_node_t *new_child);
 int db_attach_at (tree_node_t *parent, tree_node_t *new_child, int index);

@@ -16,23 +16,15 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <sys/types.h>
-#include <fcntl.h>
-
-#include <sys/stat.h>
 
 #include "itunesdbi.h"
 
-#define FIHM_HEADER_SIZE 0x7c
 
 int db_fihm_create (tree_node_t **entry, unsigned int file_id) {
   struct db_fihm *fihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, FIHM, FIHM_HEADER_SIZE, FIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, FIHM, FIHM_CELL_SIZE, FIHM_CELL_SIZE)) < 0)
     return ret;
 
   fihm_data = (struct db_fihm *)(*entry)->data;

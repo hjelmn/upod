@@ -19,20 +19,13 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <errno.h>
-
 #include "itunesdbi.h"
-
-#define ABHM_HEADER_SIZE 0x94
 
 int db_abhm_create (tree_node_t **entry) {
   struct db_pyhm *pyhm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, ABHM, ABHM_HEADER_SIZE, ABHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, ABHM, ABHM_CELL_SIZE, ABHM_CELL_SIZE)) < 0)
     return ret;
 
   pyhm_data = (struct db_pyhm *)(*entry)->data;

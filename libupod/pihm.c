@@ -19,13 +19,6 @@
 
 #include "itunesdbi.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <time.h>
-
-#define PIHM_HEADER_SIZE   0x4c
-
 int db_pihm_search (struct tree_node *entry, u_int32_t tihm_num) {
   int i;
   struct db_pihm *pihm_data;
@@ -47,7 +40,7 @@ int db_pihm_create (struct tree_node **entry, u_int32_t tihm_num,
   struct db_pihm *pihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, PIHM, PIHM_HEADER_SIZE, PIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, PIHM, PIHM_CELL_SIZE, PIHM_CELL_SIZE)) < 0)
     return ret;
 
   pihm_data = (struct db_pihm *)(*entry)->data;

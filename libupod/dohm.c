@@ -16,17 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <string.h>
-#include <errno.h>
-
-#include <ctype.h>
 
 #include "itunesdbi.h"
-
-#define DOHM_HEADER_SIZE   0x018
 
 #define DOHM_EQ_SIZE       0x03a
 #define DOHM_PIHM_SIZE     0x02c
@@ -184,14 +175,14 @@ int db_dohm_create_generic (tree_node_t **entry, size_t size, int type) {
   struct db_dohm *dohm_data;
   int ret;
 
-  if (size < DOHM_HEADER_SIZE)
+  if (size < DOHM_CELL_SIZE)
     return -EINVAL;
 
-  if ((ret = db_node_allocate (entry, DOHM, DOHM_HEADER_SIZE, size)) < 0)
+  if ((ret = db_node_allocate (entry, DOHM, DOHM_CELL_SIZE, size)) < 0)
     return ret;
 
   (*entry)->data = realloc ((*entry)->data, size);
-  memset (&((*entry)->data[DOHM_HEADER_SIZE]), 0, size - DOHM_HEADER_SIZE);
+  memset (&((*entry)->data[DOHM_CELL_SIZE]), 0, size - DOHM_CELL_SIZE);
   (*entry)->data_size = size;
 
   dohm_data = (struct db_dohm *)(*entry)->data;
@@ -208,7 +199,7 @@ int db_dohm_index_create (tree_node_t **entry, int sort_by, int num_tracks, u_in
   if (entry == NULL)
     return -EINVAL;
 
-  if ((ret = db_dohm_create_generic (entry, DOHM_HEADER_SIZE + 0x28 + 4 * num_tracks, 0x34)) < 0)
+  if ((ret = db_dohm_create_generic (entry, DOHM_CELL_SIZE + 0x28 + 4 * num_tracks, 0x34)) < 0)
     return ret;
 
   dohm_data = (struct db_dohm *)(*entry)->data;
@@ -330,14 +321,14 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
     unicode_length = strlen (dohm.data);
   }
 
-  entry_size   = DOHM_HEADER_SIZE + string_header_size + unicode_length;
+  entry_size   = DOHM_CELL_SIZE + string_header_size + unicode_length;
 
   db_dohm_create_generic (entry, entry_size, dohm.type);
 
   if (string_header_size == 12) {
     struct string_header_12 *string_header;
     
-    string_header = (struct string_header_12 *)&((*entry)->data[DOHM_HEADER_SIZE]);
+    string_header = (struct string_header_12 *)&((*entry)->data[DOHM_CELL_SIZE]);
 
     string_header->string_length = unicode_length;
 
@@ -348,7 +339,7 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   } else {
     struct string_header_16 *string_header;
     
-    string_header = (struct string_header_16 *)&((*entry)->data[DOHM_HEADER_SIZE]);
+    string_header = (struct string_header_16 *)&((*entry)->data[DOHM_CELL_SIZE]);
 
     string_header->string_length = unicode_length;
     string_header->unk0 = 0x00000001;
@@ -361,7 +352,7 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
 
   (*entry)->string_header_size = string_header_size;
 
-  memcpy(&(*entry)->data[DOHM_HEADER_SIZE + string_header_size], unicode_data,
+  memcpy(&(*entry)->data[DOHM_CELL_SIZE + string_header_size], unicode_data,
 	 unicode_length);
   
   if (!(flags & FLAG_UTF8)) {

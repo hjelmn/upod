@@ -34,8 +34,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <glib.h>
-
 #include "itunesdb.h"
 
 #define PACKAGE "upod"
@@ -87,8 +85,38 @@ static u_int8_t *path_mac_unix (char *mac_path, char *ipod_prefix) {
   return path;
 }
 
-int glist_cmp (gpointer data1, gpointer data2) {
-  return (strcasecmp ((char *)data1, (char *)data2) == 0) ? 1 : 0;
+int dblist_cmp (void *data1, void *data2) {
+  return (strcmp ((char *)data1, (char *)data2) == 0) ? 1 : 0;
+}
+
+db_list_t *db_list_delete_link (db_list_t *p, db_list_t *x) {
+  db_list_t *y;
+  for (y = db_list_first (p) ; y && y != x ; y = db_list_next (y));
+
+  if (!y)
+    return p;
+
+  if (y->prev)
+    y->prev->next = y->next;
+  else
+    p = y->next;
+
+  if (y->next)
+    y->next->prev = y->prev;
+
+  free (y);
+  return p;
+}
+
+db_list_t *db_list_find_custom (db_list_t *p, void *data, int (*compf)(void *, void *)) {
+  db_list_t *y;
+
+  for (y = db_list_first (p) ; y ; y = db_list_next (y)) {
+    if (compf (y->data, data))
+      return y;
+  }
+
+  return NULL;
 }
 
 void print_parsed (void) {
@@ -102,15 +130,17 @@ void print_parsed (void) {
 }
 
 int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artworkdb, ipoddb_t *shuffledb,
-	       GList *hidden, int playlist, int ipod_shuffle) {
+	       db_list_t *hidden, int playlist, int ipod_shuffle) {
   char scratch[1024];
 
   DIR *dirp;
   FILE *fh;
   struct dirent *dirent;
   struct stat statinfo;
-  int tihm_num;
+  int tihm_num, i;
   int songs_added = 0;
+
+  char *subpath;
 
   dirp = opendir (path);
 
@@ -126,43 +156,61 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
       return -errno;
     }
 
-    while (fscanf (fh, "%s", scratch) > 0) {
-      char *tmp = strdup (scratch);
+    while (fgets (scratch, 1024, fh) > 0) {
+      char *tmp;
 
-      hidden = g_list_append (hidden, tmp);
+      if (scratch[strlen(scratch) - 1] == '\n')
+	scratch[strlen(scratch) - 1] = '\0';
+
+      tmp = strdup (scratch);
+
+      hidden = db_list_append (hidden, tmp);
     }
   }
 
   while ((dirent = readdir (dirp)) != NULL) {
     char *mac_path;
+    int slashs = 0;
 
     if (dirent->d_name[0] == '.')
       continue;
 
     sprintf (scratch, "%s/%s", path, dirent->d_name);
 
+    for (i = (strlen(scratch) - 1) ; i > 0 ; i--) {
+      if (scratch[i] == '/')
+	slashs++;
+      
+      if (slashs == 2) {
+	i++;
+	break;
+      }
+    }
+
+    subpath = &scratch[i];
+
     if (stat (scratch, &statinfo) < 0)
       continue;
 
     if (!S_ISDIR (statinfo.st_mode)) {
-      GList *tmp;
+      db_list_t *tmp;
 
       print_parsed ();
       mac_path = path_unix_mac_root (scratch + strlen(ipod_prefix) + 1);
-      if ((tmp = g_list_find_custom (hidden, scratch,
-				     (GCompareFunc)glist_cmp)) != NULL) {
-	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 0);
-	
+
+      tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
+
+      if ((tmp = db_list_find_custom (hidden, subpath, dblist_cmp)) != NULL) {
+
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
 	  db_song_hide (itunesdb, tihm_num);
 	  tihm_num = -1;
-	}
+	} else
+	  db_song_hide (itunesdb, tihm_num);
 	
 	free (tmp->data);
-	hidden = g_list_delete_link (hidden, tmp);
+	hidden = db_list_delete_link (hidden, tmp);
       } else {
-	tihm_num = db_song_add (itunesdb, artworkdb, scratch, mac_path, 0, 1);
-	
 	if (tihm_num < 0 && ((tihm_num = db_lookup (itunesdb, IPOD_PATH, mac_path)) >= 0)) {
 	  db_song_unhide (itunesdb, tihm_num);
 	  tihm_num = -1;
@@ -304,7 +352,7 @@ int write_awdatabase (ipoddb_t *artworkdb) {
 
 /* remove files that no longer exist from the database */
 int cleanup_database (ipoddb_t *itunesdb, char *ipod_prefix) {
-  GList *tmp, *song_list = NULL;
+  db_list_t *tmp, *song_list = NULL;
   tihm_t *tihm;
   char *unix_path;
   int i;
@@ -316,7 +364,7 @@ int cleanup_database (ipoddb_t *itunesdb, char *ipod_prefix) {
   if (song_list == NULL)
     return -1;
 
-  for (tmp = g_list_first (song_list) ; tmp ; tmp = g_list_next (tmp)) {
+  for (tmp = db_list_first (song_list) ; tmp ; tmp = db_list_next (tmp)) {
     tihm = (tihm_t *)tmp->data;
 
     for (i = 0 ; i < tihm->num_dohm ; i++)

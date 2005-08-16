@@ -16,20 +16,14 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <errno.h>
 
 #include "itunesdbi.h"
-
-#define IIHM_HEADER_SIZE 0x98
 
 int db_iihm_create (tree_node_t **entry, int identifier, u_int64_t id) {
   struct db_iihm *iihm_data;
   int ret;
 
-  if ((ret = db_node_allocate (entry, IIHM, IIHM_HEADER_SIZE, IIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, IIHM, IIHM_CELL_SIZE, IIHM_CELL_SIZE)) < 0)
     return ret;
 
   iihm_data = (struct db_iihm *)(*entry)->data;

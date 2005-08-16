@@ -17,18 +17,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
 #include "itunesdbi.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-
-#define TIHM_HEADER_SIZE   0xf4
 
 int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
   int i;
@@ -246,7 +235,7 @@ int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags) {
   tree_node_t *dohm;
   int i, ret;
 
-  if ((ret = db_node_allocate (entry, TIHM, TIHM_HEADER_SIZE, TIHM_HEADER_SIZE)) < 0)
+  if ((ret = db_node_allocate (entry, TIHM, TIHM_CELL_SIZE, TIHM_CELL_SIZE)) < 0)
     return ret;
   
   tihm_db_fill (*entry, tihm);
