@@ -61,6 +61,7 @@ char *ID3_BPM[2]     = {"TBP", "TBPM"};
 char *ID3_YEARNEW[2] = {"TYE", "TDRC"};
 char *ID3_DISC[2]    = {"TPA", "TPOS"};
 char *ID3_ARTWORK[2] = {"PIC", "APIC"};
+char *ID3_COMPOSER[2]= {"TCM", "TCOM"};
 
 static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen,
 		     int *id3_len, int *major_version);
@@ -205,7 +206,8 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
   int c;
   u_int64_t cksum;
 
-  if (tihm->image_data != NULL)
+#if defined(HAVE_LIBWAND)
+  if (tihm->image_data)
     return -1;
 
   length --;
@@ -224,6 +226,8 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
     length -= 2;
   }    
 
+  mp3_debug ("Cover artwork found. Image size is %i B\n", length);
+
   image_data = (unsigned char *)calloc (1, length);
   fread (image_data, 1, length, fh);
 
@@ -231,11 +235,14 @@ static int parse_artwork (tihm_t *tihm, FILE *fh, size_t length, int id3v2_major
 
   tihm->has_artwork = 1;
   
-  /* By using a checksum we can garuntee no duplicate artwork */
+  /* a checksum is used for the image id to avoid duplicate images in the database */
   tihm->artwork_id  = cksum;
 
   tihm->image_data  = image_data;
   tihm->image_size  = length;
+#else
+  mp3_debug ("Cover artwork found and ignored (libupod compiled without libwand).\n");
+#endif
 
   return 0;
 }
@@ -259,6 +266,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
     for (i = 0 ; i < tag_datalen ; ) {
       size_t length = 0;
+      int ipod_type = -1;
 
       fread (tag_data, 1, (id3v2_majorversion > 2) ? 10 : 6, fh);
       
@@ -314,7 +322,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	/*      length--; */
       }
 
-      /* Get the tag encoding */
+      /* detect the tag's encoding */
       switch (*tag_temp) {
       case 0x00:
 	sprintf (encoding, "ISO-8859-1");
@@ -324,8 +332,6 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	sprintf (encoding, "UTF-16LE");
 	tag_temp += 3;
 
-	/* If the above look cut off part of the unicode string
-	   re-add it. */
 	if (length % 2 == 0)
 	  length++;
 
@@ -350,17 +356,19 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 #endif
 
       if (strcmp (identifier, ID3_TITLE[newv]) == 0)
-	dohm_add (tihm, tag_temp, length, encoding, IPOD_TITLE);
+	ipod_type = IPOD_TITLE;
       else if (strcmp (identifier, ID3_ARTIST[newv]) == 0)
-	dohm_add (tihm, tag_temp, length, encoding, IPOD_ARTIST);
+	ipod_type = IPOD_ARTIST;
       else if (strcmp (identifier, ID3_ALBUM[newv]) == 0)
-	dohm_add (tihm, tag_temp, length, encoding, IPOD_ALBUM);
+	ipod_type = IPOD_ALBUM;
       else if (strcmp (identifier, ID3_COMMENT[newv]) == 0)
-	dohm_add (tihm, tag_temp, length, encoding, IPOD_COMMENT);
+	ipod_type = IPOD_COMMENT;
+      else if (strcmp (identifier, ID3_COMPOSER[newv]) == 0)
+	ipod_type = IPOD_COMPOSER;
       else if (strcmp (identifier, ID3_ARTWORK[newv]) == 0)
 	parse_artwork (tihm, fh, length, id3v2_majorversion);
       else if (strcmp (identifier, ID3_TRACK[newv]) == 0) {
-	/* some id3 tags have track/total tracks in the TRK field */
+	/* some id3 tags have track/total tracks in the TRCK field */
 	slash = strchr (tag_temp, '/');
 
 	if (slash) *slash = 0;
@@ -408,8 +416,10 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	  genre_temp[j] = 41;
 	}
       }
-    }
 
+      if (ipod_type != -1)
+	dohm_add (tihm, tag_temp, length, encoding, ipod_type);
+    }
   } else if (version == 1) {
     char *tmp;
 

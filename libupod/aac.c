@@ -94,12 +94,13 @@ int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
   unsigned char *image_data;
   u_int64_t cksum;
 
+#if defined(HAVE_LIBWAND)
   if (tihm->image_data)
     return 0;
 
   mp3_debug ("Cover artwork found. Image size is %i B\n", meta.offset);
 
-  image_data = (unsigned char *)calloc(1, meta.offset - sizeof (struct qt_meta));
+  image_data = (unsigned char *)calloc(meta.offset - sizeof (struct qt_meta), 1);
 
   fseek (fd, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
   fread (image_data, 1, meta.offset - sizeof (struct qt_meta), fd);
@@ -113,6 +114,9 @@ int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
 
   tihm->image_data  = image_data;
   tihm->image_size  = meta.offset - sizeof (struct qt_meta);
+#else
+  mp3_debug ("Cover artwork found and ignored (libupod compiled without libwand).\n");
+#endif  
 
   return 0;
 }
