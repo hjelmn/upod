@@ -10,8 +10,8 @@
 #define CRC32POLY 	0x04C11DB7l
 #define CRC64POLY 	0xd800000000000000ll
 
-void crc32_init_table(void);
-void crc64_init_table(void);
+static void crc32_init_table(void);
+static void crc64_init_table(void);
 
 static u_int32_t crc32_table[256];
 static u_int64_t crc64_table[256];

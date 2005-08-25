@@ -176,7 +176,8 @@ int sd_song_add (ipoddb_t *ipod_sd, char *ipod_path, int start, int stop, int vo
   db_log (ipod_sd, 0, "sd_song_add: entering...\n");
   db_log (ipod_sd, 0, "sd_song_add: adding file %s to database.\n", ipod_path);
 
-  to_unicode (&unicode_data, &unicode_length, ipod_path, strlen (ipod_path), "UTF-8", "UTF-16BE");
+  libupod_convstr ((void **)&unicode_data, &unicode_length, (void *)ipod_path,
+		   strlen (ipod_path), "UTF-8", "UTF-16BE");
 
   if (db_lookup (ipod_sd, IPOD_PATH, ipod_path) > -1) {
     /* Future. Check modification date of file vs. database. */

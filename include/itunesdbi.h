@@ -596,13 +596,15 @@ int db_dshm_create (tree_node_t **entry, int type);
 
 
 /* unicode.c */
-void to_unicode (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
-		 size_t src_len, char *src_encoding, char *dst_encoding);
+void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
+		      char *src_encoding, char *dst_encoding);
+#define to_utf8(dst, src, src_len, src_encoding) libupod_convstr((void **)dst, NULL, (void *)src, src_len, src_encoding, "UTF-8")
+
 void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		      size_t src_len, char *src_encoding);
-int unicodencasecmp (u_int8_t *string1, size_t string1_len, u_int8_t *string2, size_t string2_len);
-void to_utf8 (u_int8_t **dst, u_int8_t *src, size_t src_len, char *encoding);
 
+
+/* mp3.c/aac.c */
 int mp3_fill_tihm (u_int8_t *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);
 

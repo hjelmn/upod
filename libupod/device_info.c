@@ -63,7 +63,8 @@ int device_info_write (ipod_t *ipod) {
   if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, &ipod_name)) < 0)
     return ret;
 
-  to_unicode (&unicode_name, &unicode_len, ipod_name, strlen (ipod_name), "UTF-8", UTF_ENC);
+  libupod_convstr ((void **)&unicode_name, &unicode_len, (void *)ipod_name,
+		   strlen (ipod_name), "UTF-8", UTF_ENC);
 
   free (ipod_name);
 

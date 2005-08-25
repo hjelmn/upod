@@ -313,9 +313,11 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
 
   if (!(flags & FLAG_UTF8)) {
     if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
-      to_unicode_hack (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8");
+      to_unicode_hack (&unicode_data, &unicode_length, dohm.data,
+		       strlen (dohm.data), "UTF-8");
     else
-      to_unicode (&unicode_data, &unicode_length, dohm.data, strlen (dohm.data), "UTF-8", UTF_ENC);
+      libupod_convstr ((void **)&unicode_data, &unicode_length, (void *)dohm.data,
+		    strlen (dohm.data), "UTF-8", UTF_ENC);
   } else {
     unicode_data   = (u_int16_t *)dohm.data;
     unicode_length = strlen (dohm.data);
