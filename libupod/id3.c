@@ -48,6 +48,9 @@
 #include <libgen.h>
 #endif
 
+#define ID3FLAG_EXTENDED 0x40
+#define ID3FLAG_FOOTER   0x10
+
                        /* v2.2 v2.3 */
 static char *ID3_TITLE[2]   = {"TT2", "TIT2"};
 static char *ID3_ARTIST[2]  = {"TP1", "TPE1"};
@@ -90,9 +93,6 @@ static int synchsafe_to_int (unsigned char *buf, int nbytes) {
   return id3v2_len;
 }
 
-#define ID3FLAG_EXTENDED 0x40
-#define ID3FLAG_FOOTER   0x10
-
 int id3v2_size (unsigned char data[14]) {
   int major_version;
   unsigned char id3v2_flags;
@@ -107,17 +107,18 @@ int id3v2_size (unsigned char data[14]) {
     major_version = head & 0xff;
     
     id3v2_flags = data[5];
+    id3v2_len   = 10 + synchsafe_to_int (&data[6], 4);
 
     if (id3v2_flags & ID3FLAG_EXTENDED) {
       /* Skip extended header */
       if (major_version != 3)
-	id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
+	id3v2_len += synchsafe_to_int (&data[10], 4);
       else
-	id3v2_extendedlen = big32_2_arch32 (((int *)&data[6])[0]);
+	id3v2_len += big32_2_arch32 (((int *)&data[10])[0]);
     }
     
     /* total length = 10 (header) + extended header length (flag 0x40) + id3v2len + 10 (footer, if present -- flag 0x10) */
-    id3v2_len = 10 + synchsafe_to_int (&data[7], 4) + id3v2_extendedlen + (id3v2_flags & ID3FLAG_FOOTER) ? 10 : 0;
+    id3v2_len += (id3v2_flags & ID3FLAG_FOOTER) ? 10 : 0;
   }
 
   return id3v2_len;

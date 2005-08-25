@@ -171,7 +171,7 @@ static int find_first_frame (struct mp3_file *mp3) {
 
     /* MPEG-1 Layer III */
     if ((ret = check_mp3_header (header)) == 0) {
-      /* Check for Xing frame and skip it */
+      /* Check for an Xing frame (speeds up parsing) */
       fseek (mp3->fh, 32, SEEK_CUR);
       fread (&buffer, 4, 1, mp3->fh);
 
@@ -275,13 +275,14 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
     mp3_debug ("mp3_open: Lyrics are 0x%x Bytes in length.\n", lyrics_size);
   }
 
-  fseek (mp3->fh, 0, SEEK_SET);
-
   /* find and skip id3v2 tag if it exists */
-  fread (buffer, 1, 10, mp3->fh);    
+  fseek (mp3->fh, 0, SEEK_SET);
+  fread (buffer, 1, 14, mp3->fh);    
   mp3->tagv2_size = id3v2_size (buffer);
 
   fseek (mp3->fh, mp3->tagv2_size, SEEK_SET);
+
+  mp3_debug ("mp3_open: id3v2 size: 0x%08x\n", mp3->tagv2_size);
   /****************************************/
 
   mp3->vbr = 0;
@@ -290,6 +291,8 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
 
   return find_first_frame (mp3);
 }
+
+#define FRAME_COUNT 10
 
 static int mp3_scan (struct mp3_file *mp3) {
   int header;
@@ -304,7 +307,7 @@ static int mp3_scan (struct mp3_file *mp3) {
   mp3_debug ("mp3_scan: Entering...\n");
 
   if (mp3->frames == 0 || mp3->xdata_size == 0) {
-    while (ftell (mp3->fh) < mp3->data_size) {
+    while (ftell (mp3->fh) < mp3->data_size && (frames < FRAME_COUNT || mp3->vbr)) {
       fread (&header, 4, 1, mp3->fh);
 
       header = big32_2_arch32 (header);
@@ -343,7 +346,13 @@ static int mp3_scan (struct mp3_file *mp3) {
       fseek (mp3->fh, frame_size - 4, SEEK_CUR);      
       frames++;
     }
-    
+
+    if (frames == FRAME_COUNT) {
+      fprintf (stderr, "here\n");
+      frames = (int)((float)((mp3->data_size - mp3->tagv2_size) * FRAME_COUNT) / (float)total_framesize);
+      total_framesize = mp3->data_size - mp3->tagv2_size;
+    }
+
     if (mp3->frames == 0)
       mp3->frames = frames;
 
