@@ -22,42 +22,42 @@
 #include "itunesdbi.h"
 
 /* An itunesdb has two dshm entries. An artworkdb has three. */
-int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header,
-		      int type) {
-  int i;
-  struct tree_node *root;
-  struct db_dshm *dshm_data;
-
+int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header, int index) {
+  struct db_dbhm *dbhm_data;
+ 
   if (ipod_db == NULL || dshm_header == NULL || ipod_db->tree_root == NULL)
     return -EINVAL;
 
-  root = ipod_db->tree_root;
+  dbhm_data = (struct db_dbhm *)ipod_db->tree_root->data;
 
-  for (i = 0 ; i < root->num_children ; i++) {
-    *dshm_header = (tree_node_t *) root->children[i];
-    dshm_data = (struct db_dshm *) (*dshm_header)->data;
-    
-    if (dshm_data->dshm == DSHM && dshm_data->type == type)
-      break;
-  }
-
-  if (i == root->num_children){
+  if (dbhm_data->num_dshm < index) {
     *dshm_header = NULL;
     return -1;
   }
 
+  *dshm_header = ipod_db->tree_root->children[index - 1];
+  
   return 0;
 }
 
-int db_dshm_create (tree_node_t **entry, int type) {
+int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type) {
   struct db_dshm *dshm_data;
-  int ret;
+  struct db_dbhm *dbhm_data;
+  tree_node_t *list_header, *dshm;
 
-  if ((ret = db_node_allocate (entry, DSHM, DSHM_CELL_SIZE, DSHM_CELL_SIZE)) < 0)
-    return ret;
+  dbhm_data = (struct db_dbhm *)ipod_db->tree_root->data;
+  dbhm_data->num_dshm += 1;
 
-  dshm_data = (struct db_dshm *)(*entry)->data;
-  dshm_data->type  = type;
+  db_dshm_create (&dshm);
+  dshm_data = (struct db_dshm *)dshm->data;
+  dshm_data->index = dbhm_data->num_dshm;
+
+  db_attach (ipod_db->tree_root, dshm);
+
+  if (list_type != NULL) {
+    db_node_allocate (&list_header, list_type, 0x5c, 0);
+    db_attach (dshm, list_header);
+  }
 
   return 0;
 }

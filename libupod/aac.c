@@ -90,35 +90,23 @@ int is_media_header (int type) {
   return 0;
 }
 
-int parse_covr (FILE *fd, struct qt_meta meta, tihm_t *tihm) {
-  unsigned char *image_data;
-  u_int64_t cksum;
+#if defined(HAVE_LIBWAND)
+int read_artwork (FILE *fh, tihm_t *tihm, size_t image_size);
+#endif
 
+int parse_covr (FILE *fh, struct qt_meta meta, tihm_t *tihm) {
 #if defined(HAVE_LIBWAND)
   if (tihm->image_data)
     return 0;
 
-  mp3_debug ("Cover artwork found. Image size is %i B\n", meta.offset);
+  fseek (fh, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
 
-  image_data = (unsigned char *)calloc(meta.offset - sizeof (struct qt_meta), 1);
-
-  fseek (fd, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
-  fread (image_data, 1, meta.offset - sizeof (struct qt_meta), fd);
-
-  cksum = upod_crc64 (image_data, meta.offset - sizeof (struct qt_meta));
-
-  tihm->has_artwork = 1;
-
-  /* a checksum is used for the image id to avoid duplicate images in the database */
-  tihm->artwork_id  = cksum;
-
-  tihm->image_data  = image_data;
-  tihm->image_size  = meta.offset - sizeof (struct qt_meta);
+  return read_artwork (fh, tihm, meta.offset - sizeof (struct qt_meta));
 #else
   mp3_debug ("Cover artwork found and ignored (libupod compiled without libwand).\n");
-#endif  
 
   return 0;
+#endif  
 }
 
 /* Parse user data's (udat) meta data (meta) section */
@@ -250,8 +238,8 @@ static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int tim
     bmin = fmin ((double)sample_size, bmin);
   }
   
-  /* Silent frames throw off the calculation of bitrates for iTunes-created AAC files.
-     Do not use them in the calculation of the bitrate. */
+  /* Silent frames throw off the average bitrate calculation for iTunes-created AAC files
+     and are thus dropped from the calculated bitrate. */
   *bit_rate = (unsigned int)BITRATE(avg, num_samples-silent_samples, time_scale);
   
   /* I have no idea why this works for apple lossless (or if it works in all cases) */

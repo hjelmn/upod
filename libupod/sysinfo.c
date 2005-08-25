@@ -43,7 +43,7 @@
 
 int sysinfo_read (ipod_t *ipod, char *filename) {
   FILE *fh;
-  char buffer[255];
+  char buffer[128];
 
   fh = fopen (filename, "r");
 
@@ -53,7 +53,7 @@ int sysinfo_read (ipod_t *ipod, char *filename) {
   if (fh == NULL)
     return -errno;
 
-  while (fgets (buffer, 255, fh)) {
+  while (fgets (buffer, 128, fh)) {
     char *field, *value, *tmp;
     
     field = strtok (buffer, ":");
@@ -67,7 +67,7 @@ int sysinfo_read (ipod_t *ipod, char *filename) {
     if (tmp)
       *tmp = '\0';
 
-    if        (strncmp (field, "BoardHwName", 11) == 0)
+    if      (strncmp (field, "BoardHwName", 11) == 0)
       ipod->board         = strdup (value);
     else if (strncmp (field, "ModelNumStr", 11) == 0)
       ipod->model_number  = strdup (value);

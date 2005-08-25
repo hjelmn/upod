@@ -21,18 +21,6 @@
 
 #include "itunesdbi.h"
 
-int db_abhm_create (tree_node_t **entry) {
-  struct db_pyhm *pyhm_data;
-  int ret;
-
-  if ((ret = db_node_allocate (entry, ABHM, ABHM_CELL_SIZE, ABHM_CELL_SIZE)) < 0)
-    return ret;
-
-  pyhm_data = (struct db_pyhm *)(*entry)->data;
-
-  return 0;
-}
-
 int db_abhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm) {
   struct db_abhm *abhm_data;
   

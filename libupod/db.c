@@ -207,7 +207,7 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
 			  size_t tree_size, /*@null@*/tree_node_t *parent, char *buffer) {
   tree_node_t *tnode_0;
   size_t bytes_read = *bytes_readp;
-  u_int32_t entry_size, copy_size;
+  u_int32_t copy_size;
 
   int is_alloced = 0;
   int has_children = 0;

@@ -146,7 +146,7 @@ int main (int argc, char *argv[]) {
       fprintf (stdout, "%04i |\n", tihm->num);
       
       fprintf (stdout, " encoding: %d\n", tihm->bitrate);
-      fprintf (stdout, " length  : %03i:%02.3f\n", tihm->time/60000, (double)(tihm->time % 60000)/1000.0);
+      fprintf (stdout, " length  : %03i:%02i.%03i\n", tihm->time/60000, (tihm->time % 60000)/1000, tihm->time % 1000);
       fprintf (stdout, " type    : %d\n", tihm->type);
       fprintf (stdout, " num dohm: %d\n", tihm->num_dohm);
       fprintf (stdout, " samplert: %d\n", tihm->samplerate);

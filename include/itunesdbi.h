@@ -84,7 +84,7 @@ struct db_dshm {
   u_int32_t dshm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t type;
+  u_int32_t index;
 
   u_int32_t unk0[20]; /* 0's */
 };
@@ -466,6 +466,13 @@ typedef struct tree_node {
 #define TIHM_CELL_SIZE 0xf4
 #define TLHM_CELL_SIZE 0x5c
 
+#define db_abhm_create(entry) db_node_allocate(entry, string_to_int("abhm"), 0x94, 0x94)
+#define db_alhm_create(entry) db_node_allocate(entry, string_to_int("alhm"), 0x5c, 0x00)
+#define db_dshm_create(entry) db_node_allocate(entry, string_to_int("dshm"), 0x60, 0x60)
+#define db_flhm_create(entry) db_node_allocate(entry, string_to_int("flhm"), 0x5c, 0x00)
+#define db_ilhm_create(entry) db_node_allocate(entry, string_to_int("ilhm"), 0x5c, 0x00)
+#define db_plhm_create(entry) db_node_allocate(entry, string_to_int("plhm"), 0x5c, 0x00)
+#define db_tlhm_create(entry) db_node_allocate(entry, string_to_int("tlhm"), 0x5c, 0x00)
 
 
 #define UPOD_NOT_IMPL(s) do {\
@@ -563,7 +570,6 @@ int db_pyhm_dohm_detach (tree_node_t *pyhm_header, int index, tree_node_t **stor
 
 
 /* abhm.c */
-int db_abhm_create (tree_node_t **entry);
 int db_abhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
 int db_abhm_aihm_attach (tree_node_t *entry, tree_node_t *aihm);
 
@@ -591,9 +597,8 @@ int db_dohm_itunes_hide (tree_node_t *entry, int column_id);
 
 
 /* dshm.c */
-int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header, int type);
-int db_dshm_create (tree_node_t **entry, int type);
-
+int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header, int index);
+int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type);
 
 /* unicode.c */
 void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,

@@ -35,7 +35,6 @@ static int db_dbhm_create (tree_node_t **entry, int flags) {
   dbhm_data->unk4           = rand ();
   dbhm_data->unk5           = 0x00000001;
   dbhm_data->itunes_version = 0x00000010;
-  dbhm_data->num_dshm       = 0x2;
 
   return 0;
 }
@@ -50,32 +49,11 @@ static int db_dfhm_create (tree_node_t **entry) {
   dfhm_data = (struct db_dfhm *) (*entry)->data;
 
   dfhm_data->unk1      = 0x00000001;
-  dfhm_data->num_dshm  = 0x00000003;
 
   /* This is the value used by iTunes */
   dfhm_data->next_iihm = 0x00000064;
 
   return 0;
-}
-
-static int db_ilhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, ILHM, ILHM_CELL_SIZE, 0);
-}
-
-static int db_alhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, ALHM, ALHM_CELL_SIZE, 0);
-}
-
-static int db_flhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, FLHM, FLHM_CELL_SIZE, 0);
-}
-
-static int db_tlhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, TLHM, TLHM_CELL_SIZE, 0);
-}
-
-static int db_plhm_create (tree_node_t **entry) {
-  return db_node_allocate (entry, PLHM, PLHM_CELL_SIZE, 0);
 }
 
 /**
@@ -93,7 +71,6 @@ static int db_plhm_create (tree_node_t **entry) {
      0 on success
 **/
 int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, u_int8_t *path, int flags) {
-  tree_node_t *root, *entry, *entry2;
   int ret;
 
   if ((itunesdb == NULL) || (db_name == NULL))
@@ -101,23 +78,14 @@ int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, u_int8_t *path, int flags)
 
   db_log (itunesdb, 0, "db_create: entering...\n");
 
-  db_dbhm_create (&root, flags);
+  db_dbhm_create (&itunesdb->tree_root, flags);
 
-  /* create song list */
-  db_dshm_create (&entry, 1); /* type 1 is the track list */
-  db_attach (root, entry);
+  /* create song list (first data section) */
+  db_dshm_add (itunesdb, TLHM);
 
-  db_tlhm_create (&entry2);
-  db_attach (entry, entry2);
+  /* create master playlist (second data section) */
+  db_dshm_add (itunesdb, PLHM);
 
-  /* create master playlist */
-  db_dshm_create (&entry, 2); /* type 2 is the playlist list */
-  db_attach (root, entry);
-
-  db_plhm_create (&entry2);
-  db_attach (entry, entry2);
-
-  itunesdb->tree_root = root;
   itunesdb->flags = flags;
   itunesdb->type  = 0;
   itunesdb->path  = strdup (path);
@@ -130,37 +98,22 @@ int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, u_int8_t *path, int flags)
 }
 
 int db_photo_create (ipoddb_t *photodb, u_int8_t *path) {
-  tree_node_t *root, *entry, *entry2;
-
-  if (photodb == NULL)
+  if (photodb == NULL || path == NULL)
     return -EINVAL;
 
   db_log (photodb, 0, "db_photo_create: entering (photodb = %08x)...\n", photodb);
 
-  db_dfhm_create (&root);
+  db_dfhm_create (&photodb->tree_root);
 
-  /* create image list */
-  db_dshm_create (&entry, 1); /* type 1 is the image list */
-  db_attach (root, entry);
+  /* create image list (first data section*/
+  db_dshm_add (photodb, ILHM);
 
-  db_ilhm_create (&entry2);
-  db_attach (entry, entry2);
+  /* create album list (second data section) */
+  db_dshm_add (photodb, ALHM);
 
-  /* create album list */
-  db_dshm_create (&entry, 2); /* type 2 is the album list */
-  db_attach (root, entry);
+  /* create photo list (third data section) */
+  db_dshm_add (photodb, FLHM);
 
-  db_alhm_create (&entry2);
-  db_attach (entry, entry2);
-
-  /* create photo list */
-  db_dshm_create (&entry, 3); /* type 3 is the fileid list */
-  db_attach (root, entry);
-
-  db_flhm_create (&entry2);
-  db_attach (entry, entry2);
-
-  photodb->tree_root = root;
   photodb->type = 1;
   photodb->path = strdup (path);
 

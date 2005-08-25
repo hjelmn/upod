@@ -29,8 +29,8 @@ int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
   return -1;
 }
 
-int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
-		      tree_node_t **parent, int tihm_num) {
+int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **parent,
+		      int tihm_num) {
   tree_node_t *dshm_header;
   int entry_num;
   int ret;
@@ -40,7 +40,7 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
 
   /* find the song list */
   if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
-    db_log (itunesdb, ret, "Could not get song list header\n");
+    db_log (itunesdb, ret, "db_tihm_retrieve: Could not get song list header\n");
     return ret;
   }
 
@@ -54,7 +54,8 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry,
   return entry_num;
 }
 
-static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_int32_t *tmp, int list_length) {
+static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_int32_t *tmp,
+		    int list_length) {
   int i, j, k;
 
   tree_node_t *dohm_header1, *dohm_header2;
