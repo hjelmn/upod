@@ -270,7 +270,7 @@ int sd_song_remove (ipoddb_t *ipod_sd, int number) {
     }
 
     /* decrease the song count */
-    dec_uint32 (sd_data, 0);
+    dec_uint24 (sd_data, 0);
     
     sd_size -= 0x00022e;
     ipod_sd->tree_root->data_size = sd_size;

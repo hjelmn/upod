@@ -84,8 +84,8 @@ static int encoding_equiv (char *encoding1, char *encoding2) {
       return 1;
   } else if (encoding_utf16 (encoding1) && encoding_utf16 (encoding2))
     return 1;
-  else
-    return 0;
+
+  return 0;
 }
 
 void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
@@ -111,10 +111,10 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
 	continue;
       
       if ((src8[i] & 0xe0) == 0xe0) {
-	dst16[x] = src8[i+2] & 0x3f | ((src8[i+1] & 0x3f) << 6) | ((src8[i] & 0x0f) << 12);
+	dst16[x] = (src8[i+2] & 0x3f) | ((src8[i+1] & 0x3f) << 6) | ((src8[i] & 0x0f) << 12);
 	i += 2;
       } else if ((src8[i] & 0xc0) == 0xc0) {
-	dst16[x] = src8[i+1] & 0x3f | ((src8[i] & 0x1f) << 6);
+	dst16[x] = (src8[i+1] & 0x3f) | ((src8[i] & 0x1f) << 6);
 	i += 1;
       } else
 	dst16[x] = src8[i];

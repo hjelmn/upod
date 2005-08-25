@@ -41,13 +41,14 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 /* The image described by image_data will be scaled to the correct size */
 int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
 		  size_t image_size, size_t thumb_width, size_t thumb_height) {
+#if defined(HAVE_LIBWAND)
   tree_node_t *dshm_header;
   tree_node_t *dohm_header, *inhm_header, *iihm_header;
 
   struct db_iihm *iihm_data;
   
   char file_name[255];
-  char file_name_mac[255];
+  char file_name_mac[32];
   unsigned long file_id;
 
   int image_height, image_width;
@@ -66,7 +67,6 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
 
   db_log (photodb, 0, "db_thumb_add: entering...\n");
 
-#if defined(HAVE_LIBWAND)
   /* find the image list */
   if ((ret = db_iihm_retrieve (photodb, &iihm_header, &dshm_header, iihm_identifier)) < 0) {
     db_log (photodb, ret, "db_thumb_add: could not retrieve image entry\n");
@@ -141,7 +141,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   iihm_data = (struct db_iihm *)iihm_header->data;
   iihm_data->num_thumbs++;
 #else
-  db_log (photodb, 0, "db_thumb_add: nothing done, not compiled with libwand.");
+  db_log (photodb, 0, "db_thumb_add: nothing to do, libupod was not compiled with libwand support.");
 #endif
 
   db_log (photodb, 0, "db_thumb_add: complete\n");
@@ -167,6 +167,7 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
     return ret;
   }
 
+  /* check for duplicate images */
   if (db_lookup_image (photodb, id)) {
     db_log (photodb, ret, "db_photo_add: image already exists in database\n");
 
@@ -199,7 +200,7 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
 
   db_album_image_add (photodb, 0, identifier);
 
-  /* everything was successfull, increase the image count in the ilhm header */
+  /*  increase the image count in the list header */
   ilhm_data = (db_ilhm_t *)dshm_header->children[0]->data;
   ilhm_data->list_entries += 1;
 
@@ -211,8 +212,7 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
 }
 
 int db_photo_remove (ipoddb_t *photodb, u_int32_t identifier) {
-
-  return -1;
+  UPOD_NOT_IMPL ("db_photo_remove");
 }
 
 int db_photo_list (ipoddb_t *artworkdb, db_list_t **head) {
@@ -239,8 +239,7 @@ int db_photo_list (ipoddb_t *artworkdb, db_list_t **head) {
     iihm_header = dshm_header->children[i];
     iptr = (int *)iihm_header->data;
 
-    /* only add tree nodes containing tihm entries
-       to the new song list */
+    /* only add tree nodes containing iihm entries */
     if (iptr[0] != IIHM)
       continue;
 
@@ -304,20 +303,17 @@ static iihm_t *db_iihm_fill (tree_node_t *iihm_header) {
 }
 
 void inhm_free (inhm_t *inhm) {
-  if (inhm == NULL)
-    return;
-
-  dohm_free (inhm->dohms, inhm->num_dohm);
+  if (inhm != NULL)
+    dohm_free (inhm->dohms, inhm->num_dohm);
 }
 
 void iihm_free (iihm_t *iihm) {
-  int i;
+  if (iihm != NULL) { 
+    int i;
 
-  if (iihm == NULL)
-    return;
+    for (i = 0 ; i < iihm->num_inhm ; i++)
+      inhm_free (&iihm->inhms[i]);
 
-  for (i = 0 ; i < iihm->num_inhm ; i++)
-    inhm_free (&iihm->inhms[i]);
-
-  free (iihm->inhms);
+    free (iihm->inhms);
+  }
 }

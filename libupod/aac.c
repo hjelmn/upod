@@ -39,8 +39,6 @@
 
 #include "genre.h"
 
-void mp3_debug (char *, ...);
-
 struct qt_atom {
   long size;
   long type;

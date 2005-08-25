@@ -613,6 +613,12 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 int mp3_fill_tihm (u_int8_t *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);
 
+#if defined(MP3_DEBUG)
+void mp3_debug (char *, ...);
+#else
+#define mp3_debug(x, ...)
+#endif
+
 /* id3.c */
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 

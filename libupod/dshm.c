@@ -54,7 +54,7 @@ int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type) {
 
   db_attach (ipod_db->tree_root, dshm);
 
-  if (list_type != NULL) {
+  if (list_type != 0) {
     db_node_allocate (&list_header, list_type, 0x5c, 0);
     db_attach (dshm, list_header);
   }

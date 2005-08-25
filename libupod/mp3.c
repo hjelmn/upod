@@ -1,6 +1,6 @@
 /**
  *   (c) 2002-2004 Nathan Hjelm <hjelmn@cs.unm.edu>
- *   v0.3.1 mp3.c 
+ *   v0.3.2 mp3.c 
  *
  *   (2004-10-28) : Correctly identifies good headers now.
  *   (2004-10-28) : Correctly parses files with LYRICS tags now.
@@ -22,17 +22,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
-
 #include "itunesdbi.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <string.h>
-#include <errno.h>
 
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -49,19 +39,17 @@
 #include <libgen.h>
 #endif
 
-#define MP3_DEBUG 0
-
 #define MP3_PROTECTION_BIT 0x00010000
 #define MP3_PADDING_BIT    0x00000200
 
+#if defined(MP3_DEBUG)
 void mp3_debug (char *format, ...) {
-#if MP3_DEBUG==1
   va_list arg;
   va_start (arg, format);
   vfprintf (stderr, format, arg);
   va_end (arg);
-#endif
 }
+#endif
 
 struct mp3_file {
   FILE *fh;
@@ -131,6 +119,9 @@ size_t layer_table[] = {
   -1, 3, 2, 1
 };
 
+/* in id3.c */
+int id3v2_size (unsigned char buf[14]);
+
 #define MPEG_VERSION(header) ((header & 0x00180000) >> 19)
 #define MPEG_LAYER(header) ((header & 0x00060000) >> 17)
 #define MPEG_BITRATEI(header) ((header & 0x0000f000) >> 12)
@@ -167,16 +158,6 @@ static int check_mp3_header (int header) {
     return 2;
   else
     return 1;
-}
-
-static int synchsafe_to_int (char *buffer, int len) {
-  int i;
-  int sum = 0;
-
-  for (i = 0 ; i < len ; i++)
-    sum = (sum << 7) | buffer[i];
-  
-  return sum;
 }
 
 static int find_first_frame (struct mp3_file *mp3) {
@@ -223,7 +204,6 @@ static int find_first_frame (struct mp3_file *mp3) {
       }
 
       mp3->initial_header = header;
-
       mp3->samplerate = SAMPLERATE(header);
 
       mp3_debug ("Inital bitrate = %i\n", BITRATE(header));
@@ -243,9 +223,8 @@ static int find_first_frame (struct mp3_file *mp3) {
 static int mp3_open (char *file_name, struct mp3_file *mp3) {
   struct stat statinfo;
 
-  char buffer[10];
+  char buffer[14];
   int has_v1 = 0;
-  char v2flags;
 
   mp3_debug ("mp3_open: Entering...\n");
 
@@ -299,22 +278,11 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
   fseek (mp3->fh, 0, SEEK_SET);
 
   /* find and skip id3v2 tag if it exists */
-  memset (buffer, 0, 5);
-  fread (buffer, 1, 5, mp3->fh);
-  if (strncmp (buffer, "ID3", 3) == 0) {
-    v2flags = buffer[4];
-    fseek (mp3->fh, 6, SEEK_SET);
-    fread (buffer, 1, 4, mp3->fh);
-    
-    mp3->tagv2_size = synchsafe_to_int (buffer, 4) + 10;
+  fread (buffer, 1, 10, mp3->fh);    
+  mp3->tagv2_size = id3v2_size (buffer);
 
-    fseek (mp3->fh, mp3->tagv2_size, SEEK_SET);
-
-    mp3_debug ("mp3_open: Found id3v2 tag, size = %i Bytes, flags = %1x\n", mp3->tagv2_size, v2flags);
-  } else
-    fseek (mp3->fh, 0, SEEK_SET);
-
-  /*                                      */
+  fseek (mp3->fh, mp3->tagv2_size, SEEK_SET);
+  /****************************************/
 
   mp3->vbr = 0;
 
@@ -383,7 +351,7 @@ static int mp3_scan (struct mp3_file *mp3) {
       mp3->xdata_size = total_framesize;
   }
 
-  mp3->length     = (int)((double)mp3->frames * 26.12245);
+  mp3->length     = (int)((double)mp3->frames * 26.12245); /* each mpeg frame represents 26.12245ms */
   mp3->bitrate    = (int)(((float)mp3->xdata_size * 8.0)/(float)mp3->length);
 
   mp3_debug ("mp3_scan: Finished scan. SampleRate: %i, BitRate: %i, Length: %i, Frames: %i.\n",

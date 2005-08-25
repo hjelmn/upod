@@ -260,4 +260,4 @@ static char *genre_table[] =
 */
 };
 
-const static int genre_count = ((int)(sizeof(genre_table)/sizeof(char*))-1);
+/*const static int genre_count = ((int)(sizeof(genre_table)/sizeof(char*))-1);*/

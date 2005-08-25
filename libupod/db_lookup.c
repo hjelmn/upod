@@ -44,7 +44,7 @@
 
 int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
   struct tree_node *dshm_header, *tihm_header, *dohm_header, *dohm_temp;
-  int i, ret;
+  int i, ret = -1;
 
   /* simpifies code */
   db_tlhm_t *tlhm_data;

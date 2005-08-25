@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.1.1 id3.c 
+ *   v1.1.3 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -48,8 +48,6 @@
 #include <libgen.h>
 #endif
 
-void mp3_debug (char *, ...);
-
                        /* v2.2 v2.3 */
 static char *ID3_TITLE[2]   = {"TT2", "TIT2"};
 static char *ID3_ARTIST[2]  = {"TP1", "TPE1"};
@@ -92,6 +90,39 @@ static int synchsafe_to_int (unsigned char *buf, int nbytes) {
   return id3v2_len;
 }
 
+#define ID3FLAG_EXTENDED 0x40
+#define ID3FLAG_FOOTER   0x10
+
+int id3v2_size (unsigned char data[14]) {
+  int major_version;
+  unsigned char id3v2_flags;
+  int id3v2_len = 0;
+  int id3v2_extendedlen = 0;
+  int head;
+
+  memcpy (&head, data, 4);
+  head = big32_2_arch32 (head);
+
+  if ((head & 0xffffff00) == 0x49443300) {
+    major_version = head & 0xff;
+    
+    id3v2_flags = data[5];
+
+    if (id3v2_flags & ID3FLAG_EXTENDED) {
+      /* Skip extended header */
+      if (major_version != 3)
+	id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
+      else
+	id3v2_extendedlen = big32_2_arch32 (((int *)&data[6])[0]);
+    }
+    
+    /* total length = 10 (header) + extended header length (flag 0x40) + id3v2len + 10 (footer, if present -- flag 0x10) */
+    id3v2_len = 10 + synchsafe_to_int (&data[7], 4) + id3v2_extendedlen + (id3v2_flags & ID3FLAG_FOOTER) ? 10 : 0;
+  }
+
+  return id3v2_len;
+}
+
 /*
   find_id3 takes in a file descriptor, a pointer to where the tag data is to be put,
   and a pointer to where the data length is to be put.
@@ -106,11 +137,8 @@ static int synchsafe_to_int (unsigned char *buf, int nbytes) {
 static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen, int *major_version) {
   int head;
 
-  fread(&head, 4, 1, fh);
-    
-#if BYTE_ORDER == LITTLE_ENDIAN
-  head = bswap_32(head);
-#endif
+  fread(&head, 4, 1, fh);    
+  head = big32_2_arch32 (head);
 
   if (version == 2) {
     unsigned char data[10];
@@ -127,10 +155,9 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
       id3v2_flags = data[1];
       id3v2_len   = synchsafe_to_int (&data[2], 4);
 
-      /* total length = id3v2len + 010 + footer (if present -- flag 0x10) */
       /* the 6th bit of the flag field being set indicates that an
 	 extended header is present */
-      if (id3v2_flags & 0x40) {
+      if (id3v2_flags & ID3FLAG_EXTENDED) {
 	/* Skip extended header */
 	if (*major_version != 3)
 	  id3v2_extendedlen = synchsafe_to_int (&data[6], 4);
@@ -159,16 +186,12 @@ static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_da
       fread(&head, 1, 4, fh);
       fseek(fh, -128, SEEK_END);
 	
-#if BYTE_ORDER == LITTLE_ENDIAN
-      head = bswap_32(head);
-#endif
+      head = big32_2_arch32 (head);
     }
       
     /* version 1 */
     if ((head & 0xffffff00) == 0x54414700) {
-#if ID3_DEBUG==1
-      fprintf (stderr, "find_id3: found id3 tag.\n");
-#endif
+      mp3_debug ("find_id3: found id3v1 tag.\n");
 
       fread(tag_data, 1, 128, fh);
 	
