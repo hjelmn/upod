@@ -34,7 +34,7 @@
 #include <iconv.h>
 
 /* Converts the input from UTF8/ASCII to Unicode */
-void libupod_convstr (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
+void libupod_convstr (void **dst, size_t *dst_len, void *src,
 		      size_t src_len, char *src_encoding, char *dst_encoding) {
   iconv_t conv;
   size_t final_size;
