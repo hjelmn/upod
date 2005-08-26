@@ -55,19 +55,6 @@ struct qt_meta {
   u_int16_t data[4];
 };
 
-int is_container (int type) {
-  if (type == string_to_int ("trak") ||
-      type == string_to_int ("mdia") ||
-      type == string_to_int ("moov") ||
-      type == string_to_int ("stbl") ||
-      type == string_to_int ("minf") ||
-      type == string_to_int ("dinf") ||
-      type == string_to_int ("udta"))
-    return 1;
-
-  return 0;
-}
-
 /* media header */
 struct mdhd {
   u_int32_t flags;
@@ -79,18 +66,27 @@ struct mdhd {
   u_int16_t quality;
 };
 
-int is_media_header (int type) {
-  if (type == string_to_int ("mdhd"))
-    return 1;
+static int m4a_bitrates[] = {
+  28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
+};
 
-  return 0;
-}
+#define BITRATE(sample_size, num_samples, time_scale) ((sample_size * 8.0)/(double)(num_samples) * (double)time_scale/1000.0)/1000.0
+
+#define is_media_header(type) (type == string_to_int ("mdhd"))
+/* this list (like this parser) is only as complete as it needs to be */
+#define is_container(type) (type == string_to_int ("trak") || \
+			    type == string_to_int ("mdia") || \
+			    type == string_to_int ("moov") || \
+			    type == string_to_int ("stbl") || \
+			    type == string_to_int ("minf") || \
+			    type == string_to_int ("dinf") || \
+			    type == string_to_int ("udta"))
 
 #if defined(HAVE_LIBWAND)
 int read_artwork (FILE *fh, tihm_t *tihm, size_t image_size);
 #endif
 
-int parse_covr (FILE *fh, struct qt_meta meta, tihm_t *tihm) {
+static int parse_covr (FILE *fh, struct qt_meta meta, tihm_t *tihm) {
 #if defined(HAVE_LIBWAND)
   if (tihm->image_data)
     return 0;
@@ -106,7 +102,7 @@ int parse_covr (FILE *fh, struct qt_meta meta, tihm_t *tihm) {
 }
 
 /* Parse user data's (udat) meta data (meta) section */
-int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
+static int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom atom, tihm_t *tihm) {
   int seeked = 46;
   struct qt_meta meta;
   int size;
@@ -190,12 +186,6 @@ int parse_meta (unsigned char *buffer, int buffer_size, FILE *fd, struct qt_atom
 
   return 0;
 }
-
-int m4a_bitrates[] = {
-  28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
-};
-
-#define BITRATE(sample_size, num_samples, time_scale) ((sample_size * 8.0)/(double)(num_samples) * (double)time_scale/1000.0)/1000.0
 
 /* stsz atoms contain a table of sample sizes */
 static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int time_scale) {
@@ -340,32 +330,24 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
     if (atom.type == stsz && atom.size > 0x14 && bit_rate == 0)
       parse_stsz (fh, &bit_rate, &lossless, time_scale);
 
-    if (atom.size > sizeof(atom)) {
-      if (atom.size - sizeof(atom) < 2001) {
-	/* I have also found AAC files with multiple media header atoms. Ignore all but the first
-	   with a non-zero time_scale. */
-	if (is_media_header (atom.type) && time_scale == 0) {
-	  struct mdhd *mdhd = (struct mdhd *)buffer;
+    if (!is_container(atom.type)) {
+      /* I have come across AAC files that contain multiple media headers. When this
+	 occurs, all but the first with a non-zero time_scale will be ignored. */
+      if (is_media_header (atom.type)&& time_scale == 0) {
+	struct mdhd *mdhd = (struct mdhd *)buffer;
+	
+	fread (buffer, atom.size - sizeof(atom), 1, fh);
 	  
-	  fread (buffer, atom.size - sizeof(atom), 1, fh);
+	time_scale = mdhd->time_scale;
+	duration = (double)mdhd->duration/(double)time_scale;
 
-	  time_scale = mdhd->time_scale;
-
-	  duration = (double)mdhd->duration/(double)time_scale;
-
-	  mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %f seconds.\n", time_scale, duration);
-	} else if (atom.type == meta)
-	  parse_meta (buffer, buffer_size, fh, atom, tihm);
-	else if (!is_container(atom.type))
-	  fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
-      } else {
-	if (atom.type == meta)
-	  parse_meta (buffer, buffer_size, fh, atom, tihm);
-	else if (!is_container(atom.type))
-	  fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
-      }
-    } else
-      fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
+	mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %f seconds.\n",
+		   time_scale, duration);
+      } else if (atom.type == meta)
+	parse_meta (buffer, buffer_size, fh, atom, tihm);
+      else
+	fseek (fh, atom.size - sizeof(atom), SEEK_CUR);
+    }
   }
 
   fclose(fh);
@@ -378,14 +360,11 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
       int temp = m4a_bitrates[i-1] - bit_rate;
       int temp2 = m4a_bitrates[i] - bit_rate;
 
-      if (temp < 0 && (temp + temp2) > 0) {
-	bit_rate = m4a_bitrates[i-1];
+      if (temp <= 0 && (temp + temp2) > 0)
 	break;
-      } else if (temp < 0 && temp2 > 0 && (temp + temp2) <= 0) {
-	bit_rate = m4a_bitrates[i];
-	break;
-      }
     }
+
+    bit_rate = m4a_bitrates[i-1];
   }
 
   if (!lossless)

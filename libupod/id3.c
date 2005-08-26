@@ -324,7 +324,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       tag_temp = tag_data;
 
-      if (strcmp (identifier, ID3_ARTWORK[newv]) != 0) {
+      if (strcmp (identifier, ID3_ARTWORK[newv]) != 0 && length < 128) {
 	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
 	/* strip off any trailing \0's */
 	for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
