@@ -25,6 +25,9 @@
 #include "config.h"
 #endif
 
+/* use this to turn on mp3/aac/id3 debugging */
+/* #define MP3_DEBUG */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -656,4 +659,8 @@ int db_lookup_image (ipoddb_t *photodb, u_int64_t id);
 
 
 int get_uint24 (unsigned char *buf, int block);
+
+/* genre.c */
+extern char *genre_table[];
+
 #endif /* __ITUNESDBI_H */

@@ -42,7 +42,6 @@
 #define ID3_DEBUG 0
 
 #include "itunesdbi.h"
-#include "genre.h"
 
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>

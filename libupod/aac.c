@@ -37,8 +37,6 @@
 
 #include "itunesdbi.h"
 
-#include "genre.h"
-
 struct qt_atom {
   long size;
   long type;

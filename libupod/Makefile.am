@@ -10,5 +10,5 @@ libupod_la_SOURCES = aac.c album.c create.c device_info.c endian.c id3.c \
 	             ipod.c otg_playlist.c playlist.c song_list.c unicode.c \
 		     aihm.c cksum.c db_lookup.c dshm.c hexdump.c \
 		     image_list.c log.c pihm.c pyhm.c sysinfo.c \
-		     itunessd.c
+		     itunessd.c genre.c
 libupod_la_LDFLAGS = -version-info 3:1:2 -Wl,-multiply_defined -Wl,suppress
