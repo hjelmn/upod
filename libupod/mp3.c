@@ -1,9 +1,10 @@
 /**
  *   (c) 2002-2004 Nathan Hjelm <hjelmn@cs.unm.edu>
- *   v0.3.2 mp3.c 
+ *   v0.3.3 mp3.c 
  *
- *   (2004-10-28) : Correctly identifies good headers now.
- *   (2004-10-28) : Correctly parses files with LYRICS tags now.
+ *   (2004-08-26) : Fixed mp3 parsing for different samplerates.
+ *   (2004-10-28) : Correctly identifies proper mpeg frame headers.
+ *   (2004-10-28) : Correctly parses files with LYRICS tags.
  *
  *   ID3/LYRIC Tag information can be found at http://www.id3.org.
  *
@@ -42,6 +43,9 @@
 #define MP3_PROTECTION_BIT 0x00010000
 #define MP3_PADDING_BIT    0x00000200
 
+/* control the number of frames used by mp3_scan in approximating a file's bitrate and duration */
+#define FRAME_COUNT 30 /* 30 frames appears to be a reasonable trade-off between speed and accuracy */
+
 #if defined(MP3_DEBUG)
 void mp3_debug (char *format, ...) {
   va_list arg;
@@ -70,9 +74,9 @@ struct mp3_file {
   int layer;
   int version;
 
-  int samplerate; /* Hz */
+  int samplerate; /* samples/sec */
 
-  int length;     /* ms */
+  int duration; /* ms */
   int mod_date;
 };
 
@@ -292,8 +296,6 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
   return find_first_frame (mp3);
 }
 
-#define FRAME_COUNT 10
-
 static int mp3_scan (struct mp3_file *mp3) {
   int header;
   int ret;
@@ -307,6 +309,8 @@ static int mp3_scan (struct mp3_file *mp3) {
   mp3_debug ("mp3_scan: Entering...\n");
 
   if (mp3->frames == 0 || mp3->xdata_size == 0) {
+    /* This calculation will (from time to time) produce a duration that does not agree with the
+       value produced by itunes. */
     while (ftell (mp3->fh) < mp3->data_size && (frames < FRAME_COUNT || mp3->vbr)) {
       fread (&header, 4, 1, mp3->fh);
 
@@ -347,6 +351,7 @@ static int mp3_scan (struct mp3_file *mp3) {
       frames++;
     }
 
+    /* approximate the number of frames in the file */
     if (frames == FRAME_COUNT) {
       frames = (int)((double)((mp3->data_size - mp3->tagv2_size) * FRAME_COUNT) / (double)total_framesize);
       total_framesize = mp3->data_size - mp3->tagv2_size;
@@ -360,13 +365,14 @@ static int mp3_scan (struct mp3_file *mp3) {
       mp3->xdata_size = total_framesize;
   }
 
-  mp3->length     = (int)((double)mp3->frames * 26.12245); /* each mpeg frame represents 26.12245ms */
-  mp3->bitrate    = (int)(((float)mp3->xdata_size * 8.0)/(float)mp3->length);
+  /* duration (ms) = frames * ms/sec * (samples/frame)/(samples/sec) */
+  mp3->duration   = (int)((double)mp3->frames * 1000.0 * 1152.0/(double)mp3->samplerate);
+  mp3->bitrate    = (int)(((float)mp3->xdata_size * 8.0)/(float)mp3->duration);
 
   mp3_debug ("mp3_scan: Finished scan. SampleRate: %i, BitRate: %i, Length: %i, Frames: %i.\n",
-	     mp3->samplerate, mp3->bitrate, mp3->length, mp3->frames);
+	     mp3->samplerate, mp3->bitrate, mp3->duration, mp3->frames);
 
-  if (mp3->samplerate <= 0 || mp3->bitrate <= 0 || mp3->length <= 0)
+  if (mp3->samplerate <= 0 || mp3->bitrate <= 0 || mp3->duration <= 0)
     return -1;
 
   return 0;
@@ -395,7 +401,7 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
   tihm->bitrate = mp3.bitrate;
   tihm->vbr     = mp3.vbr;
   tihm->samplerate = mp3.samplerate;
-  tihm->time       = mp3.length;
+  tihm->time       = mp3.duration;
   tihm->size       = mp3.file_size;
   tihm->mod_date   = mp3.mod_date;
   tihm->creation_date = mp3.mod_date;
