@@ -21,10 +21,6 @@
 
 #include "itunesdbi.h"
 
-u_int32_t string_to_int (unsigned char *string) {
-  return string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3];
-}
-
 db_list_t *db_list_first (db_list_t *p) {
   db_list_t *x;
 
@@ -89,8 +85,8 @@ void db_list_free (db_list_t *p) {
 /*
   db_size_tree:
 
-    Internal utility function for acumulating the total size of
-  the database below an entry.
+  Internal utility function for calculating the total size of
+  of a sub-tree.
 */
 static int db_size_tree (tree_node_t *ptr) {
   int i, size = ptr->data_size;

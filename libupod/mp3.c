@@ -227,7 +227,7 @@ static int find_first_frame (struct mp3_file *mp3) {
 static int mp3_open (char *file_name, struct mp3_file *mp3) {
   struct stat statinfo;
 
-  char buffer[14];
+  unsigned char buffer[14];
   int has_v1 = 0;
 
   mp3_debug ("mp3_open: Entering...\n");
@@ -249,7 +249,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
   memset (buffer, 0, 5);
 
   fread (buffer, 1, 3, mp3->fh);
-  if (strncmp (buffer, "TAG", 3) == 0) {
+  if (strncmp ((char *)buffer, "TAG", 3) == 0) {
     mp3->data_size -= 128;
 
     has_v1 = 1;
@@ -263,7 +263,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
   memset (buffer, 0, 10);
   fread (buffer, 1, 9, mp3->fh);
 
-  if (strncmp (buffer, "LYRICS200", 9) == 0) {
+  if (strncmp ((char *)buffer, "LYRICS200", 9) == 0) {
     int lyrics_size;
     mp3_debug ("mp3_open: Found Lyrics v2.00\n");
 
@@ -273,7 +273,7 @@ static int mp3_open (char *file_name, struct mp3_file *mp3) {
     fread (buffer, 1, 6, mp3->fh);
 
     /* Include the size if LYRICS200 (9) and the size field (6) */
-    lyrics_size = strtol (buffer, NULL, 10) + 15;
+    lyrics_size = strtol ((char *)buffer, NULL, 10) + 15;
     mp3->data_size -= lyrics_size;
 
     mp3_debug ("mp3_open: Lyrics are 0x%x Bytes in length.\n", lyrics_size);
@@ -417,10 +417,10 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
    < 0 if any error occured
      0 if successful
 */
-int mp3_fill_tihm (u_int8_t *file_name, tihm_t *tihm){
+int mp3_fill_tihm (char *file_name, tihm_t *tihm){
   FILE *fh;
 
-  u_int8_t type_string[] = "MPEG audio file";
+  char type_string[] = "MPEG audio file";
 
   if (get_mp3_info(file_name, tihm) < 0) {
     return -1;

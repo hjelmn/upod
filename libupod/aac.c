@@ -131,7 +131,7 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
     mp3_debug ("Meta identifier: %c%c%c\n", meta.identifier[0], meta.identifier[1], meta.identifier[2]);
     mp3_debug ("Meta offset: %i\n", meta.offset);
     
-    if (size > buffer_size || strncmp(&meta.flag, "free",4) == 0)
+    if (size > buffer_size || strncmp((char *)&meta.flag, "free", 4) == 0)
       /* it is unlikely that any data we want will be larger than the buffer */
       fseek (aac->fh, size, SEEK_CUR);
     else {
@@ -143,16 +143,16 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
     /* some of the tag markers are 4 characters... i dont know how to correctly
      parse the meta data to check which (3 or 4 chars) we are encontering so
      handle all tag markers like they are only 3 chars (last 3 chars of 4 ones) */
-    if (strncmp (&meta.flag, "free", 4) == 0)
+    if (strncmp ((char *)&meta.flag, "free", 4) == 0)
       /* catch the free atom to exit */
       break;
-    else if (strncmp (meta.identifier, "nam", 3) == 0)
+    else if (strncmp ((char *)meta.identifier, "nam", 3) == 0)
       data_type = IPOD_TITLE;
-    else if (strncmp (meta.identifier, "ART", 3) == 0)
+    else if (strncmp ((char *)meta.identifier, "ART", 3) == 0)
       data_type = IPOD_ARTIST;
-    else if (strncmp (meta.identifier, "alb", 3) == 0)
+    else if (strncmp ((char *)meta.identifier, "alb", 3) == 0)
       data_type = IPOD_ALBUM;
-    else if (strncmp (&meta.flag, "gnre", 4) == 0) {
+    else if (strncmp ((char *)&meta.flag, "gnre", 4) == 0) {
       int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
 
@@ -160,30 +160,30 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
 	       strlen(genre_table[genre_num]), "UTF-8", data_type);
 
       continue;
-    } else if (strncmp (meta.identifier, "cmt", 3) == 0) 
+    } else if (strncmp ((char *)meta.identifier, "cmt", 3) == 0) 
       data_type = IPOD_COMMENT;
-    else if (strncmp (meta.identifier, "gen", 3) == 0)
+    else if (strncmp ((char *)meta.identifier, "gen", 3) == 0)
       data_type = IPOD_GENRE;
-    else if (strncmp (&meta.flag, "trkn", 4) == 0) {
+    else if (strncmp ((char *)&meta.flag, "trkn", 4) == 0) {
       tihm->track        = big16_2_arch16( ((short *)buffer)[1] );
       tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
       continue;
-    } else if (strncmp (&meta.flag, "disk", 4) == 0) {
+    } else if (strncmp ((char *)&meta.flag, "disk", 4) == 0) {
       tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
       tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
-    } else if (strncmp (meta.identifier, "day", 3) == 0) {
-      tihm->year = strtol (buffer, NULL, 10);
+    } else if (strncmp ((char *)meta.identifier, "day", 3) == 0) {
+      tihm->year = strtol ((char *)buffer, NULL, 10);
       continue;
-    } else if (strncmp (&meta.flag, "covr", 4) == 0) {
+    } else if (strncmp ((char *)&meta.flag, "covr", 4) == 0) {
       parse_covr (aac->fh, meta, tihm);
       continue;
-    } else if (strncmp (&meta.flag, "tmpo", 4) == 0) {
+    } else if (strncmp ((char *)&meta.flag, "tmpo", 4) == 0) {
       tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
       continue;
     } else
       continue;
 
-    dohm_add(tihm, buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
+    dohm_add(tihm, (char *)buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
   }
 
   return 0;
@@ -314,7 +314,7 @@ int aac_scan (struct m4a_file *aac) {
     /* I don't know what it means when an AAC has multiple stsz atoms, so
        only use the first encountered that has a bit_rate average over 0. */
     if (atom.type == stsz && atom.size > 0x14 && aac->bitrate == 0)
-      parse_stsz (aac->fh, &aac->bitrate, &aac->apple_lossless, aac->samplerate);
+      parse_stsz (aac->fh, (unsigned int *)&aac->bitrate, &aac->apple_lossless, aac->samplerate);
 
     if (!is_container(atom.type)) {
       /* I have come across AAC files that contain multiple media headers. When this

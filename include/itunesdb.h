@@ -262,7 +262,7 @@ int    db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data);
 int    db_lookup_playlist (ipoddb_t *itunesdb, char *data);
 
 int db_playlist_number      (ipoddb_t *itunesdb);
-int db_playlist_create      (ipoddb_t *itunesdb, u_int8_t *name);
+int db_playlist_create      (ipoddb_t *itunesdb, char *name);
 int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, u_int8_t *name);
 int db_playlist_delete      (ipoddb_t *itunesdb, int playlist);
 int db_playlist_tihm_add    (ipoddb_t *itunesdb, int playlist, int tihm_num);
@@ -271,7 +271,7 @@ int db_playlist_clear       (ipoddb_t *itunesdb, int playlist);
 int db_playlist_fill        (ipoddb_t *itunesdb, int playlist);
 int db_playlist_remove_all  (ipoddb_t *itunesdb, int tihm_num);
 int db_playlist_get_name    (ipoddb_t *itunesdb, int playlist,
-			     u_int8_t **name);
+			     char **name);
 
 /* this has to deal with the view in itunes, you can use them if you
    wish */

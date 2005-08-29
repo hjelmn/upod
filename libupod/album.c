@@ -139,16 +139,16 @@ int db_album_create (ipoddb_t *photodb, u_int8_t *name) {
     return ret;
 
   /* create the title entry for the new playlist */
-  if ((ret = db_dohm_create_generic (&new_dohm, 0x18 + 12 + strlen(name), 1)) < 0)
+  if ((ret = db_dohm_create_generic (&new_dohm, 0x18 + 12 + strlen((char *)name), 1)) < 0)
     return ret;
 
   string_header = (struct string_header_12 *)&(new_dohm->data[0x18]);
-  string_header->string_length = strlen(name);
+  string_header->string_length = strlen((char *)name);
   string_header->format = 0x1;
 
   new_dohm->string_header_size = 12;
 
-  memcpy (&new_dohm->data[0x24], name, strlen(name));
+  memcpy (&new_dohm->data[0x24], name, strlen((char *)name));
 
   db_abhm_dohm_attach (new_abhm, new_dohm);
 

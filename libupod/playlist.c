@@ -115,7 +115,7 @@ int db_playlist_number (ipoddb_t *itunesdb) {
 **/
 int db_playlist_list (ipoddb_t *itunesdb, db_list_t **head) {
   db_plhm_t *plhm_data;
-  u_int8_t *temp;
+  char *temp;
 
   int i, ret;
 
@@ -252,7 +252,7 @@ void db_playlist_song_list_free (db_list_t **head) {
    < 0 on error
      0 on success
 **/
-int db_playlist_create (ipoddb_t *itunesdb, u_int8_t *name) {
+int db_playlist_create (ipoddb_t *itunesdb, char *name) {
   tree_node_t *new_pyhm, *new_dohm, *dshm_header;
   db_plhm_t *plhm_data;
 
@@ -722,7 +722,7 @@ int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list)
   return num_shown;
 }
 
-int db_playlist_get_name (ipoddb_t *itunesdb, int playlist, u_int8_t **name) {
+int db_playlist_get_name (ipoddb_t *itunesdb, int playlist, char **name) {
   tree_node_t *pyhm_header;
   tree_node_t *dohm_header = NULL;
 

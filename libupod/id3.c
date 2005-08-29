@@ -322,7 +322,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       if (length > 128)
 	fseek (fh, length - 128, SEEK_CUR);
 
-      tag_temp = tag_data;
+      tag_temp = (char *)tag_data;
 
       if (strcmp (identifier, ID3_ARTWORK[newv]) != 0 && length < 128) {
 	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
@@ -416,16 +416,16 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	dohm_add (tihm, tag_temp, length, encoding, ipod_type);
     }
   } else if (version == 1) {
-    tag_temp = id3v1_string (&tag_data[3], &length);
+    tag_temp = id3v1_string ((signed char *)&tag_data[3], &length);
     dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_TITLE);
 
-    tag_temp = id3v1_string (&tag_data[33], &length);
+    tag_temp = id3v1_string ((signed char *)&tag_data[33], &length);
     dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_ARTIST);
 
-    tag_temp = id3v1_string (&tag_data[33], &length);
+    tag_temp = id3v1_string ((signed char *)&tag_data[33], &length);
     dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_ALBUM);
 
-    tag_temp = id3v1_string (&tag_data[93], &length);
+    tag_temp = id3v1_string ((signed char *)&tag_data[93], &length);
     dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_COMMENT);
     
     if ((tag_data[126] != 0xff) && (tihm->track == 0))

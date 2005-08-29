@@ -195,7 +195,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   return 0;
 }
 
-int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, int stars, int tihm_num) {
+int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, int tihm_num) {
   if (tihm == NULL)
     return -1;
 

@@ -50,11 +50,6 @@
 
 void db_log (ipoddb_t *itunesdb, int error, char *format, ...);
 
-#if defined (DEBUG_MEMORY)
-#define calloc(x,y) calloc (x,y); printf ("allocating %i member(s) of size %i from line %i in file %s.\n", x, y, __LINE__, __FILE__);
-#define free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
-#endif
-
 /* some structures to help keep the code clean */
 struct db_generic {
   u_int32_t type;
@@ -394,8 +389,6 @@ struct db_wierd_dohm {
   u_int32_t unk13;
 };
 
-u_int32_t string_to_int (unsigned char *string);
-
 
 typedef struct tree_node {
   struct tree_node *parent;
@@ -411,6 +404,7 @@ typedef struct tree_node {
   int string_header_size;
 } tree_node_t;
 
+/* Macro definitions */
 
 /* iTunesDB specific */
 #define DBHM string_to_int("dbhm")
@@ -528,6 +522,13 @@ void bswap_block (void *ptr, size_t membsize, size_t nmemb);
 #define UTF_ENC "UTF-16LE"
 #endif
 
+#define string_to_int(string) (string[0] << 24 | string[1] << 16 | string[2] << 8 | string[3])
+
+#if defined (DEBUG_MEMORY)
+#define calloc(x,y) calloc (x,y); printf ("allocating %i member(s) of size %i from line %i in file %s.\n", x, y, __LINE__, __FILE__);
+#define free(x) do {printf ("freeing %08x from line %u in file %s.\n", x, __LINE__, __FILE__); free(x);} while (0);
+#endif
+
 /* 
    Function declarations divided by source file
 
@@ -551,7 +552,7 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **par
 int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **indices, u_int32_t *num_indices);
 
 tihm_t *tihm_create (tihm_t *tihm, char *filename, char *path, int num);
-int tihm_fill_from_file (tihm_t *tihm, char *path, u_int8_t *ipod_path, int stars, int tihm_num);
+int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, int tihm_num);
 void    tihm_free (tihm_t *tihm);
 
 
@@ -613,7 +614,7 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 
 
 /* mp3.c/aac.c */
-int mp3_fill_tihm (u_int8_t *, tihm_t *);
+int mp3_fill_tihm (char *, tihm_t *);
 int aac_fill_tihm (char *, tihm_t *);
 
 #if defined(MP3_DEBUG)

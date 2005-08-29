@@ -84,7 +84,7 @@ int db_inhm_create (tree_node_t **entry, int file_id, char *file_name,
   
   (void)fclose (fh);
 
-  dohm.data = rel_mac_path;
+  dohm.data = (u_int8_t *)rel_mac_path;
   dohm.type = 3;
   (void)db_dohm_create (&dohm_header, dohm, 12, 0);
   

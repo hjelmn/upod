@@ -47,7 +47,7 @@ int device_info_write (ipod_t *ipod) {
   int fd, i;
 
   char file_name[255];
-  u_int8_t *ipod_name;
+  char *ipod_name;
   u_int16_t *unicode_name;
   size_t unicode_len;
   int perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;

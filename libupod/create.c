@@ -88,7 +88,7 @@ int db_create (ipoddb_t *itunesdb, u_int8_t *db_name, u_int8_t *path, int flags)
 
   itunesdb->flags = flags;
   itunesdb->type  = 0;
-  itunesdb->path  = strdup (path);
+  itunesdb->path  = strdup ((char *)path);
 
   ret = db_playlist_create (itunesdb, db_name);
 
@@ -115,9 +115,9 @@ int db_photo_create (ipoddb_t *photodb, u_int8_t *path) {
   db_dshm_add (photodb, FLHM);
 
   photodb->type = 1;
-  photodb->path = strdup (path);
+  photodb->path = strdup ((char *)path);
 
-  db_album_create (photodb, "Artwork");
+  db_album_create (photodb, (u_int8_t *)"Artwork");
 
   db_log (photodb, 0, "db_photo_create: complete\n");
 
