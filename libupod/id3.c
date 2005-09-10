@@ -273,6 +273,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
   if (version == 2) {
     char encoding[11];
+    char enc_type;
     char identifier[5];
     int newv = (id3v2_majorversion > 2) ? 1 : 0;
 
@@ -324,6 +325,8 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
       tag_temp = (char *)tag_data;
 
+      enc_type = *tag_temp;
+
       if (strcmp (identifier, ID3_ARTWORK[newv]) != 0 && length < 128) {
 	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
 	/* strip off any trailing \0's */
@@ -336,14 +339,15 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       /* detect the tag's encoding */
       switch (*tag_temp) {
       case 0x00:
-	sprintf (encoding, "ISO-8859-1");
+	sprintf (encoding, "UTF-8");
 	tag_temp++;
 	break;
       case 0x01:
 	sprintf (encoding, "UTF-16LE");
+	/* skip 0x01ff */
 	tag_temp += 3;
 
-	if (length % 2 == 0)
+	if ((length % 2) != 0)
 	  length++;
 
 	break;

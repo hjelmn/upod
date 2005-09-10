@@ -65,6 +65,8 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src,
   *dst_len = final_size;
 }
 #else
+#include "hexdump.c"
+
 static int encoding_utf8 (char *encoding) {
   return (strcmp (encoding, "UTF-8") == 0);
 }
@@ -99,7 +101,11 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
     if (dst_len)
       *dst_len = src_len;
 
-    *dst = calloc (1, src_len);
+    if (encoding_equiv (src_encoding, "UTF-8"))
+      *dst = calloc (1, src_len + 1);
+    else
+      *dst = calloc (1, src_len);
+
     memcpy (*dst, src, src_len);
   } else if (encoding_equiv (src_encoding, "UTF-8") && encoding_utf16 (dst_encoding)) {
     /* UTF-8/ASCII to UTF-16 */
@@ -136,6 +142,11 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
     int dst_isascii = 0;
     /* UTF-16 - UTF-8/ASCII */
     src16 = (u_int16_t *)src;
+
+#if BYTE_ORDER==BIG_ENDIAN
+    if (strcmp (src_encoding, "UTF-16LE") == 0)
+      bswap_block (src, 2, src_len/2);
+#endif
 
     if (strcmp (dst_encoding, "UTF-8") != 0)
       dst_isascii = 1;

@@ -238,7 +238,9 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
   if (!last_cell) {
     if (is_db_cell (&buffer[bytes_read + cell->cell_size])) {
       copy_size = cell->cell_size;
-      has_children = 1;
+
+      if (!is_list_header (&buffer[bytes_read]))
+	has_children = 1;
     }
 
     bswap_block (&buffer[bytes_read + cell->cell_size], 4, 1);
@@ -486,10 +488,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 static int db_write_tree (int fd, tree_node_t *entry) {
   int ret = 0;
   int i, swap;
-  struct db_dohm *dohm_data;
-
-#if BYTE_ORDER == BIG_ENDIAN
-  dohm_data = (struct db_dohm *) entry->data;
+  struct db_dohm *dohm_data = (struct db_dohm *) entry->data;
 
   if (dohm_data->dohm == DOHM) {
     if (entry->string_header_size == 16) {
@@ -517,12 +516,9 @@ static int db_write_tree (int fd, tree_node_t *entry) {
     swap = ((int *)entry->data)[1]/4;
 
   bswap_block(entry->data, 4, swap);
-#endif
 
   ret += write (fd, entry->data, entry->data_size);
 
-
-#if BYTE_ORDER == BIG_ENDIAN
   bswap_block(entry->data, 4, swap);
 
   if (dohm_data->dohm == DOHM && (dohm_data->type & 0x01000000) == 0) {
@@ -540,7 +536,6 @@ static int db_write_tree (int fd, tree_node_t *entry) {
 	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
     }
   }
-#endif
 
   for (i = 0 ; i < entry->num_children ; i++)
     ret += db_write_tree (fd, entry->children[i]);
