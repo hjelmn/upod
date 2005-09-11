@@ -94,7 +94,7 @@ int db_song_remove (ipoddb_t *itunesdb, u_int32_t tihm_num) {
    >=0 on success
 */
 int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
-		 u_int8_t *mac_path, int stars, int show) {
+		 char *mac_path, int stars, int show) {
   tree_node_t *dshm_header, *new_tihm_header;
 
   db_tlhm_t *tlhm_data;
@@ -106,7 +106,7 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
     return -EINVAL;
 
   db_log (itunesdb, 0, "db_song_add: entering...\n");
-  db_log (itunesdb, 0, "db_song_add: adding file %s to database.\n", path);
+  db_log (itunesdb, 0, "db_song_add: adding file %s to database with mac_path: %s\n", path, mac_path);
 
   /* find the song list */
   if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
@@ -305,7 +305,7 @@ int db_song_list (ipoddb_t *itunesdb, db_list_t **head) {
 
       continue;
     }
-
+    
     *head = db_list_prepend (*head, (void *)tihm);
   }
 

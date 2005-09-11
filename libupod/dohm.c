@@ -80,19 +80,19 @@ int db_dohm_compare (tree_node_t *dohm_header1, tree_node_t *dohm_header2) {
   db_dohm_get_string (dohm_header2, &utf8_2);
 
   /* Ignore leading "the " in strings */
-  if (strlen (utf8_1) > 4 && strncasecmp (utf8_1, "the ", 4) == 0)
+  if (strlen ((char *)utf8_1) > 4 && strncasecmp ((char *)utf8_1, "the ", 4) == 0)
     utf8_1p = &utf8_1[4];
   else
     utf8_1p = utf8_1;
 
-  if (strlen (utf8_2) > 4 && strncasecmp (utf8_2, "the ", 4) == 0)
+  if (strlen ((char *)utf8_2) > 4 && strncasecmp ((char *)utf8_2, "the ", 4) == 0)
     utf8_2p = &utf8_2[4];
   else
     utf8_2p = utf8_2;
 
 
-  length_1 = strlen (utf8_1p);
-  length_2 = strlen (utf8_2p);
+  length_1 = strlen ((char *)utf8_1p);
+  length_2 = strlen ((char *)utf8_2p);
 
   shortest_string = ((length_1 < length_2) ? length_1 :length_2) + 1;
 
@@ -140,7 +140,7 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
   return dohm;
 }
 
-int dohm_add (tihm_t *tihm, char *data, int data_len, char *encoding, int data_type) {
+int dohm_add (tihm_t *tihm, u_int8_t *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
 
   if (data_len <= 0 || data_type < 1)
@@ -314,13 +314,13 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   if (!(flags & FLAG_UTF8)) {
     if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
       to_unicode_hack (&unicode_data, &unicode_length, dohm.data,
-		       strlen (dohm.data), "UTF-8");
+		       strlen ((char *)dohm.data), "UTF-8");
     else
       libupod_convstr ((void **)&unicode_data, &unicode_length, (void *)dohm.data,
-		    strlen (dohm.data), "UTF-8", UTF_ENC);
+		       strlen ((char *)dohm.data), "UTF-8", UTF_ENC);
   } else {
     unicode_data   = (u_int16_t *)dohm.data;
-    unicode_length = strlen (dohm.data);
+    unicode_length = strlen ((char *)dohm.data);
   }
 
   entry_size   = DOHM_CELL_SIZE + string_header_size + unicode_length;
@@ -375,7 +375,7 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
 */
 int db_dohm_create_eq (tree_node_t **entry, u_int8_t eq) {
   dohm_t dohm;
-  char ceq[9] = "\x23\x21\x23\x31\x30\x00\x23\x21\x23";
+  u_int8_t ceq[9] = "\x23\x21\x23\x31\x30\x00\x23\x21\x23";
 
   ceq[5] = eq;
   dohm.data = ceq;

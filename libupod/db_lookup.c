@@ -62,7 +62,7 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
     if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 0x1)) != 0)
       return ret;
     
-    dohm.data = data;
+    dohm.data = (u_int8_t *)data;
     dohm.type = dohm_type;
     
     db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
@@ -99,7 +99,7 @@ int db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data) {
     ret = -1;
 
     for (i = 0 ; i < num_songs ; i++) {
-      if (strcmp (data, &song_list_offset[i * 0x00022e + 11 * 3]) == 0) {
+      if (strcmp (data, (char *)&song_list_offset[i * 0x00022e + 11 * 3]) == 0) {
 	ret = i;
 	break;
       }
@@ -150,7 +150,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
     return ret;
 
   dohm.type = IPOD_TITLE;
-  dohm.data = data;
+  dohm.data = (u_int8_t *)data;
 
   db_dohm_create (&dohm_temp, dohm, 16, itunesdb->flags);
 

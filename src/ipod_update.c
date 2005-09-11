@@ -539,8 +539,8 @@ int main (int argc, char *argv[]) {
   cleanup_database (&itunesdb, ipod_prefix);
 
 
-  music_path = calloc (1, strlen(ipod_prefix) + 7);
-  sprintf (music_path, "%s/Music", ipod_prefix);
+  music_path = calloc (1, strlen(ipod_prefix) + 20);
+  sprintf (music_path, "%s/iPod_Control/Music", ipod_prefix);
   parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb,
 		   (ipod_shuffle == 0) ? NULL : &shuffledb, ipod_shuffle);
   

@@ -236,7 +236,7 @@ int    db_photo_create (ipoddb_t *photodb, u_int8_t *path);
 
 /* itunesdb2/song_list.c */
 int  db_song_remove(ipoddb_t *itunesdb, u_int32_t tihm_num);
-int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, u_int8_t *mac_path, int stars, int show);
+int  db_song_add   (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path, char *mac_path, int stars, int show);
 int  db_song_dohm_tihm_modify (ipoddb_t *itunesdb, int tihm_num, dohm_t *dohm);
 /* eq is an integer specifier from TunesEQPresets */
 int  db_song_modify_eq(ipoddb_t *itunesdb, u_int32_t tihm_num, int eq);
@@ -296,8 +296,7 @@ int db_album_image_add    (ipoddb_t *photodb, int album, int image_id);
 int db_album_create       (ipoddb_t *photodb, u_int8_t *name);
 
 
-int dohm_add (tihm_t *timh, char *data, int data_len, char *encoding, int data_type);
-int dohm_add_path (tihm_t *timh, char *data, int data_len, char *encoding, int data_type, int use_ipod_unicode_hack);
+int dohm_add (tihm_t *timh, u_int8_t *data, int data_len, char *encoding, int data_type);
 
 /* functions for cleaning up memory */
 void tihm_free (tihm_t *tihm);

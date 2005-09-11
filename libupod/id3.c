@@ -96,7 +96,6 @@ int id3v2_size (unsigned char data[14]) {
   int major_version;
   unsigned char id3v2_flags;
   int id3v2_len = 0;
-  int id3v2_extendedlen = 0;
   int head;
 
   memcpy (&head, data, 4);
@@ -337,10 +336,9 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       }
 
       /* detect the tag's encoding */
-      switch (*tag_temp) {
+      switch (enc_type) {
       case 0x00:
 	sprintf (encoding, "UTF-8");
-	tag_temp++;
 	break;
       case 0x01:
 	sprintf (encoding, "UTF-16LE");
@@ -402,7 +400,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	tihm->year = strtol (tag_temp, NULL, 10);
       } else if (strcmp (identifier, ID3_GENRE[newv]) == 0) {
 	if (tag_temp[0] != '(') {
-	  dohm_add (tihm, tag_temp, length, encoding, IPOD_GENRE);
+	  dohm_add (tihm, (u_int8_t *)tag_temp, length, encoding, IPOD_GENRE);
 	} else {
 	  int genre;
 
@@ -417,26 +415,26 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
       }
 
       if (ipod_type != -1)
-	dohm_add (tihm, tag_temp, length, encoding, ipod_type);
+	dohm_add (tihm, (u_int8_t *)tag_temp, length, encoding, ipod_type);
     }
   } else if (version == 1) {
     tag_temp = id3v1_string ((signed char *)&tag_data[3], &length);
-    dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_TITLE);
+    dohm_add (tihm, (u_int8_t *)tag_temp, length, "ISO-8859-1", IPOD_TITLE);
 
     tag_temp = id3v1_string ((signed char *)&tag_data[33], &length);
-    dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_ARTIST);
+    dohm_add (tihm, (u_int8_t *)tag_temp, length, "ISO-8859-1", IPOD_ARTIST);
 
     tag_temp = id3v1_string ((signed char *)&tag_data[33], &length);
-    dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_ALBUM);
+    dohm_add (tihm, (u_int8_t *)tag_temp, length, "ISO-8859-1", IPOD_ALBUM);
 
     tag_temp = id3v1_string ((signed char *)&tag_data[93], &length);
-    dohm_add (tihm, tag_temp, length, "ISO-8859-1", IPOD_COMMENT);
+    dohm_add (tihm, (u_int8_t *)tag_temp, length, "ISO-8859-1", IPOD_COMMENT);
     
     if ((tag_data[126] != 0xff) && (tihm->track == 0))
       tihm->track = tag_data[126];
     
     if ((signed char)tag_data[127] != -1)
-      dohm_add (tihm, genre_table[tag_data[127]], strlen(genre_table[tag_data[127]]), "ISO-8859-1", IPOD_GENRE);
+      dohm_add (tihm, (u_int8_t *)genre_table[tag_data[127]], strlen(genre_table[tag_data[127]]), "ISO-8859-1", IPOD_GENRE);
   }
 }
 
@@ -465,7 +463,7 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
 	break;
       }
     
-    dohm_add (tihm, tmp, strlen(tmp), "ISO-8859-1", IPOD_TITLE);
+    dohm_add (tihm, (u_int8_t *)tmp, strlen(tmp), "ISO-8859-1", IPOD_TITLE);
 
     free (tfile_name);
   }

@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.1 tihm.c
+ *   v0.3.2 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the Lesser GNU Public License as published by
@@ -19,39 +19,36 @@
 
 #include "itunesdbi.h"
 
-int db_tihm_search (tree_node_t *entry, u_int32_t tihm_num) {
-  int i;
-
-  for ( i = 1 ; i < entry->num_children ; i++ )
-    if (((int *)(entry->children[i]->data))[4] == tihm_num)
-      return i;
-
-  return -1;
-}
-
 int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **parent,
 		      int tihm_num) {
   tree_node_t *dshm_header;
-  int entry_num;
-  int ret;
+  int i, ret;
 
-  if (itunesdb == NULL || itunesdb->type != 0)
+  if (itunesdb == NULL || itunesdb->type != 0 || entry == NULL)
     return -EINVAL;
 
-  /* find the song list */
+  /* find the track list */
   if ((ret = db_dshm_retrieve (itunesdb, &dshm_header, 1)) < 0) {
     db_log (itunesdb, ret, "db_tihm_retrieve: Could not get song list header\n");
     return ret;
   }
 
-  entry_num = db_tihm_search (dshm_header, tihm_num);
+  for ( i = 1 ; i < dshm_header->num_children ; i++ ) {
+    struct db_tihm *p = (struct db_tihm *)dshm_header->children[i]->data;
 
-  if (entry_num < 0) return entry_num;
+    if (p->identifier == tihm_num)
+      break;
+  }
 
-  if (entry) *entry = dshm_header->children[entry_num];
-  if (parent)*parent= dshm_header;
-
-  return entry_num;
+  if (i != dshm_header->num_children) {
+    *entry = dshm_header->children[i];
+    if (parent)
+      *parent = dshm_header;
+  
+    return i;
+  }
+  
+  return -1;
 }
 
 static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_int32_t *tmp,
@@ -96,8 +93,6 @@ static int db_sort (tree_node_t *dshm_header, int sort_by, u_int32_t *list, u_in
 
 int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **indices, u_int32_t *num_indices) {
   tree_node_t *dshm_header;
-  tree_node_t *tlhm_header;
-
   db_tlhm_t *tlhm_data;
   u_int32_t *tmp;
 
@@ -112,8 +107,7 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
     return ret;
   }
 
-  tlhm_header = dshm_header->children[0];
-  tlhm_data = (db_tlhm_t *)tlhm_header->data;
+  tlhm_data = (db_tlhm_t *) dshm_header->children[0]->data;
 
   *indices = (u_int32_t *) calloc (tlhm_data->list_entries, 4);
 
@@ -197,7 +191,7 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 
 int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, int tihm_num) {
   if (tihm == NULL)
-    return -1;
+    return -EINVAL;
 
   memset (tihm, 0, sizeof (tihm_t));
 
@@ -218,7 +212,7 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, i
   } else
     return -1;
   
-  dohm_add (tihm, ipod_path, strlen(ipod_path), "UTF-8", IPOD_PATH);
+  dohm_add (tihm, (u_int8_t *)ipod_path, strlen(ipod_path), "UTF-8", IPOD_PATH);
 
   tihm->num = tihm_num;
   tihm->stars = stars;

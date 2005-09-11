@@ -200,7 +200,7 @@ int is_list_header (u_int8_t *x) {
   Parse an iTunes or Artwork(Photo) database and build the tree structure used by upod.
 */
 static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *bytes_readp,
-			  size_t tree_size, /*@null@*/tree_node_t *parent, char *buffer) {
+			  size_t tree_size, /*@null@*/tree_node_t *parent, u_int8_t *buffer) {
   tree_node_t *tnode_0;
   size_t bytes_read = *bytes_readp;
   u_int32_t copy_size;
@@ -271,48 +271,17 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
   if (cell->type == DOHM && has_children == 0) {
     struct db_dohm *dohm_data = (struct db_dohm *)&buffer[bytes_read];
     
-    /* A dohm cell can hold a string, data, or a sub-tree. Process data/string
-       dohm cells in a different way than those that have subtrees. */
+    /* Data contained in a data object can be a string, data, or a sub-tree.
+       Data/string data objects need to have their byte order adjusted to the machine's
+       architecture. */
     if (dohm_contains_string(dohm_data) != 0) {
-      u_int8_t *string_start;
-      size_t string_length;
-      int utf16 = 0;
-
       struct db_string_dohm *string_dohm_data = (struct db_string_dohm *)&buffer[bytes_read];
       
-      bswap_block (&buffer[bytes_read + 0x18], 4, 3);
-      
-      /* Read a string dohm */
-      if (string_dohm_data->unk5 == 0) {
-	struct string_header_16 *string_header = (struct string_header_16 *)&buffer[bytes_read + 0x18];
-	/* iTunesDB dohm strings are 16 bytes in size */
-	tnode_0->string_header_size = 16;
+      /* iTunesDB dohm strings are 16 bytes in size */
+      tnode_0->string_header_size = (string_dohm_data->unk5 == 0) ? 16 : 12;
 
-	string_start = &buffer[bytes_read + 0x28];
-	string_length = string_header->string_length;
-
-	bswap_block (&buffer[bytes_read + 0x24], 4, 1);
-
-	/* the iPod can handle UTF-8 strings */
-	if (string_header->unk0 != 0)
-	  utf16 = 1;
-      } else {
-	struct string_header_12 *string_header = (struct string_header_12 *)&buffer[bytes_read + 0x18];
-
-	/* ArtworkDB dohm strings are four bytes smaller than those in the iTunesDB */
-	tnode_0->string_header_size = 12;
-
-	string_start = &buffer[bytes_read + 0x24];
-	string_length = string_header->string_length;
-
-	/* this is a guess based off of the ArtworkDB */
-	if (string_header->format != 1)
-	  utf16 = 1;
-      }
-
-      /* Swap UTF-16 strings */
-      if (utf16 == 1)
-	bswap_block (string_start, 2, string_length/2);
+      bswap_block (&buffer[bytes_read + 0x18], 4, tnode_0->string_header_size/4);
+      /* no reason to swap data object strings here */
     } else
       /* data dohm */
       bswap_block (&buffer[bytes_read + cell->cell_size], 4, (cell->subtree_size - cell->cell_size)/4);
@@ -470,7 +439,7 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   ipod_db->path  = strdup (path);
 
   /* Load the database into a tree structure. */
-  if ((ret = db_build_tree (ipod_db, &ipod_db->tree_root, &bytes_read, statinfo.st_size, NULL, buffer)) != 0) {
+  if ((ret = db_build_tree (ipod_db, &ipod_db->tree_root, &bytes_read, statinfo.st_size, NULL, (u_int8_t *)buffer)) != 0) {
     db_free (ipod_db);
 
     return ret;
@@ -486,56 +455,19 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
 }
 
 static int db_write_tree (int fd, tree_node_t *entry) {
-  int ret = 0;
-  int i, swap;
-  struct db_dohm *dohm_data = (struct db_dohm *) entry->data;
+  int i, ret, swap;
 
-  if (dohm_data->dohm == DOHM) {
-    if (entry->string_header_size == 16) {
-      struct string_header_16 *string_header;
-
-      string_header = (struct string_header_16 *)&entry->data[0x18];
-
-      swap = 10;
-
-      if (string_header->unk0 != 0)
-	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
-    } else if (entry->string_header_size == 12) {
-      struct string_header_12 *string_header;
-
-      string_header = (struct string_header_12 *)&entry->data[0x18];
-
-      swap = 9;
-      
-      if (string_header->format != 1)
-	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
-    } else
-      swap = entry->data_size/4;
-
-  } else
+  if (entry->string_header_size)
+    /* only true for data objects which contain strings */
+    swap = (entry->string_header_size == 16) ? 10 : 9;
+  else
     swap = ((int *)entry->data)[1]/4;
 
-  bswap_block(entry->data, 4, swap);
+  bswap_block (entry->data, 4, swap);
 
-  ret += write (fd, entry->data, entry->data_size);
+  ret = write (fd, entry->data, entry->data_size);
 
-  bswap_block(entry->data, 4, swap);
-
-  if (dohm_data->dohm == DOHM && (dohm_data->type & 0x01000000) == 0) {
-    if (entry->string_header_size == 16) {
-      struct string_header_16 *string_header;
-      string_header = (struct string_header_16 *)&entry->data[0x18];
-
-      if (string_header->unk0 != 0)
-	bswap_block (&(entry->data[0x28]), 2, string_header->string_length/2);
-    } else if (entry->string_header_size == 12) {
-      struct string_header_12 *string_header;
-      string_header = (struct string_header_12 *)&entry->data[0x18];
-
-      if (string_header->format != 1)
-	bswap_block (&(entry->data[0x24]), 2, string_header->string_length/2);
-    }
-  }
+  bswap_block (entry->data, 4, swap);
 
   for (i = 0 ; i < entry->num_children ; i++)
     ret += db_write_tree (fd, entry->children[i]);

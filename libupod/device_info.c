@@ -64,7 +64,7 @@ int device_info_write (ipod_t *ipod) {
     return ret;
 
   libupod_convstr ((void **)&unicode_name, &unicode_len, (void *)ipod_name,
-		   strlen (ipod_name), "UTF-8", UTF_ENC);
+		   strlen ((char *)ipod_name), "UTF-8", UTF_ENC);
 
   free (ipod_name);
 

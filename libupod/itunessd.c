@@ -318,7 +318,7 @@ int sd_create (ipoddb_t *ipod_sd, u_int8_t *path, int flags) {
   ipod_sd->tree_root->data_size = 18;
   ipod_sd->flags = flags;
   ipod_sd->type  = 2;
-  ipod_sd->path  = strdup (path);
+  ipod_sd->path  = strdup ((char *)path);
 
   set_uint24 (ipod_sd->tree_root->data, 1, 0x010600);
   set_uint24 (ipod_sd->tree_root->data, 2, 18);
