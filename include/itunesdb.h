@@ -106,6 +106,8 @@ enum itunesdb_flags {
   FLAG_INPLACE = 0x4,
 };
 
+typedef enum {UPOD_NOART=0, UPOD_PHOTOART, UPOD_NANOART, UPOD_VIDEOART} artwork_flag_t;
+
 typedef struct _ipoddatabase {
   struct tree_node *tree_root;
 
@@ -116,6 +118,8 @@ typedef struct _ipoddatabase {
 
   char *path;
   int type; /* 0 == iTunesDB, 1 == ArtworkDB */
+
+  artwork_flag_t supports_artwork; /* field might not remain to v1 */
 } ipoddb_t;
 
 typedef struct _ipod {
@@ -125,7 +129,8 @@ typedef struct _ipod {
 
   char *path;
 
-  int supports_artwork;
+
+  artwork_flag_t supports_artwork;
 
   /* Sysinfo */
   char *board;

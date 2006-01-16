@@ -395,7 +395,7 @@ int main (int argc, char *argv[]) {
   int create = 0;
   char *ipod_name = NULL;
   int flags = FLAG_UNICODE_HACK;
-  int noartwork = 0;
+  int noartwork = 0, supports_artwork = UPOD_VIDEOART;
   char c;
   char *ipod_prefix = NULL;
   char *itunesdb_path;
@@ -408,6 +408,7 @@ int main (int argc, char *argv[]) {
 
   struct option long_options[] = {
     {"noartwork",     0, 0, 'n'},
+    {"artwork",       1, 0, 'a'},
     {"help",          0, 0, '?'},
     {"create",        1, 0, 'c'},
     {"debug",         0, 0, 'd'},
@@ -420,6 +421,17 @@ int main (int argc, char *argv[]) {
   while ((c = getopt_long (argc, argv, "?c:dtvp:", long_options,
 			   &option_index)) != -1) {
     switch (c) {
+    case 'a':
+      if (strcasecmp (optarg, "photo") == 0)
+	supports_artwork = UPOD_PHOTOART;
+      else if (strcasecmp (optarg, "nano") == 0)
+	supports_artwork = UPOD_NANOART;
+      else if (strcasecmp (optarg, "video") == 0)
+	supports_artwork = UPOD_VIDEOART;
+      else
+	supports_artwork = 0;
+
+      break;
     case '?':
       usage ();
       break;
@@ -473,7 +485,6 @@ int main (int argc, char *argv[]) {
 
   if (noartwork == 0) {
     db_set_debug (&artworkdb, debug_level, stderr);
-
     artworkdb_path  = calloc (1, strlen (ARTWORKDB) + strlen (ipod_prefix) + 2);
     sprintf (artworkdb_path, "%s/%s", ipod_prefix, ARTWORKDB);
   }
@@ -538,9 +549,11 @@ int main (int argc, char *argv[]) {
 
   cleanup_database (&itunesdb, ipod_prefix);
 
+  if (noartwork == 0)
+    artworkdb.supports_artwork = supports_artwork;
 
   music_path = calloc (1, strlen(ipod_prefix) + 20);
-  sprintf (music_path, "%s/Music", ipod_prefix);
+  sprintf (music_path, "%s/iPod_Control/Music", ipod_prefix);
   parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb,
 		   (ipod_shuffle == 0) ? NULL : &shuffledb, ipod_shuffle);
   

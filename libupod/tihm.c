@@ -221,6 +221,8 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
 }
 
 int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, int tihm_num) {
+  int i;
+  
   if (tihm == NULL)
     return -EINVAL;
 
@@ -245,6 +247,25 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, i
     return -1;
   
   dohm_add (tihm, (u_int8_t *)ipod_path, strlen(ipod_path), "UTF-8", IPOD_PATH);
+
+  /* if a title tag is not found create a dohm based off the path */
+  for (i = 0 ; i < tihm->num_dohm ; i++)
+    if (tihm->dohms[i].type == IPOD_TITLE)
+      break;
+      
+  if (i == tihm->num_dohm) {
+    char *tmp = strdup (basename (path));
+
+    for (i = strlen (tmp) ; i > 0 ; i--)
+      if (tmp[i] == '.') {
+	tmp[i] = '\0';
+	break;
+      }
+
+    dohm_add (tihm, tmp, strlen (tmp), "UTF-8", IPOD_TITLE);
+    free (tmp);
+  }
+
 
   tihm->num = tihm_num;
   tihm->stars = stars;

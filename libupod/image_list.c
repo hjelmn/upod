@@ -1,6 +1,6 @@
 /**
  *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0a0 image_list.c
+ *   v0.4.0 image_list.c
  *
  *   Functions to manipulate the list of artwork in an ArtworkDB.
  *   
@@ -239,9 +239,12 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
   db_log (photodb, 0, "db_photo_add: creating default thumbnails (ArtworkDB thumbs)..\n");
 
   /* todo -- get enough information about the ipod to pick the image formats */
-  db_thumb_add_artwork_photo (photodb, identifier, image_data, image_size);
-  db_thumb_add_artwork_nano (photodb, identifier, image_data, image_size);
-  db_thumb_add_artwork_video (photodb, identifier, image_data, image_size);
+  if (photodb->supports_artwork == UPOD_PHOTOART)
+    db_thumb_add_artwork_photo (photodb, identifier, image_data, image_size);
+  if (photodb->supports_artwork == UPOD_NANOART)
+    db_thumb_add_artwork_nano (photodb, identifier, image_data, image_size);
+  if (photodb->supports_artwork == UPOD_VIDEOART)
+    db_thumb_add_artwork_video (photodb, identifier, image_data, image_size);
 
   db_album_image_add (photodb, 0, identifier);
 

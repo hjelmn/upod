@@ -186,6 +186,7 @@ int db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
      0 on success
 */
 int db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
+  db_playlist_tihm_add (itunesdb, 0, 3, tihm_num);
   return db_playlist_tihm_add (itunesdb, 0, 2, tihm_num);
 }
 

@@ -56,7 +56,7 @@ int db_playlist_retrieve (ipoddb_t *itunesdb, db_plhm_t **plhm_data, tree_node_t
 
   plhm_header = temp->children[0];
 
-  plhm_data_loc = (db_plhm_t *)temp->children[0]->data;
+  plhm_data_loc = (db_plhm_t *)plhm_header->data;
 
   /* Store the pointers if storage was passed in */
   if (plhm_data != NULL)
@@ -573,7 +573,6 @@ int db_playlist_clear (ipoddb_t *itunesdb, int playlist, int data_section) {
 
     db_detach (pyhm_header, pyhm_header->num_children, &pihm_header);
 
-
     db_free_tree (pihm_header);
 
     pyhm_data->num_pihm--;
@@ -589,7 +588,7 @@ int db_playlist_clear (ipoddb_t *itunesdb, int playlist, int data_section) {
 
   Arguments:
    ipoddb_t *itunesdb - Opened itunesdb
-   int         playlist - Playlist index (0 is the master playlist)
+   int       playlist - Playlist index (0 is the master playlist)
 
   Returns:
    < 0 on error
@@ -602,26 +601,18 @@ int db_playlist_fill (ipoddb_t *itunesdb, int playlist, int data_section) {
   struct db_tihm *tihm_data;
 
   int i, ret;
-
-  if (itunesdb == NULL || itunesdb->type != 0)
-    return -EINVAL;
   
-  if ((ret = db_dshm_retrieve (itunesdb, &track_dshm, 1)) < 0)
-    return -EINVAL;
-
   if ((ret = db_playlist_clear (itunesdb, playlist, data_section)) < 0)
     return ret;
+
+  if ((ret = db_dshm_retrieve (itunesdb, &track_dshm, 1)) < 0)
+    return -EINVAL;
 
   tlhm_header= track_dshm->children[0];
   tlhm_data  = (db_tlhm_t *)tlhm_header->data;
 
-  for (i = 0 ; i < tlhm_data->list_entries ; i++) {
-    tihm_data = (struct db_tihm *)track_dshm->children[i + 1]->data;
-
-    if ((data_section == 3 && tihm_data->flags3 & 0x0000ff00) ||
-	(data_section == 2 && (tihm_data->flags3 & 0x0000ff00) == 0))
-      db_playlist_tihm_add (itunesdb, playlist, tihm_data->identifier, data_section);
-  }
+  for (i = 0 ; i < tlhm_data->list_entries ; i++)
+    db_playlist_tihm_add (itunesdb, playlist, tihm_data->identifier, data_section);
 
   return 0;
 }
@@ -839,7 +830,7 @@ int db_playlist_strip_indices_ds (ipoddb_t *itunesdb, int data_section) {
 
 int db_playlist_add_indices (ipoddb_t *itunesdb) {
   db_playlist_add_indices_ds (itunesdb, 2);
-  /*  db_playlist_add_indices_ds (itunesdb, 3); */ /* NOT IMPLEMENTED */
+  db_playlist_add_indices_ds (itunesdb, 3);
 }
 
 int db_playlist_add_indices_ds (ipoddb_t *itunesdb, int data_section) {

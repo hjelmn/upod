@@ -482,22 +482,6 @@ int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   if ((version = find_id3(1, fh, tag_data, &tag_datalen, &id3v2_majorversion)) != 0)
     one_pass_parse_id3(fh, tag_data, tag_datalen, version, id3v2_majorversion, tihm);
   
-  if (tihm->num_dohm == 0 || tihm->dohms[0].type != IPOD_TITLE) {
-    char *tfile_name = strdup (file_name);
-    char *tmp = (char *)basename(tfile_name);
-    int i;
-    
-    for (i=strlen(tmp)-1; i > 0 ; i--)
-      if (tmp[i] == '.') {
-	tmp[i] = 0;
-	break;
-      }
-    
-    dohm_add (tihm, (u_int8_t *)tmp, strlen(tmp), "ISO-8859-1", IPOD_TITLE);
-
-    free (tfile_name);
-  }
-  
   return 0;
 }
 
