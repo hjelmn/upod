@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.2.2 unicode.c
  *
  *   convert to/from unicode/utf-8 using iconv
@@ -202,6 +202,7 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
 void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		      size_t src_len, char *src_encoding) {
   int i, j;
+  u_int8_t *dst8;
 
   if (dst == NULL || dst_len == NULL)
     return;
@@ -210,16 +211,17 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
     *dst = NULL;
     return;
   }
-  *dst = calloc (1, src_len * 2);
+  dst8 = *dst = calloc (1, src_len * 2);
 
   for (i = 0, j = 0 ; i < src_len ; i++) {
-    if (!(src[i] && 0x8))
+    dst8[j++] = src[i];
+
+    if (!(src[i] & 0x80))
       j++;
-    (*dst)[j++] = src[i];
   }
 
   *dst = realloc (*dst, j);
-  *dst_len = j*2;
+  *dst_len = j;
 }
 
 void path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,

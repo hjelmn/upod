@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.6.0a aac.c
  *
  *   Parses Quicktime AAC files for bitrate, samplerate, etc.
@@ -128,8 +128,8 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
 
     memset (buffer, 0, buffer_size);
 
-    mp3_debug ("Meta identifier: %c%c%c\n", meta.identifier[0], meta.identifier[1], meta.identifier[2]);
-    mp3_debug ("Meta offset: %i\n", meta.offset);
+    mp3_debug ("aac.c/aac_parse_meta: Meta identifier: %c%c%c\n", meta.identifier[0], meta.identifier[1], meta.identifier[2]);
+    mp3_debug ("aac.c/aac_parse_meta: Meta offset: %i\n", meta.offset);
     
     if (size > buffer_size || strncmp((char *)&meta.flag, "free", 4) == 0)
       /* it is unlikely that any data we want will be larger than the buffer */
@@ -152,6 +152,10 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
       data_type = IPOD_ARTIST;
     else if (strncmp ((char *)meta.identifier, "alb", 3) == 0)
       data_type = IPOD_ALBUM;
+    else if (strncmp ((char *)&meta.flag, "desc", 4) == 0)
+      data_type = IPOD_DESCRIPTION;
+    else if (strncmp ((char *)&meta.flag, "catg", 4) == 0)
+      data_type = IPOD_CATAGORY;
     else if (strncmp ((char *)&meta.flag, "gnre", 4) == 0) {
       int genre_num = *((short *)buffer) - 1;
       data_type = IPOD_GENRE;
@@ -171,6 +175,7 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
     } else if (strncmp ((char *)&meta.flag, "disk", 4) == 0) {
       tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
       tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
+      continue;
     } else if (strncmp ((char *)meta.identifier, "day", 3) == 0) {
       tihm->year = strtol ((char *)buffer, NULL, 10);
       continue;
@@ -180,7 +185,9 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
     } else if (strncmp ((char *)&meta.flag, "tmpo", 4) == 0) {
       tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
       continue;
-    } else
+    } else if (strncmp ((char *)&meta.flag, "purl", 4) == 0)
+      tihm->is_podcast = 1;
+    else
       continue;
 
     dohm_add(tihm, (char *)buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
@@ -201,13 +208,13 @@ static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int tim
 
   int i;
 
-  mp3_debug ("Parsing stsz atom\n");
+  mp3_debug ("aac.c/parse_stsz: entering...\n");
 
   fread (buffer, 4, 3, fh);
 
   num_samples = big32_2_arch32 (buffer[2]);
 
-  mp3_debug ("Atom contains %i samples\n", num_samples);
+  mp3_debug ("aac.c/parse_stsz: Atom contains %i samples\n", num_samples);
 
   for (i = 0 ; i < num_samples ; i++) {
     int sample_size;
@@ -242,9 +249,11 @@ static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int tim
 
   avg /= (double)(num_samples-silent_samples);
   
-  mp3_debug ("Minimum bitrate is: %f kbps\n", BITRATE(bmin, 1, time_scale));
-  mp3_debug ("Agerage bitrate is: %f kbps\n", BITRATE(avg, 1, time_scale));
-  mp3_debug ("Maximum bitrate is: %f kbps\n", BITRATE(bmax, 1, time_scale));
+  mp3_debug ("aac.c/parse_stsz: Minimum bitrate is: %f kbps\n", BITRATE(bmin, 1, time_scale));
+  mp3_debug ("aac.c/parse_stsz: Agerage bitrate is: %f kbps\n", BITRATE(avg, 1, time_scale));
+  mp3_debug ("aac.c/parse_stsz: Maximum bitrate is: %f kbps\n", BITRATE(bmax, 1, time_scale));
+
+  mp3_debug ("aac.c/parse_stsz: complete\n");
 
   fseek (fh, current_loc, SEEK_SET);
 }
@@ -256,7 +265,7 @@ int aac_open (char *file_name, struct m4a_file *aac) {
   struct stat statinfo;
   char buffer[4];
 
-  mp3_debug ("aac_open: entering\n");
+  mp3_debug ("aac.c/aac_open: entering...\n");
 
   memset (aac, 0, sizeof(struct m4a_file));
 
@@ -291,6 +300,8 @@ int aac_open (char *file_name, struct m4a_file *aac) {
   if (strncmp (buffer, "mp42", 4) == 0)
     aac->faac = 1;
 
+  mp3_debug ("aac.c/aac_open: complete\n");
+
   return 0;
 }
 
@@ -303,7 +314,7 @@ int aac_scan (struct m4a_file *aac) {
 
   while (1) {
     if (fread (&atom, sizeof(atom), 1, aac->fh) != 1) {
-      mp3_debug ("aac_scan: could not read atom header.\n");
+      mp3_debug ("aac.c/aac_scan: could not read atom header.\n");
       break;
     }
 
@@ -328,7 +339,7 @@ int aac_scan (struct m4a_file *aac) {
 	aac->samplerate = mdhd.time_scale;
 	aac->duration = lround (1000.0 * (double)mdhd.duration/(double)aac->samplerate);
 
-	mp3_debug ("aac_fill_tihm: time_scale = %i, duration = %f seconds.\n",
+	mp3_debug ("aac.c/aac_scan: time_scale = %i, duration = %f seconds.\n",
 		   aac->samplerate, aac->duration);
       } else if (atom.type == meta) {
 	aac->meta_offset = ftell (aac->fh);
@@ -369,15 +380,14 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
 
   struct m4a_file aac;
 
+  memset (tihm, 0, sizeof (tihm_t));
+
   if (aac_open (file_name, &aac) < 0)
     return -1;
 
   aac_scan (&aac);
   aac_parse_meta (&aac, tihm);
-
   aac_close (&aac);
-
-  memset (tihm, 0, sizeof (tihm_t));
 
   tihm->time          = aac.duration;
   tihm->samplerate    = aac.samplerate;
@@ -386,6 +396,7 @@ int aac_fill_tihm (char *file_name, tihm_t *tihm) {
   tihm->size          = aac.file_size;
   tihm->mod_date      = aac.mod_date;
   tihm->creation_date = aac.mod_date;
+  tihm->type          = string_to_int ("M4A ");
 
   if (!aac.apple_lossless)
     dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);

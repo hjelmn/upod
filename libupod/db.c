@@ -1,6 +1,6 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.1 db.c
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.4.0 db.c
  *
  *   Routines for reading/writing the iPod's databases.
  *
@@ -20,67 +20,6 @@
  **/
 
 #include "itunesdbi.h"
-
-db_list_t *db_list_first (db_list_t *p) {
-  db_list_t *x;
-
-  for (x = p ; x && x->prev ; x = x->prev);
-
-  return x;
-}
-
-db_list_t *db_list_prepend (db_list_t *p, void *d) {
-  db_list_t *x, *y;
-
-  x = calloc (1, sizeof (db_list_t));
-  x->data = d;
-
-  y = db_list_first (p);
-
-  x->next = y;
-
-  if (y)
-    y->prev = x;
-
-  return x;
-}
-
-db_list_t *db_list_append (db_list_t *p, void *d) {
-  db_list_t *x, *y;
-
-  x = calloc (1, sizeof (db_list_t));
-  x->data = d;
-
-  for (y = db_list_first (p) ; y && y->next ; y = db_list_next (y));
-
-  x->prev = y;
-
-  if (y) {
-    y->next = x;
-    return p;
-  }
-
-  return x;
-}
-
-db_list_t *db_list_next (db_list_t *p) {
-  if (p == NULL)
-    return p;
-
-  return p->next;
-}
-
-void db_list_free (db_list_t *p) {
-  db_list_t *tmp;
-
-  p = db_list_first (p);
-
-  while (p) {
-    tmp = p->next;
-    free (p);
-    p = tmp;
-  }
-}
 
 /*
   db_size_tree:
@@ -155,6 +94,15 @@ static int dohm_contains_string (struct db_dohm *dohm_data) {
   return 0;
 }
 
+/* these dohms have no string header, just utf8 data */
+static int dohm_is_purl8 (struct db_dohm *dohm_data) {
+  if (dohm_data->type == IPOD_URL ||
+      dohm_data->type == IPOD_PODCAST_URL)
+    return 1;
+
+  return 0;
+}
+
 int tree_node_create (tree_node_t **tnode_0, tree_node_t *parent, u_int8_t *data, size_t data_size,
 		      int is_alloced) {
   if (tnode_0 == NULL)
@@ -217,7 +165,7 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
   bswap_block (&buffer[bytes_read], 4, 3);
 
   if (!is_db_cell (&buffer[bytes_read])) {
-    db_log (ipod_db, -1, "db_load: unknown cell type: %c%c%c%c. aborting..\n", buffer[bytes_read],
+    db_log (ipod_db, -1, "db..c/db_load: unknown cell type: %c%c%c%c. aborting..\n", buffer[bytes_read],
 	    buffer[bytes_read + 1], buffer[bytes_read + 2], buffer[bytes_read + 3]);
 
     return -1;
@@ -251,9 +199,10 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
     data = calloc (copy_size, 1);
 
     if (data == NULL) {
-      db_log (ipod_db, -errno, "db_build_tree: error allocating %i bytes for data.\n", copy_size);
-      perror("db_build_tree|calloc");
-      exit (EXIT_FAILURE);
+      db_log (ipod_db, -errno, "db.c/db_build_tree: error allocating %i bytes for data: %s\n", copy_size,
+	      strerror (errno));
+
+      return -errno;
     }
 
     is_alloced = 1;
@@ -274,7 +223,7 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
     /* Data contained in a data object can be a string, data, or a sub-tree.
        Data/string data objects need to have their byte order adjusted to the machine's
        architecture. */
-    if (dohm_contains_string(dohm_data) != 0) {
+    if (dohm_contains_string(dohm_data) != 0 && !dohm_is_purl8 (dohm_data)) {
       struct db_string_dohm *string_dohm_data = (struct db_string_dohm *)&buffer[bytes_read];
       
       /* iTunesDB dohm strings are 16 bytes in size */
@@ -282,7 +231,7 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
 
       bswap_block (&buffer[bytes_read + 0x18], 4, tnode_0->string_header_size/4);
       /* no reason to swap data object strings here */
-    } else
+    } else if (!dohm_is_purl8 (dohm_data))
       /* data dohm */
       bswap_block (&buffer[bytes_read + cell->cell_size], 4, (cell->subtree_size - cell->cell_size)/4);
 
@@ -320,7 +269,8 @@ static int db_build_tree (ipoddb_t *ipod_db, tree_node_t **tnode_0p, size_t *byt
     
       if (tnode_0->children == NULL) {
 	perror("db_build_tree|realloc");
-	exit (EXIT_FAILURE);
+
+	return -errno;
       }
 
       if ((ret = db_build_tree(ipod_db, &(tnode_0->children[tnode_0->num_children - 1]), bytes_readp,
@@ -362,8 +312,8 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   if (path == NULL || strlen(path) == 0 || ipod_db == NULL)
     return -EINVAL;
 
-  db_log (ipod_db, 0, "db_load: entering...\n");
-  db_log (ipod_db, 0, "db_load: flags: %08x\n", flags);
+  db_log (ipod_db, 0, "db.c/db_load: entering...\n");
+  db_log (ipod_db, 0, "db.c/db_load: flags: %08x\n", flags);
   ipod_db->flags = flags;
 
   if (stat(path, &statinfo) < 0) {
@@ -373,12 +323,12 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   }
 
   if (!S_ISREG(statinfo.st_mode)) {
-    db_log (ipod_db, -1, "db_load: %s, not a regular file\n", path);
+    db_log (ipod_db, -1, "db.c/db_load: %s, not a regular file\n", path);
 
     return -1;
   }
 
-  db_log (ipod_db, 0, "db_load: Attempting to read an iPod database: %s\n", path);
+  db_log (ipod_db, 0, "db.c/db_load: Attempting to read an iPod database: %s\n", path);
 
   if ((iPod_DB_fd = open (path, O_RDONLY)) < 0) {
     db_log (ipod_db, errno, "db_load|open: %s\n", strerror(errno));
@@ -392,20 +342,20 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   bswap_block((char *)ibuffer, 4, 3);
 
   if (ibuffer[0] == DBHM) {
-    db_log (ipod_db, 0, "db_load: Reading an itunes database.\n");
+    db_log (ipod_db, 0, "db.c/db_load: Reading an itunes database.\n");
     ipod_db->type = 0;
   } else if (ibuffer[0] == DFHM) {
-    db_log (ipod_db, 0, "db_load: Reading a photo or artwork database.\n");
+    db_log (ipod_db, 0, "db.c/db_load: Reading a photo or artwork database.\n");
     ipod_db->type = 1;
   } else {
     bswap_block((char *)ibuffer, 4, 3);
 
     if (get_uint24 ((u_int8_t *)ibuffer, 1) == 0x010600) {
-      db_log (ipod_db, 0, "db_load: File appears to be an itunessd file. Calling sd_load...\n");
+      db_log (ipod_db, 0, "db.c/db_load: File appears to be an itunessd file. Calling sd_load...\n");
 
       return sd_load (ipod_db, path, flags);
     } else {
-      db_log (ipod_db, -1, "db_load: %s is not a valid database. Exiting.\n", path);
+      db_log (ipod_db, -1, "db.c/db_load: %s is not a valid database. Exiting.\n", path);
       close (iPod_DB_fd);
     
       return -1;
@@ -416,18 +366,18 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
   
   buffer = (char *)calloc(ibuffer[2], 1);
   if (buffer == NULL) {
-    db_log (ipod_db, errno, "db_load: Could not allocate memory\n");
+    db_log (ipod_db, errno, "db.c/db_load: Could not allocate memory\n");
     close (iPod_DB_fd);
 
     return -errno;
   }
 
   if (ibuffer[2] != statinfo.st_size)
-    db_log (ipod_db, -1, "db_load: File size does not match database size! Continuing anyway.\n");
+    db_log (ipod_db, -1, "db.c/db_load: File size does not match database size! Continuing anyway.\n");
 
   /* read in the rest of the database */
   if ((ret = read (iPod_DB_fd, buffer, ibuffer[2])) < ibuffer[2]) {
-    db_log (ipod_db, errno, "db_load: Short read: %i bytes wanted, %i read\n", ibuffer[2], ret);
+    db_log (ipod_db, errno, "db.c/db_load: Short read: %i bytes wanted, %i read\n", ibuffer[2], ret);
     
     free(buffer);
     close(iPod_DB_fd);
@@ -449,17 +399,20 @@ int db_load (ipoddb_t *ipod_db, char *path, int flags) {
     /* free flat database as it is no longer useful */
     free (buffer);
 
-  db_log (ipod_db, 0, "db_load: complete. %i Bytes\n", bytes_read);
+  db_log (ipod_db, 0, "db.c/db_load: complete. %i Bytes\n", bytes_read);
 
   return bytes_read;
 }
 
 static int db_write_tree (int fd, tree_node_t *entry) {
   int i, ret, swap;
+  struct db_dohm *dohm_data = (struct db_dohm *)entry->data;
 
   if (entry->string_header_size)
     /* only true for data objects which contain strings */
     swap = (entry->string_header_size == 16) ? 10 : 9;
+  else if (memcmp (entry->data, "dohm", 4) == 0 && !entry->num_children && !dohm_is_purl8 (dohm_data))
+    swap = ((int *)entry->data)[2]/4;
   else
     swap = ((int *)entry->data)[1]/4;
 
@@ -489,10 +442,10 @@ int db_write (ipoddb_t ipod_db, char *path) {
   if (ipod_db.tree_root == NULL || path == NULL)
     return -EINVAL;
 
-  db_log (&ipod_db, 0, "db_write: entering...\n");
+  db_log (&ipod_db, 0, "db.c/db_write: entering...\n");
 
   if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, perms)) < 0) {
-    db_log (&ipod_db, -errno, "db_write: error writing %s, %s\n", path, strerror (errno));
+    db_log (&ipod_db, -errno, "db.c/db_write: error writing %s, %s\n", path, strerror (errno));
 
     return -errno;
   }
@@ -501,12 +454,12 @@ int db_write (ipoddb_t ipod_db, char *path) {
     db_playlist_strip_indices (&ipod_db);
     db_playlist_add_indices (&ipod_db);
   }
-
+  
   ret = db_write_tree (fd, ipod_db.tree_root);
   
   close (fd);
 
-  db_log (&ipod_db, 0, "db_write: complete. wrote %i B\n", ret);
+  db_log (&ipod_db, 0, "db.c/db_write: complete. wrote %i B\n", ret);
   
   return ret;
 }
@@ -622,4 +575,19 @@ int db_node_allocate (tree_node_t **entry, unsigned long type, size_t size, int 
   data->subtree_size = subtree;
 
   return 0;
+}
+
+int db_isvideo (ipoddb_t *ipod_db, int tihm_num) {
+  tree_node_t *entry;
+  struct db_tihm *tihm_data;
+
+  if (db_tihm_retrieve (ipod_db, &entry, NULL, tihm_num) < 0)
+    return -1;
+
+  tihm_data = (struct db_tihm *)entry->data;
+
+  if (tihm_data->flags3 & 0x0000ff00)
+    return 1;
+  else
+    return 0;
 }

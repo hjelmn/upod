@@ -56,7 +56,11 @@ enum dohm_types_t {
   IPOD_TYPE,
   IPOD_EQ,
   IPOD_COMMENT,
-  IPOD_COMPOSER = 14
+  IPOD_CATAGORY,
+  IPOD_COMPOSER = 14,
+  IPOD_URL = 15,
+  IPOD_PODCAST_URL = 16,
+  IPOD_DESCRIPTION = 18,
 };
 
 enum show_entries {
@@ -203,6 +207,11 @@ struct song_info {
   int num_dohm;
 
   dohm_t *dohms;
+
+  char is_video;
+  char is_podcast;
+
+  u_int32_t release_date;
 };
 
 typedef struct song_info tihm_t;
@@ -261,33 +270,33 @@ int    db_lookup (ipoddb_t *itunesdb, int dohm_type, char *data);
 /* returns the playlist number of first match */
 int    db_lookup_playlist (ipoddb_t *itunesdb, char *data);
 
-int db_playlist_number      (ipoddb_t *itunesdb);
-int db_playlist_create      (ipoddb_t *itunesdb, char *name);
-int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, u_int8_t *name);
-int db_playlist_delete      (ipoddb_t *itunesdb, int playlist);
-int db_playlist_tihm_add    (ipoddb_t *itunesdb, int playlist, int tihm_num);
-int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int tihm_num);
-int db_playlist_clear       (ipoddb_t *itunesdb, int playlist);
-int db_playlist_fill        (ipoddb_t *itunesdb, int playlist);
+int db_playlist_number      (ipoddb_t *itunesdb, int data_section);
+int db_playlist_create      (ipoddb_t *itunesdb, char *name, int data_section);
+int db_playlist_rename      (ipoddb_t *itunesdb, int playlist, int data_section, u_int8_t *name);
+int db_playlist_delete      (ipoddb_t *itunesdb, int playlist, int data_section);
+int db_playlist_tihm_add    (ipoddb_t *itunesdb, int playlist, int data_section, int tihm_num);
+int db_playlist_tihm_remove (ipoddb_t *itunesdb, int playlist, int data_section, int tihm_num);
+int db_playlist_clear       (ipoddb_t *itunesdb, int playlist, int data_section);
+int db_playlist_fill        (ipoddb_t *itunesdb, int playlist, int data_section);
 int db_playlist_remove_all  (ipoddb_t *itunesdb, int tihm_num);
-int db_playlist_get_name    (ipoddb_t *itunesdb, int playlist,
-			     char **name);
+int db_playlist_get_name    (ipoddb_t *itunesdb, int playlist, int data_section, char **name);
 
 /* this has to deal with the view in itunes, you can use them if you
    wish */
-int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int column,
+int db_playlist_column_show (ipoddb_t *itunesdb, int playlist, int data_section, int column,
 			     u_int16_t width);
-int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int column);
-int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int cola,
+int db_playlist_column_hide (ipoddb_t *itunesdb, int playlist, int data_section, int column);
+int db_playlist_column_move (ipoddb_t *itunesdb, int playlist, int data_section, int cola,
 			     int pos);
-int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int **list);
+int db_playlist_column_list_shown (ipoddb_t *itunesdb, int playlist, int data_section, int **list);
 
 
 
 /* returns a list of the playlists on the itunesdb. The data field is of
    type struct pyhm */
-int db_playlist_list (ipoddb_t *itunesdb, db_list_t **head);
+int db_playlist_list (ipoddb_t *itunesdb, db_list_t **head, int data_section);
 int db_playlist_song_list (ipoddb_t *itunesdb, int playlist, db_list_t **head);
+int db_playlist_video_list (ipoddb_t *itunesdb, int playlist, db_list_t **head);
 
 int db_album_number       (ipoddb_t *photodb);
 int db_album_list         (ipoddb_t *photodb, db_list_t **head);

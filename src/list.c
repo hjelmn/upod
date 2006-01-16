@@ -53,6 +53,14 @@ char *str_type(int dohm_type) {
     return "Equilizer";
   case IPOD_COMPOSER:
     return "Composer";
+  case IPOD_DESCRIPTION:
+    return "Description";
+  case IPOD_URL:
+    return "URL";
+  case IPOD_PODCAST_URL:
+    return "PURL";
+  case IPOD_CATAGORY:
+    return "Catagory";
   case -1:
     return "Error";
   default:
@@ -152,6 +160,7 @@ int main (int argc, char *argv[]) {
       fprintf (stdout, " samplert: %d\n", tihm->samplerate);
       fprintf (stdout, " stars   : %d\n", tihm->stars);
       fprintf (stdout, " year    : %d\n", tihm->year);
+      fprintf (stdout, " release : %s\n", ctime (&tihm->release_date));
       fprintf (stdout, " bpm     : %d\n", tihm->bpm);
       fprintf (stdout, " played  : %d\n", tihm->times_played);
       fprintf (stdout, " track   : %d/%d\n", tihm->track, tihm->album_tracks);
@@ -171,8 +180,9 @@ int main (int argc, char *argv[]) {
   db_song_list_free (&songs);
   
   /* get playlists */
+  /* audio playlists */
   playlists = NULL;
-  db_playlist_list (&itunesdb, &playlists);
+  db_playlist_list (&itunesdb, &playlists, 2);
 
   if (playlists == NULL) {
     fprintf (stdout, "Could not get playlist list\n");
@@ -188,6 +198,34 @@ int main (int argc, char *argv[]) {
     fprintf (stdout, "playlist name: %s(%s) len=%lu\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
     
     db_playlist_song_list (&itunesdb, pyhm->num, &list);
+    
+    for (tmp2 = db_list_first (list) ; tmp2 ; tmp2 = db_list_next (tmp2))
+      fprintf (stdout, "%u ", (unsigned int)tmp2->data);
+    
+    fprintf (stdout, "\n");
+    db_playlist_song_list_free(&list);
+  }
+  
+  db_playlist_list_free (&playlists);
+
+  /* video playlists */
+  playlists = NULL;  
+  db_playlist_list (&itunesdb, &playlists, 3);
+
+  if (playlists == NULL) {
+    fprintf (stdout, "Could not get playlist list\n");
+    db_free(&itunesdb);
+
+    exit(1);
+  }
+  
+  /* dump playlist contents */
+  for (tmp = db_list_first (playlists) ; tmp ; tmp = db_list_next (tmp)) {
+    pyhm = (pyhm_t *)tmp->data;
+    /* P(laylist) M(aster) */
+    fprintf (stdout, "playlist name: %s(%s) len=%lu\n", pyhm->name, (pyhm->num)?"P":"M", pyhm->name_len);
+    
+    db_playlist_video_list (&itunesdb, pyhm->num, &list);
     
     for (tmp2 = db_list_first (list) ; tmp2 ; tmp2 = db_list_next (tmp2))
       fprintf (stdout, "%u ", (unsigned int)tmp2->data);

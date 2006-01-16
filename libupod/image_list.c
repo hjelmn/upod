@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.0a0 image_list.c
  *
  *   Functions to manipulate the list of artwork in an ArtworkDB.
@@ -38,9 +38,27 @@
 
 static iihm_t *db_iihm_fill (tree_node_t *iihm_header);
 
+int db_thumb_add_artwork_photo (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
+			size_t image_size) {
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1016);
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1017);
+}
+
+int db_thumb_add_artwork_nano (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
+			size_t image_size) {
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1031);
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1027);
+}
+
+int db_thumb_add_artwork_video (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
+			size_t image_size) {
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1028);
+  db_thumb_add (photodb, iihm_identifier, image_data, image_size, 1029);
+}
+
 /* The image described by image_data will be scaled to the correct size */
 int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_data,
-		  size_t image_size, size_t thumb_width, size_t thumb_height) {
+		  size_t image_size, int file_id) {
 #if defined(HAVE_LIBWAND)
   tree_node_t *dshm_header;
   tree_node_t *dohm_header, *inhm_header, *iihm_header;
@@ -49,11 +67,12 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   
   char file_name[255];
   char file_name_mac[32];
-  unsigned long file_id;
 
   int image_height, image_width;
   int scale_height, scale_width;
   int border_height, border_width;
+
+  int thumb_width, thumb_height;
 
   char *tmp;
 
@@ -74,6 +93,28 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
     return ret;
   }
 
+  switch (file_id) {
+  case 1016:
+    thumb_width = thumb_height = 140;
+    break;
+  case 1017:
+    thumb_width = thumb_height = 56;
+    break;
+  case 1027:
+  case 1028:
+    thumb_width = thumb_height = 100;
+    break;
+  case 1029:
+    thumb_width = thumb_height = 200;
+    break;
+  case 1031:
+    thumb_width = thumb_height = 42;
+    break;
+  default:
+    db_log (photodb, -1, "Unknown image file id: %i\n");
+    return -1;
+  }
+
   /* Make thumbnails and add them to the database */
   magick_wand = NewMagickWand ();
   pixel_wand  = NewPixelWand ();
@@ -84,7 +125,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   if (ret == MagickFalse) {
     DestroyMagickWand (magick_wand);
 
-    db_log (photodb, ret, "db_thumb_add: ImageMagick returned an error.\n");
+    db_log (photodb, ret, "db_thumb_add: ImageMagick returned an error: %i.\n", ret);
 
     return -1;
   }
@@ -106,20 +147,28 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   MagickResizeImage (magick_wand, scale_width, scale_height, LanczosFilter, 0.9);
   MagickBorderImage (magick_wand, pixel_wand, border_width, border_height);
   
+  /*
   if (thumb_width == 173)
     file_id = 1009;
   else if (thumb_width == 220)
     file_id = 1013;
   else if (thumb_width == 130)
     file_id = 1015;
+  else if (thumb_width == 712)
+    file_id = 1019;
+  / iPod photo /
   else if (thumb_width == 140)
     file_id = 1016;
   else if (thumb_width == 56)
     file_id = 1017;
-  else if (thumb_width == 712)
-    file_id = 1019;
+  / iPod nano /
+  else if (thumb_width == 42)
+    file_id = 1031;
+  else if (thumb_width == 100)
+    file_id = 1027;
   else
-    file_id = 1008; /* Arbitrary */
+    file_id = 1008; / Arbitrary /
+  */
 
   tmp = strdup (photodb->path);
   sprintf (file_name, "%s/F%lu_1.ithmb", dirname (tmp), file_id);
@@ -189,14 +238,10 @@ int db_photo_add (ipoddb_t *photodb, u_int8_t *image_data, size_t image_size, u_
   db_log (photodb, 0, "db_photo_add: image entry created\n");
   db_log (photodb, 0, "db_photo_add: creating default thumbnails (ArtworkDB thumbs)..\n");
 
-  if (db_thumb_add (photodb, identifier, image_data, image_size, 56, 56) < 0) {
-    db_detach (dshm_header, dshm_header->num_children-1, &new_iihm_header);
-    db_free_tree (new_iihm_header);
-    
-    return -1;
-  }
-
-  db_thumb_add (photodb, identifier, image_data, image_size, 140, 140);
+  /* todo -- get enough information about the ipod to pick the image formats */
+  db_thumb_add_artwork_photo (photodb, identifier, image_data, image_size);
+  db_thumb_add_artwork_nano (photodb, identifier, image_data, image_size);
+  db_thumb_add_artwork_video (photodb, identifier, image_data, image_size);
 
   db_album_image_add (photodb, 0, identifier);
 

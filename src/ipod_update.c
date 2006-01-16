@@ -225,7 +225,7 @@ int parse_dir (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t *artw
 
       if (tihm_num >= 0) {
 	if (playlist != -1)
-	  db_playlist_tihm_add (itunesdb, playlist, tihm_num);
+	  db_playlist_tihm_add (itunesdb, playlist, 2, tihm_num);
 	
 	songs_added++;
       }
@@ -273,7 +273,7 @@ int parse_playlists (char *path, char *ipod_prefix, ipoddb_t *itunesdb, ipoddb_t
 	
 	if (playlist < 0) {
 	  printf ("Creating playlist: %s\n", dirent->d_name);
-	  playlist = db_playlist_create (itunesdb, dirent->d_name);
+	  playlist = db_playlist_create (itunesdb, dirent->d_name, 2);
 	}
       }
     }
@@ -540,7 +540,7 @@ int main (int argc, char *argv[]) {
 
 
   music_path = calloc (1, strlen(ipod_prefix) + 20);
-  sprintf (music_path, "%s/iPod_Control/Music", ipod_prefix);
+  sprintf (music_path, "%s/Music", ipod_prefix);
   parse_playlists (music_path, ipod_prefix, &itunesdb, (noartwork) ? NULL : &artworkdb,
 		   (ipod_shuffle == 0) ? NULL : &shuffledb, ipod_shuffle);
   

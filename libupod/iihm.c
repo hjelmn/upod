@@ -1,5 +1,5 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.1 iihm.c
  *
  *   This program is free software; you can redistribute it and/or modify

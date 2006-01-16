@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.2 tihm.c
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **par
   tree_node_t *dshm_header;
   int i, ret;
 
-  if (itunesdb == NULL || itunesdb->type != 0 || entry == NULL)
+  if (itunesdb == NULL || itunesdb->type != 0)
     return -EINVAL;
 
   /* find the track list */
@@ -41,7 +41,8 @@ int db_tihm_retrieve (ipoddb_t *itunesdb, tree_node_t **entry, tree_node_t **par
   }
 
   if (i != dshm_header->num_children) {
-    *entry = dshm_header->children[i];
+    if (entry)
+      *entry = dshm_header->children[i];
     if (parent)
       *parent = dshm_header;
   
@@ -140,19 +141,22 @@ int db_tihm_get_sorted_indices (ipoddb_t *itunesdb, int sort_by, u_int32_t **ind
 /* fills a tree_node with the data from a tihm_t structure */
 int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   struct db_tihm *tihm_data;
+  float tmp;
 
   tihm_data = (struct db_tihm *)tihm_header->data;
   tihm_data->num_dohm    = tihm->num_dohm;
   tihm_data->identifier  = tihm->num;
   tihm_data->type        = 0x001;
 
+  tihm_data->unk0        = tihm->type;
+
   tihm_data->flags      |= 0x100;
   tihm_data->flags      |= ((tihm->stars % 6) * 0x14) << 24;
   /* lowest flag bit(byte?) is vrb */
   tihm_data->flags      |= tihm->vbr;
 
-  tihm_data->creation_date     = tihm->creation_date;
-  tihm_data->modification_date = tihm->mod_date;
+  tihm_data->creation_date     = DATE_TO_APPLE(tihm->creation_date);
+  tihm_data->modification_date = DATE_TO_APPLE(tihm->mod_date);
   tihm_data->last_played_date  = 0;
 
   tihm_data->num_played[0] = 0;
@@ -168,10 +172,13 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm_data->disk_total  = tihm->disk_total;
 
   tihm_data->sample_rate = tihm->samplerate << 16;
+
   tihm_data->bit_rate    = tihm->bitrate;
   tihm_data->unk1        = tihm->bpm << 16;
 
   tihm_data->year        = tihm->year;
+
+  tihm_data->release_date= DATE_TO_APPLE(tihm->release_date);
 
   tihm_data->volume_adjustment = tihm->volume_adjustment;
   tihm_data->start_time  = tihm->start_time;
@@ -181,7 +188,31 @@ int tihm_db_fill (tree_node_t *tihm_header, tihm_t *tihm) {
     tihm_data->has_artwork = 0xffff0001;
     tihm_data->iihm_id  = tihm->artwork_id;
   } else
-    tihm_data->has_artwork = 0xffffffff;
+    tihm_data->has_artwork = 0xffff0000;
+
+  tmp = (float)tihm->samplerate;
+  memcpy (&tihm_data->unk4, &tmp, 4);
+
+  if (memcmp (&tihm->type, "M4", 2) == 0)
+    tihm_data->unk5 = 0x01000033;
+  else if (memcmp (&tihm->type, "MP3 ", 4) == 0)
+    tihm_data->unk5 = 0x0000000c;
+
+  tihm_data->flags2 = 0x00000002;
+
+  if (tihm->is_video) {
+    tihm_data->flags3 = 0x00000100;
+
+    if (tihm->is_podcast) {
+      tihm_data->flags2 |= 0x02000000;
+      tihm_data->type2 = 0x00000006; /* should be 06 */
+    } else
+      tihm_data->type2 = 0x00000002;
+  } else if (tihm->is_podcast) {
+    tihm_data->flags2 |= 0x02000000;
+    tihm_data->type2 = 0x00000004;
+  } else
+    tihm_data->type2 = 0x00000001;
 
   /* it may be useful to set other values in the tihm structure but many
      have still not been deciphered */
@@ -203,8 +234,9 @@ int tihm_fill_from_file (tihm_t *tihm, char *path, char *ipod_path, int stars, i
     }
   } else if ( (strncasecmp (path + (strlen(path) - 3), "m4a", 3) == 0)  ||
 	      (strncasecmp (path + (strlen(path) - 3), "m4p", 3) == 0)  ||
+	      (strncasecmp (path + (strlen(path) - 3), "m4v", 3) == 0)  ||
 	      (strncasecmp (path + (strlen(path) - 3), "aac", 3) == 0) ) {
-    if (aac_fill_tihm (path, tihm) < 0) {
+    if (mp4_fill_tihm (path, tihm) < 0) {
       tihm_free (tihm); /* structure may have been partially filled before error */
 
       return -1;
@@ -235,7 +267,7 @@ int db_tihm_create (tree_node_t **entry, tihm_t *tihm, int flags) {
   
   tihm_db_fill (*entry, tihm);
   
-  for (i = 0 ; i < tihm->num_dohm ; i++) {
+  for (i = 0 ; i < tihm->num_dohm ; i++) { 
     if (db_dohm_create (&dohm, tihm->dohms[i], 16, flags) < 0)
       return -1;
 
@@ -279,10 +311,11 @@ int db_tihm_fill (tree_node_t *tihm_header, tihm_t *tihm) {
   tihm->bpm       = tihm_data->unk1 >> 16;
 
   tihm->year        = tihm_data->year;
+  tihm->release_date= DATE_TO_POSIX(tihm_data->release_date);
 
-  tihm->mod_date      = tihm_data->modification_date;
-  tihm->played_date   = tihm_data->last_played_date;
-  tihm->creation_date = tihm_data->creation_date;
+  tihm->mod_date      = DATE_TO_POSIX(tihm_data->modification_date);
+  tihm->played_date   = DATE_TO_POSIX(tihm_data->last_played_date);
+  tihm->creation_date = DATE_TO_POSIX(tihm_data->creation_date);
 
   tihm->has_artwork = (tihm_data->has_artwork != 0xffffffff) ? 1 : 0;
   tihm->artwork_id  = tihm_data->iihm_id;

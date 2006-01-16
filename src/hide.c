@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   }
   */
   
-  db_playlist_clear (&itunesdb, 0);
+  db_playlist_clear (&itunesdb, 0, 2);
 
   if ((ret = db_write (itunesdb, argv[2])) < 0) {
     printf("Database could not be written to file.\n");

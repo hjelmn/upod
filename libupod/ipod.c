@@ -1,5 +1,5 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.2.0alpha ipod.c
  *
  *   Top-level routines for working with iPods.

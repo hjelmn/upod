@@ -1,5 +1,5 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.1 db_lookup.c
  *
  *   Contains function for looking up a tihm entry in the iTunesDB
@@ -146,7 +146,7 @@ int db_lookup_playlist (ipoddb_t *itunesdb, char *data) {
   
   db_log (itunesdb, 0, "db_lookup_playlist: entering...\n");
 
-  if ((ret = db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, NULL)) != 0)
+  if ((ret = db_playlist_retrieve (itunesdb, &plhm_data, &dshm_header, 0, 2, NULL)) != 0)
     return ret;
 
   dohm.type = IPOD_TITLE;

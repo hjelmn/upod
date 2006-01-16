@@ -1,5 +1,5 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.4.0 dohm.c
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -310,8 +310,13 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   int entry_size;
   u_int16_t *unicode_data;
   size_t unicode_length;
+  struct string_header_12 *string_header12;
+  struct string_header_16 *string_header16;
 
-  if (!(flags & FLAG_UTF8)) {
+  if (dohm.type == IPOD_URL || dohm.type == IPOD_PODCAST_URL)
+    string_header_size = 0; /* no string headers in these data objects */
+
+  if (!(flags & FLAG_UTF8) && string_header_size > 0) {
     if ((dohm.type == IPOD_PATH) && (flags & FLAG_UNICODE_HACK) )
       to_unicode_hack (&unicode_data, &unicode_length, dohm.data,
 		       strlen ((char *)dohm.data), "UTF-8");
@@ -326,30 +331,32 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   entry_size   = DOHM_CELL_SIZE + string_header_size + unicode_length;
 
   db_dohm_create_generic (entry, entry_size, dohm.type);
+  
+  switch (string_header_size) {
+  case 12:
+    string_header12 = (struct string_header_12 *)&((*entry)->data[DOHM_CELL_SIZE]);
 
-  if (string_header_size == 12) {
-    struct string_header_12 *string_header;
-    
-    string_header = (struct string_header_12 *)&((*entry)->data[DOHM_CELL_SIZE]);
-
-    string_header->string_length = unicode_length;
-
-    if (!(flags & FLAG_UTF8))
-      string_header->format = 0x00000002;
-    else
-      string_header->format = 0x00000001;
-  } else {
-    struct string_header_16 *string_header;
-    
-    string_header = (struct string_header_16 *)&((*entry)->data[DOHM_CELL_SIZE]);
-
-    string_header->string_length = unicode_length;
-    string_header->unk0 = 0x00000001;
+    string_header12->string_length = unicode_length;
 
     if (!(flags & FLAG_UTF8))
-      string_header->format = 0x00000000;
+      string_header12->format = 0x00000002;
     else
-      string_header->format = 0x00000001;
+      string_header12->format = 0x00000001;
+
+    break;
+  case 16:    
+    string_header16 = (struct string_header_16 *)&((*entry)->data[DOHM_CELL_SIZE]);
+
+    string_header16->string_length = unicode_length;
+    string_header16->unk0 = 0x00000001;
+
+    if (!(flags & FLAG_UTF8))
+      string_header16->format = 0x00000000;
+    else
+      string_header16->format = 0x00000001;
+    break;
+  default:
+    break;
   }
 
   (*entry)->string_header_size = string_header_size;
@@ -357,9 +364,8 @@ int db_dohm_create (tree_node_t **entry, dohm_t dohm, int string_header_size, in
   memcpy(&(*entry)->data[DOHM_CELL_SIZE + string_header_size], unicode_data,
 	 unicode_length);
   
-  if (!(flags & FLAG_UTF8)) {
+  if (!(flags & FLAG_UTF8) && string_header_size > 0)
     free (unicode_data);
-  }
 
   return 0;
 }
@@ -391,28 +397,41 @@ int db_dohm_get_string (tree_node_t *dohm_header, u_int8_t **str) {
   u_int8_t *string_start;
   int string_format;
   int string_length;
+  struct string_header_12 *string_header12;
+  struct string_header_16 *string_header16;
 
   if (dohm_header == NULL || str == NULL)
     return -EINVAL;
   
   dohm_data   = (struct db_dohm *)dohm_header->data;
   
-  if (dohm_header->string_header_size == 12) {
-    struct string_header_12 *string_header = (struct string_header_12 *)&(dohm_header->data[0x18]);
-    
-    string_length = string_header->string_length;
-    string_format = string_header->format;
+  if (dohm_data->dohm != DOHM)
+    return -EINVAL;
+
+  switch (dohm_header->string_header_size) {
+  case 12:
+    string_header12 = (struct string_header_12 *)&(dohm_header->data[0x18]);
+
+    string_length = string_header12->string_length;
+    string_format = string_header12->format;
     
     string_start  = &(dohm_header->data[0x24]);
-  } else if (dohm_header->string_header_size == 16) {
-    struct string_header_16 *string_header = (struct string_header_16 *)&(dohm_header->data[0x18]);
+    break;
+  case 16:
+    string_header16 = (struct string_header_16 *)&(dohm_header->data[0x18]);
     
-    string_length = string_header->string_length;
-    string_format = (string_header->unk0 == 1) ? 0 : 1;
+    string_length = string_header16->string_length;
+    string_format = (string_header16->unk0 == 1) ? 0 : 1;
     
     string_start  = &(dohm_header->data[0x28]);
-  } else
-    return -1;
+    break;
+  default:
+    *str = calloc (dohm_data->record_size - 0x17, 1);
+    
+    memcpy (*str, &dohm_header->data[0x18], dohm_data->record_size - 0x18);
+
+    return 0;
+  }
 
   to_utf8 (str, string_start, string_length, (string_format == 1) ? "UTF-8" : UTF_ENC);
 

@@ -60,7 +60,7 @@ int device_info_write (ipod_t *ipod) {
     return -EINVAL;
 
   /* Get the iPod's name (Name of 0th playlist) */
-  if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, &ipod_name)) < 0)
+  if ((ret = db_playlist_get_name (&(ipod->itunesdb), 0, 2, &ipod_name)) < 0)
     return ret;
 
   libupod_convstr ((void **)&unicode_name, &unicode_len, (void *)ipod_name,

@@ -1,5 +1,5 @@
 /**
- *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2004-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.0 song_list.c
  *   
  *   Routines for working with an iTunesDB
@@ -141,11 +141,14 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
   if (artworkdb && tihm.image_data)
     db_photo_add (artworkdb, tihm.image_data, tihm.image_size, tihm.artwork_id);
 
-  tihm_free (&tihm);
-  
   new_tihm_header->parent = dshm_header;
   db_attach (dshm_header, new_tihm_header);
 
+  if (tihm.is_podcast)
+    db_podcast_add_tihm (itunesdb, &tihm);
+
+  tihm_free (&tihm);
+  
   if (show != 0)
     db_song_unhide(itunesdb, tihm_num);
 
@@ -170,7 +173,7 @@ int db_song_add (ipoddb_t *itunesdb, ipoddb_t *artworkdb, char *path,
       0 on success
 */
 int db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
-  return db_playlist_tihm_remove (itunesdb, 0, tihm_num);
+  return db_playlist_tihm_remove (itunesdb, 0, 2, tihm_num);
 }
 
 /*
@@ -183,7 +186,7 @@ int db_song_hide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
      0 on success
 */
 int db_song_unhide (ipoddb_t *itunesdb, u_int32_t tihm_num) {
-  return db_playlist_tihm_add (itunesdb, 0, tihm_num);
+  return db_playlist_tihm_add (itunesdb, 0, 2, tihm_num);
 }
 
 /**

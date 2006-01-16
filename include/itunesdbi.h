@@ -1,6 +1,6 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.1 itunesdbi.h
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.4.0 itunesdbi.h
  *
  *   Internal functions. Do not include ipoddbi.h in any end software.
  *
@@ -26,7 +26,7 @@
 #endif
 
 /* use this to turn on mp3/aac/id3 debugging */
-/* #define MP3_DEBUG */
+#define MP3_DEBUG
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -123,7 +123,7 @@ struct db_pyhm {
 
   u_int32_t unk0; /* 0 */
   u_int32_t unk1; /* 0 */
-  u_int32_t unk2; /* 1 */
+  u_int32_t flags; /* 1 */
   u_int32_t unk3; /* 1 */
 
   u_int32_t unk4[15]; /* 0's */
@@ -134,16 +134,19 @@ struct db_pihm {
   u_int32_t pihm;
   u_int32_t header_size;
   u_int32_t record_size;
-  u_int32_t unk0;
+  u_int32_t num_dohm;
 
-  u_int32_t unk1;
+  u_int32_t flag;
   /* matches an the first integer after the header of
      the following dohm. */
   u_int32_t order;
   u_int32_t reference;
   u_int32_t date_added;
 
-  u_int32_t unk3[11]; /* 0's */
+  u_int32_t podcast_group; /* 0 if not a podcast */
+  u_int32_t unk1[3]; /* 0 */
+
+  u_int32_t unk3[7]; /* 0 */
 };
 
 
@@ -183,12 +186,55 @@ struct db_tihm {
   u_int32_t modification_date;
   u_int32_t bookmark_time;
 
-  /* These ids might be an image checksum to avoid duplicates */
+  /* libupod uses and image checksum to avoid duplicate atrwork */
   u_int64_t iihm_id;
   u_int32_t unk1;        /* includes Beats Per Minute, Checked, etc */
   u_int32_t has_artwork; /* usually 0xffff0001 BE */
 
-  u_int32_t unk2[29];
+  u_int32_t unk2;
+  u_int32_t unk3;
+  u_int32_t unk4; /* floating point samplerate? */
+  u_int32_t release_date;
+
+  u_int32_t unk5; /* MP3 0xc, mp4 0x01000033 */
+  u_int32_t unk6;
+  u_int32_t unk7;
+  u_int32_t unk8;
+
+  u_int32_t unk9;
+  /* flags2 breakdown:
+      byte 0 (LSB): 0x2
+      byte 1      : don't shuffle track
+      byte 2      : remember playback position
+      byte 3 (MSB): unknown
+  */
+  u_int32_t flags2;
+  u_int32_t unk10;
+  u_int32_t unk11;
+
+  u_int32_t flags3; /* 0x00000100 BE might mean video */
+  u_int32_t unk12[3];
+
+  u_int32_t unk13[4];
+  
+  /* type2 values:
+     
+     00000000 : Unknown
+     00000001 : Audio file
+     00000002 : Video file
+     00000004 : Podcast
+     00000006 : Video podcast
+     00000008 : Audio book
+     00000020 : Music video
+     00000040 : TV show (does not appear in music list)
+     00000060 : TV show (appears in music list)
+  */
+  u_int32_t type2;
+  u_int32_t unk14[3];
+
+  u_int32_t unk15[4];
+
+  u_int32_t unk16;
 };
 
 /* Photo Database */
@@ -471,6 +517,9 @@ typedef struct tree_node {
 #define db_plhm_create(entry) db_node_allocate(entry, string_to_int("plhm"), 0x5c, 0x00)
 #define db_tlhm_create(entry) db_node_allocate(entry, string_to_int("tlhm"), 0x5c, 0x00)
 
+/* date fixing routines... Apple uses a weird standard for the date */
+#define DATE_TO_APPLE(x) (x + 2082819600)
+#define DATE_TO_POSIX(x) (x - 2082819600)
 
 #define UPOD_NOT_IMPL(s) do {\
   fprintf(stderr, "Error -1: function %s not implemented\n", s);\
@@ -504,10 +553,11 @@ void bswap_block (void *ptr, size_t membsize, size_t nmemb);
 #define little16_2_arch16(x) bswap_16(x)
 
 #define arch16_2_little16(x) bswap_16(x)
+#define arch16_2_big16(x) x
 #define arch32_2_little32(x) bswap_32(x)
 #define arch64_2_little64(x) bswap_64(x)
 
-#define UTF_ENC "UTF-16BE"
+#define UTF_ENC "UTF-16LE"
 #else
 #define big16_2_arch16(x) bswap_16(x)
 #define big32_2_arch32(x) bswap_32(x)
@@ -516,6 +566,7 @@ void bswap_block (void *ptr, size_t membsize, size_t nmemb);
 #define little16_2_arch16(x) x
 
 #define arch16_2_little16(x) x
+#define arch16_2_big16(x) bswap_16(x)
 #define arch32_2_little32(x) x
 #define arch64_2_little64(x) x
 
@@ -559,7 +610,7 @@ void    tihm_free (tihm_t *tihm);
 /* pihm.c */
 int     db_pihm_search   (tree_node_t *entry, u_int32_t tihm_num);
 int     db_pihm_create   (tree_node_t **entry, u_int32_t tihm_num,
-			  u_int32_t order);
+			  u_int32_t order, u_int32_t podcast_group);
 
 /* aihm.c */
 int db_aihm_search (struct tree_node *entry, u_int32_t image_id);
@@ -568,9 +619,10 @@ int db_aihm_create (struct tree_node **entry, u_int32_t image_id);
 
 /* pyhm.c */
 int db_pyhm_create (tree_node_t **entry, int is_visible);
-int db_pyhm_set_id (tree_node_t *entry, int id);
 int db_pyhm_dohm_attach (tree_node_t *entry, tree_node_t *dohm);
 int db_pyhm_dohm_detach (tree_node_t *pyhm_header, int index, tree_node_t **store);
+void db_pyhm_set_id (tree_node_t *entry, int id);
+void db_pyhm_set_podcast (tree_node_t *pyhm_header, char is_podcast);
 
 
 /* abhm.c */
@@ -602,7 +654,7 @@ int db_dohm_itunes_hide (tree_node_t *entry, int column_id);
 
 /* dshm.c */
 int db_dshm_retrieve (ipoddb_t *itunesdb, tree_node_t **dshm_header, int index);
-int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type);
+int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type, int index);
 
 /* unicode.c */
 void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
@@ -613,9 +665,9 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
 		      size_t src_len, char *src_encoding);
 
 
-/* mp3.c/aac.c */
+/* mp3.c/mp4.c */
 int mp3_fill_tihm (char *, tihm_t *);
-int aac_fill_tihm (char *, tihm_t *);
+int mp4_fill_tihm (char *, tihm_t *);
 
 #if defined(MP3_DEBUG)
 void mp3_debug (char *, ...);
@@ -627,9 +679,10 @@ void mp3_debug (char *, ...);
 int get_id3_info (FILE *fd, char *file_name, tihm_t *tihm);
 
 /* playlist.c */
-int db_playlist_retrieve (ipoddb_t *, db_plhm_t **, tree_node_t **, int, tree_node_t **);
+int db_playlist_retrieve (ipoddb_t *, db_plhm_t **, tree_node_t **, int, int, tree_node_t **);
 int db_playlist_strip_indices (ipoddb_t *itunesdb);
 int db_playlist_add_indices (ipoddb_t *itunesdb);
+int db_playlist_create_podcast (ipoddb_t *itunesdb, char *name, int data_section);
 
 /* inhm.c */
 #if defined(HAVE_LIBWAND)

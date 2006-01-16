@@ -1,5 +1,5 @@
 /**
- *   (c) 2004-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2004-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.2.0 log.c
  *
  *   This program is free software; you can redistribute it and/or modify

@@ -404,6 +404,8 @@ int get_mp3_info (char *file_name, tihm_t *tihm) {
   tihm->size       = mp3.file_size;
   tihm->mod_date   = mp3.mod_date;
   tihm->creation_date = mp3.mod_date;
+  tihm->type      = string_to_int ("MP3 ");
+  tihm->is_video  = 0;
 
   return 0;
 }

@@ -1,6 +1,6 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.3.0 pyhm.c
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.4.0 pyhm.c
  *
  *   Functions for managing playlists on the iPod.
  *
@@ -30,18 +30,17 @@ int db_pyhm_create (tree_node_t **entry, int is_visible) {
 
   pyhm_data = (struct db_pyhm *)(*entry)->data;
   pyhm_data->is_visible    = (is_visible) ? 1 : 0;
-  pyhm_data->creation_date = time (NULL);
+  pyhm_data->creation_date = DATE_TO_APPLE(time (NULL));
+  pyhm_data->flags         = 0x00000001;
 
   return 0;
 }
 
-int db_pyhm_set_id (tree_node_t *entry, int id) {
+void db_pyhm_set_id (tree_node_t *entry, int id) {
   struct db_pyhm *pyhm_data;
 
   pyhm_data = (struct db_pyhm *)entry->data;
   pyhm_data->playlist_id = id;
-
-  return 0;
 }
 
 int db_pyhm_get_id (tree_node_t *entry) {
@@ -69,4 +68,13 @@ int db_pyhm_dohm_detach (tree_node_t *pyhm_header, int index, tree_node_t **stor
   pyhm_data->num_dohm--;
 
   return db_detach (pyhm_header, index, store);
+}
+
+void db_pyhm_set_podcast (tree_node_t *pyhm_header, char is_podcast) {
+  struct db_pyhm *pyhm_data = (struct db_pyhm *)pyhm_header->data;
+
+  if (is_podcast)
+    pyhm_data->flags |= 0x00010000;
+  else
+    pyhm_data->flags &= 0xff00ffff;
 }

@@ -1,6 +1,6 @@
 /**
- *   (c) 2003-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v1.1.3 id3.c 
+ *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v1.2 id3.c 
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -49,6 +49,7 @@
 
 #define ID3FLAG_EXTENDED 0x40
 #define ID3FLAG_FOOTER   0x10
+#define TAG_DATA_SIZE    256
 
                        /* v2.2 v2.3 */
 static char *ID3_TITLE[2]   = {"TT2", "TIT2"};
@@ -64,6 +65,10 @@ static char *ID3_YEARNEW[2] = {"TYE", "TDRC"};
 static char *ID3_DISC[2]    = {"TPA", "TPOS"};
 static char *ID3_ARTWORK[2] = {"PIC", "APIC"};
 static char *ID3_COMPOSER[2]= {"TCM", "TCOM"};
+static char *ID3_URL[2]     = {"TID", "TID "};
+static char *ID3_POD_URL[2] = {"WFD", "WFD "};
+static char *ID3_DESC[2]    = {"TDS", "TDS "};
+static char *ID3_RELEASE[2] = {"TDR", "TDR "};
 
 static int find_id3 (int version, FILE *fh, unsigned char *tag_data, int *tag_datalen, int *major_version);
 static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datalen, int version,
@@ -275,6 +280,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
     char enc_type;
     char identifier[5];
     int newv = (id3v2_majorversion > 2) ? 1 : 0;
+    int ident_length = (id3v2_majorversion > 2) ? 4 : 3;
 
     memset (identifier, 0, 5);
 
@@ -315,18 +321,18 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	continue;
       }
 
-      /* read the first 128 bytes of the tag (128 is an arbitrary number) */
-      memset (tag_data, 0, 128);
-      fread (tag_data, 1, (length < 128) ? length : 128, fh);
+      /* read the first TAG_DATA_SIZE bytes of the tag (TAG_DATA_SIZE is an arbitrary number) */
+      memset (tag_data, 0, TAG_DATA_SIZE);
+      fread (tag_data, 1, (length < TAG_DATA_SIZE) ? length : TAG_DATA_SIZE, fh);
 
-      if (length > 128)
-	fseek (fh, length - 128, SEEK_CUR);
+      if (length > TAG_DATA_SIZE)
+	fseek (fh, length - TAG_DATA_SIZE, SEEK_CUR);
 
       tag_temp = (char *)tag_data;
 
       enc_type = *tag_temp;
 
-      if (strcmp (identifier, ID3_ARTWORK[newv]) != 0 && length < 128) {
+      if (strcmp (identifier, ID3_ARTWORK[newv]) != 0 && length < TAG_DATA_SIZE) {
 	for ( ; length && *tag_temp == '\0' ; tag_temp++, length--);
 	/* strip off any trailing \0's */
 	for ( ; length && *(tag_temp+length-1) == '\0' ; length--);
@@ -373,7 +379,31 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 	ipod_type = IPOD_COMMENT;
       else if (strcmp (identifier, ID3_COMPOSER[newv]) == 0)
 	ipod_type = IPOD_COMPOSER;
-      else if (strcmp (identifier, ID3_ARTWORK[newv]) == 0)
+      else if (strcmp (identifier, ID3_URL[newv]) == 0)
+	ipod_type = IPOD_URL;
+      else if (strcmp (identifier, ID3_DESC[newv]) == 0)
+	ipod_type = IPOD_DESCRIPTION;
+      else if (strcmp (identifier, ID3_POD_URL[newv]) == 0) {
+	ipod_type = IPOD_PODCAST_URL;
+	mp3_debug ("This is probably a podcast.\n");
+	tihm->is_podcast = 1;
+      } else if (strcmp (identifier, ID3_RELEASE[newv]) == 0) {
+	struct tm release_date;
+
+	memset (&release_date, 0, sizeof (struct tm));
+
+	sscanf (tag_temp, "%04d-%02d-%02dT%02d:%02d:%02iZ", &release_date.tm_year,
+		&release_date.tm_mon, &release_date.tm_mday, &release_date.tm_hour,
+		&release_date.tm_min, &release_date.tm_sec);
+
+	release_date.tm_year -= 1900;
+	release_date.tm_mon  -= 1;
+	release_date.tm_isdst = -1;
+	release_date.tm_zone = "UTC";
+
+	tihm->year = release_date.tm_year;
+	tihm->release_date = mktime (&release_date);
+      } else if (strcmp (identifier, ID3_ARTWORK[newv]) == 0)
 	parse_artwork (tihm, fh, length, id3v2_majorversion);
       else if (strcmp (identifier, ID3_TRACK[newv]) == 0) {
 	/* some id3 tags have track/total tracks in the TRCK field */
@@ -440,7 +470,7 @@ static void one_pass_parse_id3 (FILE *fh, unsigned char *tag_data, int tag_datal
 
 int get_id3_info (FILE *fh, char *file_name, tihm_t *tihm) {
   int tag_datalen = 0;
-  unsigned char tag_data[128];
+  unsigned char tag_data[TAG_DATA_SIZE];
   int version;
   int id3v2_majorversion;
 

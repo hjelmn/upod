@@ -76,33 +76,33 @@ int main(int argc, char *argv[]) {
   printf("%i B read from iTunesDB %s.\n", ret, argv[1]);
 
   if (qlist) {
-    db_playlist_list (&itunesdb, &list);
+    db_playlist_list (&itunesdb, &list, 2);
     
     for (tmp = db_list_first (list) ; tmp ; tmp = db_list_next (tmp))
       printf ("List %i: %s\n", ((pyhm_t *)tmp->data)->num,
 	      ((pyhm_t *)tmp->data)->name);
     db_playlist_list_free(&list);
   } else if (cr) {
-    if (db_playlist_create (&itunesdb, argv[3]) > 0) {
+    if (db_playlist_create (&itunesdb, argv[3], 2) > 0) {
       db_write (itunesdb, argv[1]);
     }
 
   } else if (rn) {
-    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), argv[4]) == 0) {
+    if (db_playlist_rename (&itunesdb, strtol(argv[3], NULL, 10), 2, argv[4]) == 0) {
       db_write (itunesdb, argv[1]);
     }
   } else if (cl) {
-    if (db_playlist_clear (&itunesdb, strtol(argv[3], NULL, 10)) == 0) {
+    if (db_playlist_clear (&itunesdb, strtol(argv[3], NULL, 10), 2) == 0) {
       db_write (itunesdb, argv[1]);
     }
   } else if (add) {
     for (i = 4 ; i < argc ; i++)
-      db_playlist_tihm_add (&itunesdb, strtol(argv[3], NULL, 10), strtol(argv[i], NULL, 10));
+      db_playlist_tihm_add (&itunesdb, strtol(argv[3], NULL, 10), 2, strtol(argv[i], NULL, 10));
 
     db_write (itunesdb, argv[1]);
   } else if (remove) {
     for (i = 4 ; i < argc ; i++)
-      db_playlist_tihm_remove (&itunesdb, strtol(argv[3], NULL, 10), strtol(argv[i], NULL, 10));
+      db_playlist_tihm_remove (&itunesdb, strtol(argv[3], NULL, 10), 2, strtol(argv[i], NULL, 10));
 
     db_write (itunesdb, argv[1]);
   } else {

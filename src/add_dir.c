@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     if (argc < 5) usage();
     printf ("Creating a database... ");
 
-    if ((ret = db_create(&itunesdb, "iPod", argv[2], 0x1)) < 0) {
+    if ((ret = db_create(&itunesdb, "iPod", argv[2], 0)) < 0) {
       printf("Could not create database.\n");
       exit(2);
     }

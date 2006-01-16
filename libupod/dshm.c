@@ -1,5 +1,5 @@
 /**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.0 dshm.c
  *
  *   Contains functions for getting and creating a dshm node.
@@ -24,23 +24,31 @@
 /* An itunesdb has two dshm entries. An artworkdb has three. */
 int db_dshm_retrieve (ipoddb_t *ipod_db, tree_node_t **dshm_header, int index) {
   struct db_dbhm *dbhm_data;
- 
+  int i;
+
   if (ipod_db == NULL || dshm_header == NULL || ipod_db->tree_root == NULL)
     return -EINVAL;
 
   dbhm_data = (struct db_dbhm *)ipod_db->tree_root->data;
 
-  if (dbhm_data->num_dshm < index) {
+  for (i = 0 ; i < dbhm_data->num_dshm ; i++) {
+    struct db_dshm *dshm_data = (struct db_dshm *)ipod_db->tree_root->children[i]->data;
+
+    if (dshm_data->index == index) {
+      *dshm_header = ipod_db->tree_root->children[i];
+      break;
+    }
+  }
+
+  if (i == dbhm_data->num_dshm) {
     *dshm_header = NULL;
     return -1;
   }
 
-  *dshm_header = ipod_db->tree_root->children[index - 1];
-  
   return 0;
 }
 
-int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type) {
+int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type, int index) {
   struct db_dshm *dshm_data;
   struct db_dbhm *dbhm_data;
   tree_node_t *list_header, *dshm;
@@ -50,9 +58,13 @@ int db_dshm_add (ipoddb_t *ipod_db, u_int32_t list_type) {
 
   db_dshm_create (&dshm);
   dshm_data = (struct db_dshm *)dshm->data;
-  dshm_data->index = dbhm_data->num_dshm;
+  dshm_data->index = index;
 
-  db_attach (ipod_db->tree_root, dshm);
+  /* make sure podcast playlist is in the second ds */
+  if (index == 3 && list_type == PLHM)
+    db_attach_at (ipod_db->tree_root, dshm, 1);
+  else
+    db_attach (ipod_db->tree_root, dshm);
 
   if (list_type != 0) {
     db_node_allocate (&list_header, list_type, 0x5c, 0);
