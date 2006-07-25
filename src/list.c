@@ -79,8 +79,10 @@ int main (int argc, char *argv[]) {
   inhm_t *inhm;
   
   int i, j;
-  
+  int space_needed, average_needed;
+  int total_needed;
   int ipod_shuffle = 0;
+  int num_tracks = 0;
 
   ipoddb_t itunesdb;
 
@@ -149,6 +151,8 @@ int main (int argc, char *argv[]) {
   } else
     /* dump songlist contents */
     for (tmp = db_list_first (songs) ; tmp ; tmp = db_list_next (tmp)) {
+      space_needed = 0;
+
       tihm = tmp->data;
       
       fprintf (stdout, "%04i |\n", tihm->num);
@@ -167,14 +171,23 @@ int main (int argc, char *argv[]) {
       fprintf (stdout, " disk    : %d/%d\n", tihm->disk_num, tihm->disk_total);
       
       for (i = 0 ; i < tihm->num_dohm ; i++) {
+	if (tihm->dohms[i].type == IPOD_TITLE || tihm->dohms[i].type == IPOD_ARTIST || tihm->dohms[i].type == IPOD_ALBUM)
+	  space_needed += strlen (tihm->dohms[i].data);
+
 	if (tihm->dohms[i].type == IPOD_EQ)
 	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), tihm->dohms[i].data[5]);
 	else
 	  fprintf (stdout, " %10s : %s\n", str_type(tihm->dohms[i].type), tihm->dohms[i].data);
       }
       
+      total_needed += space_needed;
+
+      fprintf (stdout, "Space needed for storage of this track: %i\n", space_needed);
       fprintf (stdout, "\n");
+      num_tracks++;
     }
+
+  fprintf (stdout, "Space needed total: %i, average: %i\n", total_needed, total_needed/num_tracks);
   
   /* free the song list */
   db_song_list_free (&songs);

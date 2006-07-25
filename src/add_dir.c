@@ -154,15 +154,17 @@ int main(int argc, char *argv[]) {
     exit(2);
   }
 
+  printf ( "%i B written to the iTunes database: %s.\n", ret, argv[db]);
+
   if ((ret = db_write (artworkdb, argv[aw])) < 0) {
     printf ("Database could not be written to file.\n");
     exit(2);
   }
 
+  printf ( "%i B written to the Artwork database: %s.\n", ret, argv[db]);
+
   db_free (&itunesdb);
   db_free (&artworkdb);
-
-  printf ( "%i B written to the iTunes database: %s.\n", ret, argv[db]);
 
   return 0;
 }

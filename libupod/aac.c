@@ -185,9 +185,10 @@ int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
     } else if (strncmp ((char *)&meta.flag, "tmpo", 4) == 0) {
       tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
       continue;
-    } else if (strncmp ((char *)&meta.flag, "purl", 4) == 0)
+    } else if (strncmp ((char *)&meta.flag, "purl", 4) == 0) {
+      data_type = IPOD_PODCAST_URL;
       tihm->is_podcast = 1;
-    else
+    } else
       continue;
 
     dohm_add(tihm, (char *)buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
