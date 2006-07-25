@@ -1,5 +1,5 @@
 /**
- *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2005-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.4.1 itunessd.c
  *
  *   Routines for reading/writing the iPod's databases.

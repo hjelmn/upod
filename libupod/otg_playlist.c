@@ -1,5 +1,5 @@
 /**
- *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2005-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.0.1 otg_playlist.c
  *
  *   Contains function for looking up a tihm entry in the iTunesDB

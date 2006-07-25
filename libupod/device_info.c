@@ -1,5 +1,5 @@
 /**
- *   (c) 2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   (c) 2005-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.0.1 device_info.c
  *
  *   Functions for managing playlists on the iPod.
