@@ -13,4 +13,4 @@ libupod_la_SOURCES = album.c create.c device_info.c endian.c id3.c \
 		     aihm.c cksum.c db_lookup.c dshm.c \
 		     image_list.c log.c mp4.c pihm.c podcast.c pyhm.c \
 		     sysinfo.c itunessd.c genre.c list.c
-libupod_la_LDFLAGS = -version-info 3:1:2 -Wl,-multiply_defined -Wl,suppress
+libupod_la_LDFLAGS = -version-info 3:1:2 #-Wl,-multiply_defined -Wl,suppress

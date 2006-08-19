@@ -180,7 +180,7 @@ int upod_open (ipod_t *ipod, char *dir, int debug_level, FILE *debug_out) {
     return -EINVAL;
 
   /* open the itunesdb or possibly create it */
-  ret = ipod_init (ipod, debug_level, debug_out);
+  ret = upod_init (ipod, debug_level, debug_out);
   if (ret < 0)
     return ret;
 
