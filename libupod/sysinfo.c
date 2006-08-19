@@ -55,14 +55,19 @@ int sysinfo_read (ipod_t *ipod, char *filename) {
 
   while (fgets (buffer, 128, fh)) {
     char *field, *value, *tmp;
-    
+
+    /* SysInfo contains lines with the format:
+       field: value
+    */
     field = strtok (buffer, ":");
     value = strtok (NULL,   ":");
     
     if (value == NULL)
       return -1;
 
+    /* Skip whitespace in value */
     value++;
+
     tmp = strchr (value, '\n');
     if (tmp)
       *tmp = '\0';
@@ -71,6 +76,8 @@ int sysinfo_read (ipod_t *ipod, char *filename) {
       ipod->board         = strdup (value);
     else if (strncmp (field, "ModelNumStr", 11) == 0)
       ipod->model_number  = strdup (value);
+    else if (strncmp (field, "boardHwSwInterfaceRev", 21) == 0)
+      ipod->sw_interface  = strdup (value);
     else if (strncmp (field, "pszSerialNumber", 15) == 0)
       ipod->serial_number = strdup (value);
     else if (strncmp (field, "visibleBuildID", 14) == 0) {

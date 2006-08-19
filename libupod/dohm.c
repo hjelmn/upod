@@ -151,6 +151,8 @@ int dohm_add (tihm_t *tihm, u_int8_t *data, int data_len, char *encoding, int da
 
   to_utf8 (&(dohm->data), data, data_len, encoding);
 
+  fprintf (stderr, "dohm->data == %p\n", dohm->data);
+
   return 0;
 }
 

@@ -137,6 +137,7 @@ typedef struct _ipod {
   char *model_number;
   char *serial_number;
   char *sw_version;
+  char *sw_interface;
 } ipod_t;
  
 typedef struct dohm {

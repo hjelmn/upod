@@ -146,6 +146,8 @@ int main(int argc, char *argv[]) {
     aw = 2;
   }
 
+  artworkdb.supports_artwork = UPOD_VIDEOART;
+
   for (i = (aw + 1) ; i < argc ; i++)
     dir_add (&itunesdb, &artworkdb, argv[i]);
 

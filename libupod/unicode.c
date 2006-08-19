@@ -26,12 +26,14 @@
 
 #include <string.h>
 
-#if defined(HAVE_LIBICONV)
+#if 0
 #if !defined(const)
 #define const /* get rid of const (useless in c anyway?) */
 #endif
 
 #include <iconv.h>
+
+#warning "iconv being used"
 
 /* Converts the input from UTF8/ASCII to Unicode */
 void libupod_convstr (void **dst, size_t *dst_len, void *src,

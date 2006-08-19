@@ -177,7 +177,12 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   sprintf (file_name_mac, ":F%lu_1.ithmb", file_id);
 
   db_dohm_create_generic (&dohm_header, 0x18, 0x02);
-  db_inhm_create (&inhm_header, file_id, file_name, file_name_mac, magick_wand);
+  ret = db_inhm_create (&inhm_header, file_id, file_name, file_name_mac, magick_wand);
+  if (ret < 0) {
+    db_log (photodb, errno, "db_thumb_add: could not read inhm: %s\n", strerror (errno));
+
+    return -1;
+  }
 
   db_fihm_register (photodb, file_name, file_id);
 
@@ -190,7 +195,7 @@ int db_thumb_add (ipoddb_t *photodb, int iihm_identifier, unsigned char *image_d
   iihm_data = (struct db_iihm *)iihm_header->data;
   iihm_data->num_thumbs++;
 #else
-  db_log (photodb, 0, "db_thumb_add: nothing to do, libupod was not compiled with libwand support.");
+  db_log (photodb, 0, "db_thumb_add: nothing to do, libupod was not compiled with libwand support.\n");
 #endif
 
   db_log (photodb, 0, "db_thumb_add: complete\n");
