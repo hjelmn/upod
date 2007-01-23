@@ -213,9 +213,14 @@ struct db_tihm {
   u_int32_t unk11;
 
   u_int32_t flags3; /* 0x00000100 BE might mean video */
-  u_int32_t unk12[3];
+  u_int32_t unk12;
 
-  u_int32_t unk13[4];
+  u_int32_t start_silent_count; /* in samples */
+  u_int64_t sample_count;
+  u_int32_t unk18;
+  u_int32_t end_silent_count;   /* in samples */
+
+  u_int32_t unk13;
   
   /* type2 values:
      
@@ -230,11 +235,16 @@ struct db_tihm {
      00000060 : TV show (appears in music list)
   */
   u_int32_t type2;
-  u_int32_t unk14[3];
+  u_int32_t unk14[9];
 
-  u_int32_t unk15[4];
-
-  u_int32_t unk16;
+  u_int32_t gapless_data;
+  u_int32_t unk17;
+  /* 
+     gapless flags:
+     00010000 : does not use cross-fader
+     00000001 : has gapless data (gapless_data must be non-zero)
+  */
+  u_int32_t gapless_flags;
 };
 
 /* Photo Database */
@@ -506,7 +516,7 @@ typedef struct tree_node {
 #define PIHM_CELL_SIZE 0x4c
 #define PLHM_CELL_SIZE 0x5c
 #define PYHM_CELL_SIZE 0x6c
-#define TIHM_CELL_SIZE 0xf4
+#define TIHM_CELL_SIZE 0x148
 #define TLHM_CELL_SIZE 0x5c
 
 #define db_abhm_create(entry) db_node_allocate(entry, string_to_int("abhm"), 0x94, 0x94)

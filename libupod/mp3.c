@@ -69,10 +69,11 @@ struct mp3_file {
   int initial_header;
 
   int frames;
+  long long samples;
   int xdata_size;
 
-  int layer;
-  int version;
+  int layer_index;
+  int version_index;
 
   int samplerate; /* samples/sec */
 
@@ -113,6 +114,14 @@ int samplerate_table[4][4] = {
   {   -1,    -1,    -1, -1},
   {22050, 24000, 16000, -1},
   {44100, 48000, 32000, -1}
+};
+
+/* samples_per_frame[version_index][layer_index] */
+int samples_per_frame[4][4] = {
+  {-1,  576, 1152, 384}, /*    v2.5 */
+  {-1,   -1,   -1,  -1}, /* NOTUSED */
+  {-1,  576, 1152, 384}, /*      v2 */
+  {-1, 1152, 1152, 384}  /*      v1 */
 };
 
 double version_table[] = {
@@ -208,7 +217,9 @@ static int find_first_frame (struct mp3_file *mp3) {
       }
 
       mp3->initial_header = header;
-      mp3->samplerate = SAMPLERATE(header);
+      mp3->samplerate  = SAMPLERATE(header);
+      mp3->layer_index = MPEG_LAYER(header);
+      mp3->version_index = MPEG_VERSION(header);
 
       mp3_debug ("Inital bitrate = %i\n", BITRATE(header));
 
@@ -365,7 +376,8 @@ static int mp3_scan (struct mp3_file *mp3) {
   }
 
   /* duration (ms) = frames * ms/sec * (samples/frame)/(samples/sec) */
-  mp3->duration   = (int)((double)mp3->frames * 1000.0 * 1152.0/(double)mp3->samplerate);
+  mp3->samples    = (long long)samples_per_frame[mp3->version_index][mp3->layer_index] * (long long)mp3->frames;
+  mp3->duration   = (int)(1000.0 * (double)mp3->samples/(double)mp3->samplerate);
   mp3->bitrate    = (int)(((float)mp3->xdata_size * 8.0)/(float)mp3->duration);
 
   mp3_debug ("mp3_scan: Finished scan. SampleRate: %i, BitRate: %i, Length: %i, Frames: %i.\n",

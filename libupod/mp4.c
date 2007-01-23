@@ -1,8 +1,8 @@
 /**
- *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.6.0a aac.c
+ *   (c) 2003-2007 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.7.2 mp4.c
  *
- *   Parses Quicktime AAC files for bitrate, samplerate, etc.
+ *   Parses MPEG-4 files
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,18 +22,19 @@
 #include "itunesdbi.h"
 
 #include <math.h>
+#include <time.h>
 
-struct m4a_file {
+struct mp4_file {
   FILE *fh;
 
   int file_size;  /* Bytes */
   int bitrate;    /* bps */
   int samplerate; /* samples/sec */
   int duration; /* ms */
-  int mod_date;
+  int mtime, ctime;
   int faac;
   int apple_lossless;
-  size_t meta_offset;
+  size_t meta_offset, meta_size;
 };
 
 struct qt_atom {
@@ -65,6 +66,23 @@ struct mdhd {
   u_int16_t quality;
 };
 
+struct tag_map {
+  char mp4_tag[5];
+  int ipod_tag;
+};
+
+struct tag_map tagmap[] = {{"nam" , IPOD_TITLE},
+			   {"ART" , IPOD_ARTIST},
+			   {"alb" , IPOD_ALBUM},
+			   {"desc", IPOD_DESCRIPTION},
+			   {"catg", IPOD_CATAGORY},
+			   {"egid", IPOD_URL},
+			   {"cmt" , IPOD_COMMENT},
+			   {"gen" , IPOD_GENRE},
+			   {"gnre", IPOD_GENRE},
+			   {"purl", IPOD_PODCAST_URL},
+			   {"", -1}};
+
 static int m4a_bitrates[] = {
   28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1
 };
@@ -90,136 +108,170 @@ static int parse_covr (FILE *fh, struct qt_meta meta, tihm_t *tihm) {
   if (tihm->image_data)
     return 0;
 
-  fseek (fh, - (meta.offset - sizeof (struct qt_meta)), SEEK_CUR);
-
   return read_artwork (fh, tihm, meta.offset - sizeof (struct qt_meta));
 #else
   mp3_debug ("Cover artwork found and ignored (libupod compiled without libwand).\n");
+
+  /* skip image data */
+  fseek (fh, meta.offset - sizeof (struct qt_meta), SEEK_CUR);
 
   return 0;
 #endif  
 }
 
-/* Parse user data atom's (udat) meta data (meta) */
-int aac_parse_meta (struct m4a_file *aac, tihm_t *tihm) {
-  int seeked = 46;
+
+/*
+  mp4_parse_meta:
+
+  Parse meta data (meta) contained in a file's udat atom.
+  This function must be called after mp4_scan.
+*/
+int mp4_parse_meta (struct mp4_file *mp4p, tihm_t *tihm) {
   struct qt_meta meta;
-  int size;
+  struct qt_atom atom;
+  size_t ilist_size, next_offset;
+  int size, i, ret, data_type;
   int buffer_size = 512;
   unsigned char buffer[buffer_size];
+  char meta_tag[5];
   
-  if (aac->meta_offset == 0)
-    return;
+  if (mp4p->meta_offset == 0)
+    return -1;
 
-  fseek (aac->fh, aac->meta_offset + 4, SEEK_SET);
-  fread (&meta, sizeof(struct qt_meta), 1, aac->fh);
-  size = meta.offset - sizeof(struct qt_meta);
+  fseek (mp4p->fh, mp4p->meta_offset + 4, SEEK_SET);
+
+  /* read and skip hdlr atom */
+  fread (&atom, sizeof (struct qt_atom), 1, mp4p->fh);
+  if (atom.type != string_to_int ("hdlr"))
+    return -1;
+
+  fseek (mp4p->fh, atom.size - sizeof(struct qt_atom), SEEK_CUR);
+
+  /* read and ilst atom */
+  fread (&atom, 8, 1, mp4p->fh);  
+  if (atom.type != string_to_int ("ilst"))
+    /* no ilst == no tags */
+    return -1;
+
+  ilist_size  = atom.size;
   
-  fseek (aac->fh, size + 8, SEEK_CUR);
+  for (next_offset = 8 ; next_offset < ilist_size ; ) {
+    /* read meta tag */
+    ret = fread (&meta, sizeof(struct qt_meta), 1, mp4p->fh);
+    if (ret != 1)
+      break;
 
-  while (1) {
-    int data_type = -1;
-    
-    fread (&meta, sizeof(struct qt_meta), 1, aac->fh);
-    
-    seeked += meta.offset;
+    memset (meta_tag, 0, 5);
+    if (meta.flag == 0xa9)
+      memcpy (meta_tag, meta.identifier, 3);
+    else
+      memcpy (meta_tag, &meta.flag, 4);
 
     size = meta.offset - sizeof(struct qt_meta);
 
-    memset (buffer, 0, buffer_size);
+    next_offset += meta.offset;
 
-    mp3_debug ("aac.c/aac_parse_meta: Meta identifier: %c%c%c\n", meta.identifier[0], meta.identifier[1], meta.identifier[2]);
-    mp3_debug ("aac.c/aac_parse_meta: Meta offset: %i\n", meta.offset);
-    
-    if (size > buffer_size || strncmp((char *)&meta.flag, "free", 4) == 0)
+    mp3_debug ("mp4.c/mp4_parse_meta: Meta {identifier, offset} = {%-4s, 0x%08x}\n", meta_tag, meta.offset);
+    mp3_debug ("mp4.c/mp4_parse_meta: ilst offset = %d/%d\n", (next_offset - meta.offset), ilist_size);
+
+    if (strncmp (meta_tag, "covr", 4) == 0) {
+      parse_covr (mp4p->fh, meta, tihm);
+
+      continue;
+    } else if (size > buffer_size) {
       /* it is unlikely that any data we want will be larger than the buffer */
-      fseek (aac->fh, size, SEEK_CUR);
-    else {
-      fread (buffer, meta.offset - sizeof(struct qt_meta), 1, aac->fh);
-    
-      buffer[meta.offset - sizeof(struct qt_meta)] = '\0';
+      fseek (mp4p->fh, size, SEEK_CUR);
+
+      continue;
+    } else {
+      if (size != buffer_size)
+	buffer[size] = '\0';
+
+      fread (buffer, 1, size, mp4p->fh);
     }
 
-    /* some of the tag markers are 4 characters... i dont know how to correctly
-     parse the meta data to check which (3 or 4 chars) we are encontering so
-     handle all tag markers like they are only 3 chars (last 3 chars of 4 ones) */
-    if (strncmp ((char *)&meta.flag, "free", 4) == 0)
-      /* catch the free atom to exit */
-      break;
-    else if (strncmp ((char *)meta.identifier, "nam", 3) == 0)
-      data_type = IPOD_TITLE;
-    else if (strncmp ((char *)meta.identifier, "ART", 3) == 0)
-      data_type = IPOD_ARTIST;
-    else if (strncmp ((char *)meta.identifier, "alb", 3) == 0)
-      data_type = IPOD_ALBUM;
-    else if (strncmp ((char *)&meta.flag, "desc", 4) == 0)
-      data_type = IPOD_DESCRIPTION;
-    else if (strncmp ((char *)&meta.flag, "catg", 4) == 0)
-      data_type = IPOD_CATAGORY;
-    else if (strncmp ((char *)&meta.flag, "gnre", 4) == 0) {
-      int genre_num = *((short *)buffer) - 1;
-      data_type = IPOD_GENRE;
+    /* look for a mapping from meta tag to ipod tag */
+    for (i = 0, data_type = -1 ; tagmap[i].ipod_tag > -1 ; i++) 
+      if (strcmp (meta_tag, tagmap[i].mp4_tag) == 0) {
+	data_type = tagmap[i].ipod_tag;
+	break;
+      }
 
-      dohm_add(tihm, genre_table[genre_num],
-	       strlen(genre_table[genre_num]), "UTF-8", data_type);
-
-      continue;
-    } else if (strncmp ((char *)meta.identifier, "cmt", 3) == 0) 
-      data_type = IPOD_COMMENT;
-    else if (strncmp ((char *)meta.identifier, "gen", 3) == 0)
-      data_type = IPOD_GENRE;
-    else if (strncmp ((char *)&meta.flag, "trkn", 4) == 0) {
-      tihm->track        = big16_2_arch16( ((short *)buffer)[1] );
-      tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
-      continue;
-    } else if (strncmp ((char *)&meta.flag, "disk", 4) == 0) {
-      tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
-      tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
-      continue;
-    } else if (strncmp ((char *)meta.identifier, "day", 3) == 0) {
-      tihm->year = strtol ((char *)buffer, NULL, 10);
-      continue;
-    } else if (strncmp ((char *)&meta.flag, "covr", 4) == 0) {
-      parse_covr (aac->fh, meta, tihm);
-      continue;
-    } else if (strncmp ((char *)&meta.flag, "tmpo", 4) == 0) {
-      tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
-      continue;
-    } else if (strncmp ((char *)&meta.flag, "purl", 4) == 0)
+    if (data_type == IPOD_PODCAST_URL)
       tihm->is_podcast = 1;
-    else
-      continue;
 
-    dohm_add(tihm, (char *)buffer, meta.offset - sizeof(struct qt_meta), "UTF-8", data_type);
+    if (data_type != -1) {
+      /* meta tag data should be stored in the track as a data object */
+      if (strncmp (meta_tag, "gnre", 4) == 0) {
+	int genre_num = *((short *)buffer) - 1;
+      
+	/* size includes the \0 */
+	size = strlen(genre_table[genre_num]) + 1;
+
+	strcpy (buffer, genre_table[genre_num]);
+      }
+
+      dohm_add(tihm, buffer, size, "UTF-8", data_type);
+    } else {
+      /* meta tag data should be stored in the track object */
+      if (strncmp (meta_tag, "trkn", 4) == 0) {
+	tihm->track        = big16_2_arch16( ((short *)buffer)[1] );
+	tihm->album_tracks = big16_2_arch16( ((short *)buffer)[2] );
+      } else if (strncmp (meta_tag, "disk", 4) == 0) {
+	tihm->disk_num   = big16_2_arch16( ((short *)buffer)[1] );
+	tihm->disk_total = big16_2_arch16( ((short *)buffer)[2] );
+      } else if (strncmp (meta_tag, "day", 3) == 0) {
+	struct tm release_date;
+	
+	memset (&release_date, 0, sizeof (struct tm));
+	
+	sscanf ((char *)buffer, "%04lu-%02lu-%02luT%02lu:%02lu:%02iZ", &release_date.tm_year,
+		&release_date.tm_mon, &release_date.tm_mday, &release_date.tm_hour,
+		&release_date.tm_min, &release_date.tm_sec);
+      
+	tihm->year = release_date.tm_year;
+
+	release_date.tm_year -= 1900;
+	release_date.tm_mon  -= 1;
+	release_date.tm_isdst = -1;
+	release_date.tm_zone = "UTC";
+
+	tihm->release_date = mktime (&release_date);
+      } else if (strncmp (meta_tag, "tmpo", 4) == 0)
+	tihm->bpm = big16_2_arch16 ( ((short *)buffer)[0] );
+    }    
   }
 
   return 0;
 }
 
 /* stsz atoms contain a table of sample sizes */
-static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int time_scale) {
-  int current_loc = ftell (fh);
+static void mp4_parse_stsz (struct mp4_file *mp4p, unsigned int atom_size) {
+  int current_loc = ftell (mp4p->fh);
   unsigned int buffer[3];
   double avg = 0.0;
   double bmax = 0.0;
   double bmin = 10000.0;
   int silent_samples = 0;
   int num_samples = 0;
+  unsigned int sample_size;
 
   int i;
 
-  mp3_debug ("aac.c/parse_stsz: entering...\n");
+  /* i am unsure how to handle multiple stsz atoms, so only use the first "valid" (size > 20) atom is parsed for data. */
+  if (mp4p->bitrate != 0 || atom_size < 0x14)
+    return;
 
-  fread (buffer, 4, 3, fh);
+  mp3_debug ("mp4.c/parse_stsz: entering...\n");
+
+  fread (buffer, 4, 3, mp4p->fh);
 
   num_samples = big32_2_arch32 (buffer[2]);
 
-  mp3_debug ("aac.c/parse_stsz: Atom contains %i samples\n", num_samples);
+  mp3_debug ("mp4.c/parse_stsz: Atom contains %i samples\n", num_samples);
 
   for (i = 0 ; i < num_samples ; i++) {
-    int sample_size;
-
-    fread (buffer, 4, 1, fh);
+    fread (buffer, 4, 1, mp4p->fh);
 
     sample_size = big32_2_arch32 (buffer[0]);
 
@@ -233,175 +285,196 @@ static void parse_stsz (FILE *fh, unsigned int *bit_rate, int *lossless, int tim
     bmin = fmin ((double)sample_size, bmin);
   }
   
-  /* Silent frames throw off the average bitrate calculation for iTunes-created AAC files
-     and are thus dropped from the calculated bitrate. */
-  *bit_rate = (unsigned int)BITRATE(avg, num_samples-silent_samples, time_scale);
+  /* because they can throw off the bitrate calculation, silent samples are not used */
+  mp4p->bitrate = (unsigned int)BITRATE(avg, num_samples-silent_samples, mp4p->samplerate);
   
   /* I have no idea why this works for apple lossless (or if it works in all cases) */
-  if ((*bit_rate - 32) > m4a_bitrates[14]) {
+  if ((mp4p->bitrate - 32) > m4a_bitrates[14]) {
     bmin *= 1000.0/4096.0;
     avg  *= 1000.0/4096.0;
     bmax *= 1000.0/4096.0;
 
-    *lossless = 1;
-    *bit_rate = (unsigned int)BITRATE(avg, num_samples-silent_samples, time_scale);
+    mp4p->apple_lossless = 1;
+    mp4p->bitrate = (unsigned int)BITRATE(avg, num_samples-silent_samples, mp4p->samplerate);
   }
 
   avg /= (double)(num_samples-silent_samples);
   
-  mp3_debug ("aac.c/parse_stsz: Minimum bitrate is: %f kbps\n", BITRATE(bmin, 1, time_scale));
-  mp3_debug ("aac.c/parse_stsz: Agerage bitrate is: %f kbps\n", BITRATE(avg, 1, time_scale));
-  mp3_debug ("aac.c/parse_stsz: Maximum bitrate is: %f kbps\n", BITRATE(bmax, 1, time_scale));
+  mp3_debug ("mp4.c/parse_stsz: Minimum bitrate is: %f kbps\n", BITRATE(bmin, 1, mp4p->samplerate));
+  mp3_debug ("mp4.c/parse_stsz: Agerage bitrate is: %f kbps\n", BITRATE(avg, 1, mp4p->samplerate));
+  mp3_debug ("mp4.c/parse_stsz: Maximum bitrate is: %f kbps\n", BITRATE(bmax, 1, mp4p->samplerate));
 
-  mp3_debug ("aac.c/parse_stsz: complete\n");
+  fseek (mp4p->fh, current_loc, SEEK_SET);
 
-  fseek (fh, current_loc, SEEK_SET);
+  mp3_debug ("mp4.c/parse_stsz: complete\n");
 }
 
 
 
-int aac_open (char *file_name, struct m4a_file *aac) {
+int mp4_open (char *file_name, struct mp4_file *mp4p) {
   struct qt_atom atom;
   struct stat statinfo;
   char buffer[4];
 
-  mp3_debug ("aac.c/aac_open: entering...\n");
+  mp3_debug ("mp4.c/mp4_open: entering...\n");
 
-  memset (aac, 0, sizeof(struct m4a_file));
+  memset (mp4p, 0, sizeof(struct mp4_file));
 
   if (stat(file_name, &statinfo) < 0)
     return -errno;
 
-  aac->file_size = statinfo.st_size;
-  aac->mod_date  = statinfo.st_mtime;
+  mp4p->file_size = statinfo.st_size;
+  mp4p->mtime     = statinfo.st_mtime;
+  mp4p->ctime     = statinfo.st_ctime;
 
-  if ((aac->fh = fopen (file_name, "r")) == NULL)
+  if ((mp4p->fh = fopen (file_name, "r")) == NULL)
     return -errno;
 
-  fread (&atom, sizeof(atom), 1, aac->fh);
-
-  /* Some AAC files don't use a quicktime header. Does the iPod even support
-   them? For now upod only supports Quicktime AAC files */
+  /* read and check identifier of the file type atom */
+  fread (&atom, sizeof(atom), 1, mp4p->fh);
   if (atom.type != string_to_int ("ftyp")) {
-    fclose (aac->fh);
-    return -1;
-  }
-
-  fread (buffer, 1, 4, aac->fh);
-  if (strncmp (buffer, "M4A", 3) != 0 &&
-      strncmp (buffer, "mp42", 4) != 0) {
-    fclose (aac->fh);
+    /* not a valid mpeg4 file */
+    fclose (mp4p->fh);
 
     return -1;
   }
 
-  fseek (aac->fh, atom.size - sizeof(atom) - 4, SEEK_CUR);
-
+  /* read the file type */
+  fread (buffer, 1, 4, mp4p->fh);
   if (strncmp (buffer, "mp42", 4) == 0)
-    aac->faac = 1;
+    mp4p->faac = 1;
+  else if (0 && strncmp (buffer, "M4A ", 4) != 0 &&
+	   strncmp (buffer, "M4V ", 4) != 0) {
+    fclose (mp4p->fh);
 
-  mp3_debug ("aac.c/aac_open: complete\n");
+    return -1;
+  }
+
+  fseek (mp4p->fh, atom.size - sizeof(atom) - 4, SEEK_CUR);
+
+  mp3_debug ("mp4.c/mp4_open: complete\n");
 
   return 0;
 }
 
-int aac_scan (struct m4a_file *aac) {
+static int mp4_parse_mdhd (struct mp4_file *mp4) {
+  struct mdhd mdhd;
+
+  /* MPEG-4 files can contain multiple media headers. Only the first media header with a valid time_scale is used. */
+  if (mp4->samplerate != 0)
+    return 0;
+
+  fread (&mdhd, sizeof (struct mdhd), 1, mp4->fh);
+  fseek (mp4->fh, -sizeof (struct mdhd), SEEK_CUR);
+
+  mp4->samplerate = mdhd.time_scale;
+  mp4->duration   = lround (1000.0 * (double)mdhd.duration/(double)mp4->samplerate);
+
+  mp3_debug ("mp4.c/mp4_scan: sample rate = %i, length = %i ms.\n", mp4->samplerate, mp4->duration);
+
+  return 0;
+}
+
+int mp4_scan (struct mp4_file *mp4) {
   struct qt_atom atom;
-  int meta = string_to_int ("meta");
-  int mdat = string_to_int ("mdat");
-  int stsz = string_to_int ("stsz");
   int i;
 
+  if (mp4 == NULL || mp4->fh == NULL)
+    return -EINVAL;
+
   while (1) {
-    if (fread (&atom, sizeof(atom), 1, aac->fh) != 1) {
-      mp3_debug ("aac.c/aac_scan: could not read atom header.\n");
+    if (fread (&atom, sizeof(atom), 1, mp4->fh) != 1) {
+      mp3_debug ("mp4.c/mp4_scan: error reading atom header.\n");
       break;
     }
 
-    /* Stop parsing on media data atom (audio data follows) */
-    if (atom.type == mdat || atom.size == 0)
+    /* stop parsing on media data atom (audio data follows) */
+    if (atom.type == string_to_int ("mdat") || atom.size == 0)
       break;
 
-    /* I don't know what it means when an AAC has multiple stsz atoms, so
-       only use the first encountered that has a bit_rate average over 0. */
-    if (atom.type == stsz && atom.size > 0x14 && aac->bitrate == 0)
-      parse_stsz (aac->fh, (unsigned int *)&aac->bitrate, &aac->apple_lossless, aac->samplerate);
-
     if (!is_container(atom.type)) {
-      /* I have come across AAC files that contain multiple media headers. When this
-	 occurs, all but the first with a non-zero time_scale will be ignored. */
-      if (is_media_header (atom.type) && aac->samplerate == 0) {
-	struct mdhd mdhd;
-	
-	fread (&mdhd, sizeof (struct mdhd), 1, aac->fh);
-	fseek (aac->fh, atom.size - sizeof(atom) - sizeof (struct mdhd), SEEK_CUR);
-
-	aac->samplerate = mdhd.time_scale;
-	aac->duration = lround (1000.0 * (double)mdhd.duration/(double)aac->samplerate);
-
-	mp3_debug ("aac.c/aac_scan: time_scale = %i, duration = %f seconds.\n",
-		   aac->samplerate, aac->duration);
-      } else if (atom.type == meta) {
-	aac->meta_offset = ftell (aac->fh);
-	fseek (aac->fh, atom.size - sizeof(atom), SEEK_CUR);
-      } else
-	fseek (aac->fh, atom.size - sizeof(atom), SEEK_CUR);
+      if (atom.type == string_to_int ("meta")) {
+        mp4->meta_offset = ftell (mp4->fh);
+	mp4->meta_size   = atom.size - sizeof(atom);
+      } if (atom.type == string_to_int ("mdhd"))
+	mp4_parse_mdhd (mp4);
+      else if (atom.type == string_to_int ("stsz"))
+	mp4_parse_stsz (mp4, atom.size);
+      
+      fseek (mp4->fh, atom.size - sizeof(atom), SEEK_CUR);
     }
   }
 
-  if (!aac->faac && !aac->apple_lossless) {
+  if (!mp4->faac && !mp4->apple_lossless) {
+    /* find closest match in the m4a bitrate table. only needed for
+       itunes/quicktime encoded aac files (not losseless) */
     for (i = 1 ; m4a_bitrates[i] > 0 ; i++) {
-      int temp = m4a_bitrates[i-1] - aac->bitrate;
-      int temp2 = m4a_bitrates[i] - aac->bitrate;
+      int temp = m4a_bitrates[i-1] - mp4->bitrate;
+      int temp2 = m4a_bitrates[i] - mp4->bitrate;
 
       if (temp <= 0 && (temp + temp2) > 0)
 	break;
     }
 
-    aac->bitrate = m4a_bitrates[i-1];
+    mp4->bitrate = m4a_bitrates[i-1];
   }
 
-  if (aac->bitrate <= 0)
+  if (mp4->bitrate <= 0)
     return -1;
 
   return 0;
 }
 
-void aac_close (struct m4a_file *aac) {
-  if (aac && aac->fh) {
-    fclose (aac->fh);
-    aac->fh = NULL;
+void mp4_close (struct mp4_file *mp4) {
+  if (mp4 && mp4->fh) {
+    fclose (mp4->fh);
+    mp4->fh = NULL;
   }
 }
 
 int mp4_fill_tihm (char *file_name, tihm_t *tihm) {
-  char aac_type_string[] = "AAC audio file";
+  char mp4_type_string[]      = "AAC audio file";
+  char m4v_type_string[]      = "MPEG-4 video file";
   char lossless_type_string[] = "Apple Lossless audio file";
 
-  struct m4a_file aac;
+  int i, ret;
+  struct mp4_file mp4;
+
+  if (file_name == NULL || tihm == NULL)
+    return -EINVAL;
 
   memset (tihm, 0, sizeof (tihm_t));
 
-  if (aac_open (file_name, &aac) < 0)
-    return -1;
+  ret = mp4_open (file_name, &mp4);
+  if (ret != 0)
+    return ret;
 
-  aac_scan (&aac);
-  aac_parse_meta (&aac, tihm);
-  aac_close (&aac);
+  mp4_scan (&mp4);
+  mp4_parse_meta (&mp4, tihm);
+  mp4_close (&mp4);
 
-  tihm->time          = aac.duration;
-  tihm->samplerate    = aac.samplerate;
-  tihm->bitrate       = aac.bitrate;
-  tihm->time          = aac.duration;
-  tihm->size          = aac.file_size;
-  tihm->mod_date      = aac.mod_date;
-  tihm->creation_date = aac.mod_date;
-  tihm->type          = string_to_int ("M4A ");
+  tihm->time          = mp4.duration;
+  tihm->samplerate    = mp4.samplerate;
+  tihm->bitrate       = mp4.bitrate;
+  tihm->time          = mp4.duration;
+  tihm->size          = mp4.file_size;
+  tihm->mod_date      = mp4.mtime;
+  tihm->creation_date = mp4.ctime;
 
-  if (!aac.apple_lossless)
-    dohm_add (tihm, aac_type_string, strlen (aac_type_string), "UTF-8", IPOD_TYPE);
-  else
-    dohm_add (tihm, lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
+  if (strncasecmp (file_name + (strlen(file_name) - 3), "m4v", 3) != 0) {
+    tihm->type     = string_to_int ("M4A ");
+    tihm->is_video = 0;
+    
+    if (!mp4.apple_lossless)
+      dohm_add (tihm, (u_int8_t *)mp4_type_string, strlen (mp4_type_string), "UTF-8", IPOD_TYPE);
+    else
+      dohm_add (tihm, (u_int8_t *)lossless_type_string, strlen (lossless_type_string), "UTF-8", IPOD_TYPE);
+  } else {
+    tihm->type     = string_to_int ("M4V ");
+    tihm->is_video = 1;
+
+    dohm_add (tihm, (u_int8_t *)m4v_type_string, strlen (m4v_type_string), "UTF-8", IPOD_TYPE);
+  }
 
   if (tihm->bitrate == 0)
     return -1;

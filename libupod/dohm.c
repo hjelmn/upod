@@ -143,15 +143,13 @@ dohm_t *dohm_create (tihm_t *tihm, int data_type) {
 int dohm_add (tihm_t *tihm, u_int8_t *data, int data_len, char *encoding, int data_type) {
   dohm_t *dohm;
 
-  if (data_len <= 0 || data_type < 1)
+  if (tihm == NULL || data == NULL || encoding == NULL || data_len <= 0 || data_type < 1)
     return -EINVAL;
 
   if ((dohm = dohm_create (tihm, data_type)) == NULL)
     return -1;
 
   to_utf8 (&(dohm->data), data, data_len, encoding);
-
-  fprintf (stderr, "dohm->data == %p\n", dohm->data);
 
   return 0;
 }
