@@ -1,5 +1,5 @@
-/**
- *   (c) 2002-2005 Nathan Hjelm <hjelmn@users.sourceforge.net>
+/** --*-c-mode-*--
+ *   (c) 2002-2007 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.3.0 list.c
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -17,12 +17,15 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  **/
 
-#include "itunesdb.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <time.h>
+
+#include "itunesdb.h"
 
 void usage (void) {
   printf("Usgae:\n");
@@ -164,7 +167,7 @@ int main (int argc, char *argv[]) {
       fprintf (stdout, " samplert: %d\n", tihm->samplerate);
       fprintf (stdout, " stars   : %d\n", tihm->stars);
       fprintf (stdout, " year    : %d\n", tihm->year);
-      fprintf (stdout, " release : %s\n", ctime (&tihm->release_date));
+      fprintf (stdout, " release : %s", ctime ((const time_t *)&tihm->release_date));
       fprintf (stdout, " bpm     : %d\n", tihm->bpm);
       fprintf (stdout, " played  : %d\n", tihm->times_played);
       fprintf (stdout, " track   : %d/%d\n", tihm->track, tihm->album_tracks);
@@ -172,7 +175,7 @@ int main (int argc, char *argv[]) {
       
       for (i = 0 ; i < tihm->num_dohm ; i++) {
 	if (tihm->dohms[i].type == IPOD_TITLE || tihm->dohms[i].type == IPOD_ARTIST || tihm->dohms[i].type == IPOD_ALBUM)
-	  space_needed += strlen (tihm->dohms[i].data);
+	  space_needed += strlen ((char *)tihm->dohms[i].data);
 
 	if (tihm->dohms[i].type == IPOD_EQ)
 	  fprintf (stdout, " %10s : %i\n", str_type(tihm->dohms[i].type), tihm->dohms[i].data[5]);
@@ -182,12 +185,8 @@ int main (int argc, char *argv[]) {
       
       total_needed += space_needed;
 
-      fprintf (stdout, "Space needed for storage of this track: %i\n", space_needed);
-      fprintf (stdout, "\n");
       num_tracks++;
     }
-
-  fprintf (stdout, "Space needed total: %i, average: %i\n", total_needed, total_needed/num_tracks);
   
   /* free the song list */
   db_song_list_free (&songs);

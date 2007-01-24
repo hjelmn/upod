@@ -1,5 +1,5 @@
-/**
- *   (c) 2002-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
+/** --*-c-mode-*--
+ *   (c) 2002-2007 Nathan Hjelm <hjelmn@users.sourceforge.net>
  *   v0.4.0 dohm.c
  *
  *   This program is free software; you can redistribute it and/or modify

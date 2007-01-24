@@ -41,17 +41,17 @@ void usage(void) {
   exit(1);
 }
 
-static void path_unix_mac_root (char *path, char mac_path[255]) {
+static void path_unix_mac_root (char *path, char mac_path[512]) {
   int i;
 
-  memset (mac_path, 0, 255);
+  memset (mac_path, 0, 512);
 
   if (*path == '/')
     path++;
 
   mac_path[0] = ':';
 
-  for (i = 0 ; i < strlen (path) ; i++)
+  for (i = 0 ; i < strlen (path) && i < 510 ; i++)
     if (path[i] == '/')
       mac_path[i+1] = ':';
     else
@@ -62,7 +62,7 @@ int dir_add (ipoddb_t *ipod, ipoddb_t *artworkdb, char *dir) {
   int added = 0;
   struct stat statinfo;
   char *tmp, *tdir;
-  char path_temp[255];
+  char path_temp[512];
 
   int ret;
 
@@ -75,6 +75,7 @@ int dir_add (ipoddb_t *ipod, ipoddb_t *artworkdb, char *dir) {
   } else if (S_ISREG (statinfo.st_mode) || S_ISLNK(statinfo.st_mode)) {
     /* regular files get inserted into the database */
     path_unix_mac_root (dir, path_temp);
+
     ret = db_song_add (ipod, artworkdb, dir, path_temp, 0, 1);
 
     added = (ret < 0) ? 0 : 1;
@@ -86,8 +87,7 @@ int dir_add (ipoddb_t *ipod, ipoddb_t *artworkdb, char *dir) {
     dir_fd = opendir (dir);
     
     while ((entry = readdir (dir_fd)) != NULL) {
-      memset (path_temp, 0, 255);
-      sprintf (path_temp, "%s/%s", dir, entry->d_name);
+      snprintf (path_temp, 512, "%s/%s", dir, entry->d_name);
       
       added += dir_add (ipod, artworkdb, path_temp);
     }

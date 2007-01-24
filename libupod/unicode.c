@@ -1,6 +1,6 @@
-/**
- *   (c) 2003-2006 Nathan Hjelm <hjelmn@users.sourceforge.net>
- *   v0.2.2 unicode.c
+/** --*-c-mode-*--
+ *   (c) 2003-2007 Nathan Hjelm <hjelmn@users.sourceforge.net>
+ *   v0.3 unicode.c
  *
  *   convert to/from unicode/utf-8 using iconv
  *
@@ -33,7 +33,7 @@
 
 #include <iconv.h>
 
-#warning "iconv being used"
+#warning "Using iconv"
 
 /* Converts the input from UTF8/ASCII to Unicode */
 void libupod_convstr (void **dst, size_t *dst_len, void *src,
@@ -92,35 +92,24 @@ static int encoding_equiv (char *encoding1, char *encoding2) {
 
 void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
 		      char *src_encoding, char *dst_encoding) {
-  u_int8_t scratch[512];
+  u_int8_t scratch[1024];
   u_int16_t *dst16, *src16;
   u_int8_t *src8;
-  int i, x;
-  int le = 0;
+  int i, x, le, length;
+  int dst_is_utf8, dst_is_ascii;
+
+  dst_is_utf8  = encoding_equiv (dst_encoding, "UTF-8");
+  dst_is_ascii = encoding_ascii (dst_encoding);
 
   if (encoding_equiv (src_encoding, dst_encoding)) {
-    if (dst_len)
-      *dst_len = src_len;
-
-    if (encoding_equiv (src_encoding, "UTF-8"))
-      *dst = calloc (src_len + 1, 1);
-    else
-      *dst = calloc (src_len, 1);
-
-    memcpy (*dst, src, src_len);
+    length = src_len;
   } else if (encoding_equiv (src_encoding, "UTF-8") && encoding_utf16 (dst_encoding)) {
     /* UTF-8/ASCII to UTF-16 */
     dst16 = (u_int16_t *)scratch;
     src8  = (u_int8_t *)src;
 
-    if (strcmp(dst_encoding, "UTF-16LE") == 0)
-      le = 1;
-    else if (strcmp (dst_encoding, "UTF-16BE") == 0)
-      le = -1;
-    
-    for (i = 0, x = 0 ; i < src_len && src8[i] != '\0' ; x++) {
-      if ((src8[i] & 0xe0) == 0xe0 && (i + 2 < src_len) && (src8[i+1] & 0xc0) == 0x80 &&
-	  (src8[i+2] & 0xc0) == 0x80) {
+    for (i = 0, x = 0 ; x < 512 && i < src_len && src8[i] != '\0' ; x++) {
+      if ((src8[i] & 0xe0) == 0xe0 && (i + 2 < src_len) && (src8[i+1] & 0xc0) == 0x80 && (src8[i+2] & 0xc0) == 0x80) {
 	dst16[x] = (src8[i+2] & 0x3f) | ((src8[i+1] & 0x3f) << 6) | ((src8[i] & 0x0f) << 12);
 	i += 3;
       } else if ((src8[i] & 0xc0) == 0xc0 && (i + 1 < src_len) && (src8[i+1] & 0xc0) == 0x80) {
@@ -128,52 +117,42 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
 	i += 2;
       } else {
 	dst16[x] = src8[i];
-	i++;
+	i += 1;
       }
       
-      /* correct the endianess of the string if needbe else keep it in the machine's
-	 endianess */
-      if (le == 1)
+      /* set endianess for the string */
+      if (strcmp(dst_encoding, "UTF-16LE") == 0)
 	dst16[x] = arch16_2_little16(dst16[x]);
-      else if (le == -1)
+      else
+	/* if the byte order is not specified as being little endian then UTF-16 characters are stored big endian */
 	dst16[x] = arch16_2_big16 (dst16[x]);
     }
 
-    /* copy converted string into destintion pointer */
-    *dst_len = 2 * x;
-    *dst = calloc (x, 2);
-    if (*dst == NULL) {
-      perror ("libupod_convstr|calloc");
-      *dst_len = 0;
-      return;
-    }
-
-    memcpy (*dst, scratch, 2 * x);
-  } else if (encoding_utf16 (src_encoding) && encoding_equiv (dst_encoding, "UTF-8")) {
-    int dst_isascii = 0;
+    length = 2 * x;
+    src = scratch;
+  } else if (encoding_utf16 (src_encoding) && dst_is_utf8) {
     /* UTF-16 - UTF-8/ASCII */
     src16 = (u_int16_t *)src;
 
     if (strcmp (src_encoding, "UTF-16LE") == 0)
       le = 1;
-    else if (strcmp (src_encoding, "UTF-16BE") == 0)
+    else
+      /* if the byte order is not specified as being little endian then UTF-16 characters are stored big endian */
       le = -1;
 
-    if (strcmp (dst_encoding, "UTF-8") != 0)
-      dst_isascii = 1;
-
-    for (i = 0, x = 0 ; i < src_len/2 && src16[i] != 0 ; i++) {
+    /* this conversion produces valid UTF-8 but may not produce correct extended ASCII */
+    for (i = 0, x = 0 ; x < 1024 && i < src_len/2 && src16[i] != 0 ; i++) {
       if (le == 1)
 	src16[i] = little16_2_arch16 (src16[i]);
-      else if (le == -1)
+      else
 	src16[i] = big16_2_arch16 (src16[i]);
 
       if (src16[i] < 0x80) {
 	scratch[x++] = src16[i];
-      } else if (!dst_isascii && src16[i] < 0x800) {
+      } else if (!dst_is_ascii && src16[i] < 0x800) {
 	scratch[x++] = 0xc0 | (src16[i] >> 6);
 	scratch[x++] = 0x80 | (src16[i] & 0x3f);
-      } else if (!dst_isascii) {
+      } else if (!dst_is_ascii) {
 	scratch[x++] = 0xe0 | (src16[i] >> 12);
 	scratch[x++] = 0x80 | ((src16[i] >> 6) & 0x3f);
 	scratch[x++] = 0x80 | (src16[i] & 0x3f);
@@ -183,37 +162,41 @@ void libupod_convstr (void **dst, size_t *dst_len, void *src, size_t src_len,
 
       if (le == 1)
 	src16[i] = little16_2_arch16 (src16[i]);
-      else if (le == -1)
+      else
 	src16[i] = big16_2_arch16 (src16[i]);
     }
 
-    /* copy converted string into destintion pointer */
-    *dst = calloc (x + 1, 1);
-    memcpy (*dst, scratch, x);
-
-    if (dst_len)
-      *dst_len = x;
+    length = x;
+    src = scratch;
   } else
-    fprintf (stderr, "libupod_convstr: called with an unsupported encoding: %s to %s\n",
+    fprintf (stderr, "libupod_convstr: called with an unsupported conversion: %s to %s\n",
 	     src_encoding, dst_encoding);
+
+  if (dst_len)
+    *dst_len = length;
+
+  *dst = calloc (length + ((dst_is_utf8) ? 1 : 0), 1);
+
+  /* copy converted string into destintion pointer */
+  memcpy (*dst, src, length);
 }
 #endif
 
-/* this hack is needed for older iPods to play songs which have non-ascii
-   characters in their filename */
-void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
-		      size_t src_len, char *src_encoding) {
+/* 
+   to_unicode_hack:
+
+   this hack is needed for older iPods to play songs which have non-ascii characters in their filename.
+   NOTE: src_encoding parameter is ignored
+*/
+void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src, size_t src_len, char *src_encoding) {
   int i, j;
   u_int8_t *dst8;
 
-  if (dst == NULL || dst_len == NULL)
+  if (dst == NULL || dst_len == NULL || src == NULL | src_len == 0)
     return;
 
-  if (src_len == 0) {
-    *dst = NULL;
-    return;
-  }
-  dst8 = *dst = calloc (1, src_len * 2);
+  *dst = (u_int16_t *)calloc (1, src_len * 2);
+  dst8 = (u_int8_t *)*dst;
 
   for (i = 0, j = 0 ; i < src_len ; i++) {
     dst8[j++] = src[i];
@@ -225,23 +208,3 @@ void to_unicode_hack (u_int16_t **dst, size_t *dst_len, u_int8_t *src,
   *dst = realloc (*dst, j);
   *dst_len = j;
 }
-
-void path_to_utf8 (u_int8_t **dst, size_t *dst_len, u_int16_t *src,
-		      size_t src_len) {
-  int i, j;
-  u_int8_t *src8 = (u_int8_t *)src;
-
-  if ((dst == NULL) | (dst_len == NULL) | (src == NULL) | (src_len < 1))
-    return;
-
-  *dst = calloc (src_len + 1, 1);
-
-  for (i = 0, j = 0 ; i < src_len ; i++) {
-    if (src8[i] != '\0')
-      (*dst)[j++] = src8[i];
-  }
-
-  *dst = realloc (*dst, j);
-  *dst_len = j-1;
-}
-
